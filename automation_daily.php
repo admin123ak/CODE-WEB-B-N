@@ -1,9 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-if (PHP_SAPI !== 'cli') {
-    http_response_code(403);
-    exit('CLI only');
+// Cho phép gọi qua HTTP với token (cho cron_run.php) hoặc CLI (cho crontab)
+$isHttpCall = PHP_SAPI !== 'cli';
+if ($isHttpCall) {
+    $httpToken = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';
+    if (!defined('CRON_RUN_TOKEN') || !hash_equals(CRON_RUN_TOKEN, $httpToken)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        exit(json_encode(['success' => false, 'error' => 'Forbidden'], JSON_UNESCAPED_UNICODE));
+    }
 }
 
 function hclouMoneyFmt($n): string { return number_format((float)$n, 0, ',', '.'); }
@@ -139,8 +145,17 @@ function runHclouAutomation(PDO $db): array {
 
 try {
     $out = runHclouAutomation(getDB());
+    if ($isHttpCall) {
+        header('Content-Type: application/json');
+    }
     echo json_encode(['success' => true] + $out, JSON_UNESCAPED_UNICODE) . PHP_EOL;
 } catch (Throwable $e) {
+    if ($isHttpCall) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        exit;
+    }
     fwrite(STDERR, json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL);
     exit(1);
 }

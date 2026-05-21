@@ -2,9 +2,15 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/maintenance.php';
 
-if (PHP_SAPI !== 'cli') {
-    http_response_code(403);
-    exit('CLI only');
+// Cho phép gọi qua HTTP với token hoặc CLI
+$isHttpCall = PHP_SAPI !== 'cli';
+if ($isHttpCall) {
+    $httpToken = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';
+    if (!defined('CRON_RUN_TOKEN') || !hash_equals(CRON_RUN_TOKEN, $httpToken)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        exit(json_encode(['success' => false, 'error' => 'Forbidden'], JSON_UNESCAPED_UNICODE));
+    }
 }
 
 function hclouHealthMoney($n): string { return number_format((float)$n, 0, ',', '.'); }
@@ -117,6 +123,12 @@ try {
 } catch (Throwable $e) {
     $err = '❌ <b>HCLOU DAILY HEALTH CHECK FAILED</b>' . "\n\n" . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . "\n⏰ " . date('Y-m-d H:i:s');
     if (defined('ADMIN_CHAT_ID')) sendTelegram(ADMIN_CHAT_ID, $err);
+    if ($isHttpCall) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        exit;
+    }
     fwrite(STDERR, json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL);
     exit(1);
 }

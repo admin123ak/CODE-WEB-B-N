@@ -37,12 +37,23 @@ function runMaintenance(PDO $db): array {
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) {
+    $isHttp = PHP_SAPI !== 'cli';
+    // Cho phép gọi qua HTTP với cron_token
+    if ($isHttp) {
+        $httpToken = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';
+        if (!defined('CRON_RUN_TOKEN') || !hash_equals(CRON_RUN_TOKEN, $httpToken)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            exit(json_encode(['success' => false, 'error' => 'Forbidden'], JSON_UNESCAPED_UNICODE));
+        }
+    }
     try {
         $result = runMaintenance(getDB());
-        if (PHP_SAPI !== 'cli') header('Content-Type: application/json; charset=utf-8');
+        if ($isHttp) header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success'=>true] + $result, JSON_UNESCAPED_UNICODE) . PHP_EOL;
     } catch (Throwable $e) {
-        if (PHP_SAPI !== 'cli') http_response_code(500);
+        if ($isHttp) http_response_code(500);
+        if ($isHttp) header('Content-Type: application/json');
         echo json_encode(['success'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL;
     }
 }

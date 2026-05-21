@@ -1,9 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';
 
-if (PHP_SAPI !== 'cli') {
-    http_response_code(403);
-    exit('CLI only');
+// Cho phép gọi qua HTTP với token hoặc CLI
+$isHttpCall = PHP_SAPI !== 'cli';
+if ($isHttpCall) {
+    $httpToken = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';
+    if (!defined('CRON_RUN_TOKEN') || !hash_equals(CRON_RUN_TOKEN, $httpToken)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        exit(json_encode(['success' => false, 'error' => 'Forbidden'], JSON_UNESCAPED_UNICODE));
+    }
 }
 
 const HCLOU_MONITOR_STATE = __DIR__ . '/data/cron_monitor_state.json';
@@ -131,6 +137,12 @@ try {
         $state['fail_key'] = sha1($e->getMessage());
         $state['last_alert'] = time();
         hclouMonSaveState($state);
+    }
+    if ($isHttpCall) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        exit;
     }
     fwrite(STDERR, json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE) . PHP_EOL);
     exit(1);
