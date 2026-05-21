@@ -266,16 +266,16 @@ switch ($action) {
     case 'my_keys':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $filter = $_GET['filter'] ?? 'all'; // all, active, expired, locked
-        
-        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type 
+
+        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type
                 FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id
-                WHERE k.user_id=?";
+                WHERE k.user_id=? AND k.status != 'pending'";
         $params = [$user['id']];
-        
+
         // Cập nhật trạng thái expired
         $db->prepare("UPDATE `keys` SET status='expired' WHERE user_id=? AND status='active' AND expire_at < NOW()")
            ->execute([$user['id']]);
-        
+
         if ($filter === 'active') $sql .= " AND k.status='active'";
         elseif ($filter === 'expired') $sql .= " AND k.status='expired'";
         elseif ($filter === 'locked') $sql .= " AND k.status='locked'";
@@ -308,9 +308,9 @@ switch ($action) {
     case 'search_key':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $q = $_GET['q'] ?? '';
-        $stmt = $db->prepare("SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type 
+        $stmt = $db->prepare("SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type
             FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id
-            WHERE k.user_id=? AND k.key_code LIKE ?");
+            WHERE k.user_id=? AND k.status != 'pending' AND k.key_code LIKE ?");
         $stmt->execute([$user['id'], "%$q%"]);
         jsonResponse(['success' => true, 'keys' => $stmt->fetchAll()]);
 
