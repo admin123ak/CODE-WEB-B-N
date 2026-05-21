@@ -463,7 +463,7 @@ function updatePkgOptions(gameId) {
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
   try {
-    var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll()))?>');
+    var pkgs = <?=json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll())?>;
     console.log('All packages:', pkgs);
     console.log('Selected game_id:', gameId);
     var count = 0;
