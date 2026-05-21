@@ -5,18 +5,18 @@
 
 // Database
 define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'hcloucom_panel');        // Tên database trên cPanel
-define('DB_USER', 'hcloucom_panel');           // Username database cPanel
-define('DB_PASS', 'hcloucom_panel');               // Password database cPanel
+define('DB_NAME', 'hcloucom_bankey');        // Tên database trên cPanel
+define('DB_USER', 'hcloucom_bankey');           // Username database cPanel
+define('DB_PASS', 'hcloucom_bankey');               // Password database cPanel
 define('DB_CHARSET', 'utf8mb4');
 
 // Telegram Bot
-define('BOT_TOKEN', '8625693694:AAFWvN0PkneImU3okv-UvPFdRv_vKZFbvOY');   // Token từ @BotFather
+define('BOT_TOKEN', '8911061253:AAFnYdtU8GjHsy6KXVZU0EM-lKZs2AM89sc');   // Token từ @BotFather
 define('ADMIN_CHAT_ID', '1985248892');          // Chat ID admin nhận thông báo
-define('BOT_USERNAME', 'hclougetkey_bot');   // Username bot (không có @)
+define('BOT_USERNAME', 'TEAMCRACKBOT');   // Username bot (không có @)
 
 // Website
-define('SITE_URL', 'https://hclou.com');  // Domain của bạn
+define('SITE_URL', 'https://teamcrack.linkpc.net');  // Domain của bạn
 define('SITE_NAME', 'HCLOU SERVER');
 
 // Admin panel security
@@ -32,7 +32,7 @@ define('VIETQR_BANK_ID', '970422'); // MBBank BIN/NAPAS bank id
 
 // MBBANK transaction history API (Queenvps)
 // Docs: GET https://queenvps.com/api/historymb/{API_KEY}
-define('MBBANK_HISTORY_API_KEY', '');  // API Key từ Queenvps (liên hệ Zalo/Messenger/Hotline để lấy)
+define('MBBANK_HISTORY_API_KEY', 'MB_FREE_021FA4D804026B08');  // API Key từ Queenvps (liên hệ Zalo/Messenger/Hotline để lấy)
 define('MBBANK_HISTORY_API_URL', 'https://queenvps.com/api/historymb/' . MBBANK_HISTORY_API_KEY);
 define('MBBANK_AUTO_APPROVE_ENABLED', true);
 define('MBBANK_POLL_SECRET', hash_hmac('sha256', MBBANK_HISTORY_API_KEY, BOT_TOKEN));
@@ -106,7 +106,7 @@ function sendTelegram($chat_id, $text, $reply_markup = null) {
         'parse_mode' => 'HTML',
     ];
     if ($reply_markup) $data['reply_markup'] = json_encode($reply_markup);
-    
+
     $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/sendMessage");
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
