@@ -603,15 +603,44 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 
 <?php elseif($tab==='freekeys'): ?>
 <h1>🎁 GetKey Free</h1>
-<?php $gamesAll=$db->query("SELECT * FROM games ORDER BY is_active DESC, sort_order")->fetchAll(); $packagesAll=$db->query("SELECT p.*,g.name game_name FROM packages p JOIN games g ON p.game_id=g.id ORDER BY g.sort_order,p.days")->fetchAll(); ?>
+<?php $gamesAll=$db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll(); $packagesAll=$db->query("SELECT p.*,g.name game_name FROM packages p JOIN games g ON p.game_id=g.id WHERE p.is_active=1 ORDER BY g.sort_order,p.days")->fetchAll(); ?>
 <div class="form-card"><h3>➕ Thêm key free mới</h3>
 <form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_free_key">
 <div class="form-row">
 <div><label>Key code</label><input name="key_code" required placeholder="abcd..." style="width:220px"></div>
-<div><label>Game</label><select name="game_id"><?php foreach($gamesAll as $g): ?><option value="<?=$g['id']?>"><?=$g['name']?> <?=$g['is_active']?'':'(Tắt)'?></option><?php endforeach ?></select></div>
-<div><label>Gói</label><select name="package_id"><?php foreach($packagesAll as $p): ?><option value="<?=$p['id']?>"><?=$p['game_name']?> · <?=$p['name']?> · <?=$p['key_type']?> <?=$p['is_active']?'':'(Tắt)'?></option><?php endforeach ?></select></div>
+<div><label>Game</label>
+  <select name="game_id" id="freeKeyGameSelect" required onchange="updateFreeKeyPkgOptions(this.value)">
+    <option value="">-- Chọn game --</option>
+    <?php foreach($gamesAll as $g): ?>
+    <option value="<?=$g['id']?>"><?=$g['name']?></option>
+    <?php endforeach ?>
+  </select>
+</div>
+<div><label>Gói</label>
+  <select name="package_id" id="freeKeyPkgSelect" required>
+    <option value="">-- Chọn game trước --</option>
+  </select>
+</div>
 <div style="padding-top:20px"><button class="btn btn-blue">Tạo link 2 lớp</button></div>
-</div></form></div>
+</div></form>
+
+<script>
+function updateFreeKeyPkgOptions(gameId) {
+  var sel = document.getElementById('freeKeyPkgSelect');
+  sel.innerHTML = '<option value="">-- Chọn gói --</option>';
+  if (!gameId) return;
+  var pkgs = <?=json_encode($packagesAll)?>;
+  pkgs.forEach(function(p) {
+    if (p.game_id == gameId) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ) · ' + p.key_type;
+      sel.appendChild(opt);
+    }
+  });
+}
+</script>
+</div>
 <?php $fks=$db->query("SELECT fk.*,g.name game_name,p.name pkg_name,(SELECT COUNT(*) FROM free_key_claims c WHERE c.free_key_id=fk.id) claims FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id ORDER BY fk.created_at DESC LIMIT 100")->fetchAll(); ?>
 <table><tr><th>Key</th><th>Game/Gói</th><th>Thời gian</th><th>Link</th><th>Claim</th><th>TT</th><th>Action</th></tr>
 <?php foreach($fks as $fk): ?><tr>
