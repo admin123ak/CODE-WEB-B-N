@@ -458,12 +458,17 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
 </div>
 
 <script>
+var allPackages = <?php
+  $allPkgs = $db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll();
+  echo json_encode($allPkgs, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
+?>;
+
 function updatePkgOptions(gameId) {
   var sel = document.getElementById('keyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
   try {
-    var pkgs = <?=json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll())?>;
+    var pkgs = allPackages;
     console.log('All packages:', pkgs);
     console.log('Selected game_id:', gameId);
     var count = 0;
