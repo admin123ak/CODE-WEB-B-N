@@ -180,30 +180,45 @@ if (isset($update['message'])) {
 // =============================================
 
 function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
-    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days FROM orders o JOIN users u ON o.user_id=u.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+    $stmt = $db->prepare("SELECT o.id, o.user_id, o.game_id, o.package_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
     $stmt->execute([$order_code]);
     $order = $stmt->fetch();
     if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
 
     $db->beginTransaction();
     try {
+        $keyStmt = $db->prepare("SELECT * FROM `keys` WHERE order_id=? AND status='pending' LIMIT 1 FOR UPDATE");
+        $keyStmt->execute([$order['id']]);
+        $key = $keyStmt->fetch();
+        if (!$key) throw new Exception('Không tìm thấy key pending cho đơn này');
+
         $now = date('Y-m-d H:i:s');
         $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-        $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE order_id=? AND status='pending'")
-            ->execute([$now, $expire, $order['id']]);
-        $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE order_code=?")
-            ->execute([$admin_name, $order_code]);
+        $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=?")
+            ->execute([$now, $expire, $key['id']]);
+        $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=?")
+            ->execute([$admin_name, $order['id']]);
         $db->commit();
+
+        answerCallback($callback_id, '✅ Đã duyệt đơn!');
+
+        $shortOrder = preg_replace('/^ORD/i', '', $order_code);
+        $packageName = $order['package_name'] ?: $order['game_name'];
+        $type = strtoupper($order['key_type']) === 'VIP' ? 'VIP' : 'Normal';
+        $userMsg = "✅ <b>Key Purchase Successful!</b>\n\n" .
+            "• Order code : <code>{$shortOrder}</code>\n" .
+            "• License : <code>{$key['key_code']}</code>\n" .
+            "• Package : <code>{$packageName}</code>\n" .
+            "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ\n\n" .
+            "Duration will start when license login.\n\n" .
+            "<b>Lưu ý:</b> để sử dụng một cách an toàn vui lòng không sử dụng bất cứ thứ gì có liên quan tới mod khác hoặc ứng dụng lạ trên thiết bị của bạn.";
+        sendTelegram($order['telegram_id'], $userMsg);
+        editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}\n🔑 <code>{$key['key_code']}</code>");
     } catch (Exception $e) {
         $db->rollBack();
         answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
         return;
     }
-
-    answerCallback($callback_id, '✅ Đã duyệt đơn!');
-    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}");
-
-    if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn hàng #{$order_code} đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: {$order['days']} ngày.");
 }
 
 function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
