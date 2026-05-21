@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $now = date('Y-m-d H:i:s');
             $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-            $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE order_id=? AND status='pending'")
+            $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
                ->execute([$now, $expire, $order['id']]);
             $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=?")
                ->execute([$order_code]);
@@ -337,7 +337,7 @@ if($pending): ?>
 <h1>🛒 Quản lý đơn hàng</h1>
 <?php
 $filter_status = $_GET['s'] ?? 'pending';
-$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status=? ORDER BY o.created_at DESC LIMIT 100");
+$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id WHERE o.status=? ORDER BY o.created_at DESC LIMIT 100");
 $orders->execute([$filter_status]); $orders = $orders->fetchAll();
 ?>
 <div style="margin-bottom:14px;display:flex;gap:8px">
@@ -352,12 +352,13 @@ $orders->execute([$filter_status]); $orders = $orders->fetchAll();
   <td><b><?=$o['order_code']?></b></td>
   <td>@<?=$o['telegram_username']?></td>
   <td><?=$o['game_name']?><br><small style="color:#8b949e"><?=$o['pkg_name']?></small></td>
-  <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? '--')?></td>
+  <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? '--')?><br><small style="color:#8b949e"><?=htmlspecialchars($o['key_status'] ?? '')?></small></td>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
   <td><span class="badge <?=$cls?>"><?=$o['status']?></span></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m/Y H:i',strtotime($o['created_at']))?></td>
   <?php if($filter_status==='pending'):?>
   <td>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
     <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
   </td>
   <?php endif?>
