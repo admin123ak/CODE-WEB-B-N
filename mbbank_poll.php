@@ -41,24 +41,25 @@ function fetchMBBankTransactions() {
     }
     $json = $res['json'];
 
-    // Queenvps API: { "success": true, "api_info": {...}, "transactions": [...] }
+    // Queenvps API: { "success": true, "message": "...", "data": { "api_key": "...", "mb_data": { "transactions": [...] } } }
     if (empty($json['success'])) {
         throw new Exception('API MBBANK trả về success=false');
     }
-    $txs = $json['transactions'] ?? null;
-    if (!is_array($txs)) throw new Exception('API MBBANK không có transactions hợp lệ');
-    return $txs;
+    $mbData = $json['data']['mb_data'] ?? null;
+    if (!is_array($mbData) || empty($mbData['transactions'])) {
+        throw new Exception('API MBBANK không có transactions hợp lệ');
+    }
+    return $mbData['transactions'];
 }
 
 function normalizeMBBankTx(array $tx) {
-    $date = (string)($tx['formatted_date'] ?? $tx['transaction_date'] ?? '');
+    $date = (string)($tx['transaction_date'] ?? $tx['formatted_date'] ?? '');
     $desc = trim((string)($tx['description'] ?? ''));
-    $amount = 0;
-    if (isset($tx['amount']) && strtoupper((string)($tx['type'] ?? 'IN')) === 'IN') {
-        $amount = (float)$tx['amount'];
-    } elseif (isset($tx['credit_amount'])) {
-        $amount = (float)$tx['credit_amount'];
-    }
+    // credit_amount = tiền NHẬN VÀO, debit_amount = tiền CHUYỂN ĐI
+    $credit = (float)($tx['credit_amount'] ?? 0);
+    $debit = (float)($tx['debit_amount'] ?? 0);
+    // Chỉ lấy giao dịch nhận tiền (credit_amount > 0)
+    $amount = $credit > 0 ? $credit : 0;
     return [$date, $amount, $desc];
 }
 
