@@ -2,6 +2,16 @@
 // =============================================
 // CẤU HÌNH HỆ THỐNG - SỬA THÔNG TIN Ở ĐÂY
 // =============================================
+//
+// ⚠️ SAU KHI DEPLOY LÊN HOSTING MỚI - CHẠY 1 LẦN DUY NHẤT:
+// 1. Tính setup token: echo -n "BOT_TOKEN|ADMIN_CHAT_ID" | sha256sum | cut -c1-16
+// 2. Truy cập: https://your-domain.com/setup_webhook.php?token=TOKEN_VỪA_TÍNH&action=set
+// 3. Kiểm tra: https://your-domain.com/setup_webhook.php?token=TOKEN_VỪA_TÍNH&action=info
+//
+// VÍ DỤ với config hiện tại:
+// Token: 6a4b137de4788e8a
+// URL: https://teamcrack.linkpc.net/setup_webhook.php?token=6a4b137de4788e8a&action=set
+//
 
 // Database
 define('DB_HOST', '127.0.0.1');
