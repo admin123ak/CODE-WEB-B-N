@@ -16,14 +16,16 @@ if (isset($update['callback_query'])) {
     $chat_id = $callback['message']['chat']['id'];
     $message_id = $callback['message']['message_id'];
 
-    // Kiểm tra admin
+    // Kiểm tra admin: trong bảng admins HOẶC khớp ADMIN_CHAT_ID trong config
     $stmt = $db->prepare("SELECT * FROM admins WHERE telegram_id = ?");
     $stmt->execute([$from['id']]);
     $admin = $stmt->fetch();
-    if (!$admin) {
+    $isAdminFromConfig = ((string)$from['id'] === (string)ADMIN_CHAT_ID);
+    if (!$admin && !$isAdminFromConfig) {
         answerCallback($callback['id'], '❌ Bạn không có quyền admin!');
         exit;
     }
+    $admin_name = $admin ? ($admin['username'] ?? $admin['name'] ?? 'admin') : ($from['username'] ?? $from['first_name'] ?? 'admin');
 
     // DUYỆT đơn: approve_ORDERCODE
     if (strpos($data, 'approve_') === 0) {
@@ -189,7 +191,8 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
     try {
         $now = date('Y-m-d H:i:s');
         $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-        $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE order_id=? AND status='pending'")
+        // Duyệt key — chấp nhận cả pending (từ pool) và available (chưa gán)
+        $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
             ->execute([$now, $expire, $order['id']]);
         $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE order_code=?")
             ->execute([$admin_name, $order_code]);
@@ -207,7 +210,7 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
 }
 
 function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
-    $stmt = $db->prepare("SELECT * FROM orders WHERE order_code=? AND status='pending'");
+    $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
     $stmt->execute([$order_code]);
     $order = $stmt->fetch();
     if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
@@ -215,26 +218,21 @@ function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $mes
     $db->beginTransaction();
     try {
         // Trả key về pool available
-        $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+        $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status IN ('pending','available')")
             ->execute([$order['id']]);
         $db->prepare("UPDATE orders SET status='rejected', approved_by=? WHERE id=?")
             ->execute([$admin_name, $order['id']]);
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();
-        answerCallback($callback_id, '❌ Lỗi hệ thống!');
+        answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
         return;
     }
 
     answerCallback($callback_id, '❌ Đã từ chối đơn!');
-    editMessage($chat_id, $message_id, "❌ <b>ĐÃ TỪ CHỐI #{$order_code}</b>
-Admin: @{$admin_name}");
+    editMessage($chat_id, $message_id, "❌ <b>ĐÃ TỪ CHỐI #{$order_code}</b>\nAdmin: @{$admin_name}");
 
-    $userStmt = $db->prepare("SELECT telegram_id FROM users WHERE id=?");
-    $userStmt->execute([$order['user_id']]);
-    $user = $userStmt->fetch();
-    if ($user) sendTelegram($user['telegram_id'], "❌ <b>Đơn hàng #{$order_code} bị từ chối.</b>
-Vui lòng liên hệ admin để được hỗ trợ.");
+    if ($order['telegram_id']) sendTelegram($order['telegram_id'], "❌ <b>Đơn hàng #{$order_code} bị từ chối.</b>\nVui lòng liên hệ admin để được hỗ trợ.");
 }
 
 
