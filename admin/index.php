@@ -683,27 +683,29 @@ function updateFreeKeyPkgOptions(gameId) {
 </div>
 <h3 style="margin-top:20px">⚡ Cron Jobs Auto-Setup</h3>
 <div style="margin-top:8px">
-<button type="button" class="btn btn-blue" onclick="setupCronJobs()" style="width:auto;padding:10px 24px">🚀 Tự động đăng ký tất cả Cron Jobs</button>
+<button type="button" class="btn btn-blue" onclick="testCronJobs()" style="width:auto;padding:10px 24px">🚀 Test tất cả Cron Jobs</button>
 <div id="cronResult" style="margin-top:12px;display:none"></div>
+<p style="color:#8b949e;font-size:12px;margin-top:8px">Cron jobs chạy qua HTTP. Dùng URL từ trang <a href="../setup_cron.php" target="_blank">setup_cron.php</a> để cấu hình trên cron-job.org hoặc cPanel.</p>
 </div>
 <script>
-async function setupCronJobs(){
-  var btn=document.querySelector('button[onclick="setupCronJobs()"]');
+async function testCronJobs(){
+  var btn=document.querySelector('button[onclick="testCronJobs()"]');
   var res=document.getElementById('cronResult');
-  btn.disabled=true; btn.textContent='⏳ Đang đăng ký...';
+  btn.disabled=true; btn.textContent='⏳ Đang test...';
   try{
-    var fd=new FormData(); fd.append('setup_cron','1');
-    var r=await fetch('../setup_cron.php',{method:'POST',body:fd,credentials:'same-origin'});
+    var r=await fetch('../setup_cron.php?setup_cron=1&test=1&token=<?=CRON_RUN_TOKEN?>',{method:'GET'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
     var j=await r.json();
     if(j.success){
-      var h='<div class="okbox">✅ Đăng ký cron thành công!</div><table style="width:100%;margin-top:8px"><tr><th>Job</th><th>Trạng thái</th><th>Lệnh</th></tr>';
+      var h='<div class="okbox">✅ Test hoàn tất!</div><table style="width:100%;margin-top:8px"><tr><th>Job</th><th>Trạng thái</th><th>HTTP</th><th>Lỗi (nếu có)</th></tr>';
       if(j.results) for(var k in j.results){var v=j.results[k];
-        h+='<tr><td>'+k+'</td><td>'+(v.added?'✅ OK':'❌ Lỗi: '+(v.error||''))+'</td><td style="font-size:11px;word-break:break-all">'+(v.line||'')+'</td></tr>';}
+        h+='<tr><td>'+v.label+'</td><td>'+(v.success?'<span style="color:#3fb950">✅ OK</span>':'<span style="color:#f85149">❌ Lỗi</span>')+'</td><td class="mono">'+(v.http_code||'?')+'</td><td style="font-size:11px">'+(v.error?htmlspecialchars(v.error):'')+'</td></tr>';}
       h+='</table>'; res.innerHTML=h;
     } else { res.innerHTML='<div class="err">❌ Lỗi: '+(j.error||'Không xác định')+'</div>'; }
   } catch(e){ res.innerHTML='<div class="err">❌ Lỗi kết nối: '+e.message+'</div>'; }
-  res.style.display='block'; btn.disabled=false; btn.textContent='🚀 Tự động đăng ký tất cả Cron Jobs';
+  res.style.display='block'; btn.disabled=false; btn.textContent='🚀 Test tất cả Cron Jobs';
 }
+function htmlspecialchars(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
