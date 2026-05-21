@@ -681,32 +681,24 @@ function updateFreeKeyPkgOptions(gameId) {
 <div style="flex:1;min-width:260px"><label>CRON_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[CRON_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('CRON_RUN_TOKEN'))?>"></div>
 <div style="flex:1;min-width:260px"><label>AUTOMATION_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[AUTOMATION_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('AUTOMATION_RUN_TOKEN'))?>"></div>
 </div>
-<h3 style="margin-top:20px">⚡ Cron Jobs Auto-Setup</h3>
-<div style="margin-top:8px">
-<button type="button" class="btn btn-blue" onclick="testCronJobs()" style="width:auto;padding:10px 24px">🚀 Test tất cả Cron Jobs</button>
-<div id="cronResult" style="margin-top:12px;display:none"></div>
-<p style="color:#8b949e;font-size:12px;margin-top:8px">Cron jobs chạy qua HTTP. Dùng URL từ trang <a href="../setup_cron.php" target="_blank">setup_cron.php</a> để cấu hình trên cron-job.org hoặc cPanel.</p>
-</div>
-<script>
-async function testCronJobs(){
-  var btn=document.querySelector('button[onclick="testCronJobs()"]');
-  var res=document.getElementById('cronResult');
-  btn.disabled=true; btn.textContent='⏳ Đang test...';
-  try{
-    var r=await fetch('../setup_cron.php?setup_cron=1&test=1&token=<?=CRON_RUN_TOKEN?>',{method:'GET'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    var j=await r.json();
-    if(j.success){
-      var h='<div class="okbox">✅ Test hoàn tất!</div><table style="width:100%;margin-top:8px"><tr><th>Job</th><th>Trạng thái</th><th>HTTP</th><th>Lỗi (nếu có)</th></tr>';
-      if(j.results) for(var k in j.results){var v=j.results[k];
-        h+='<tr><td>'+v.label+'</td><td>'+(v.success?'<span style="color:#3fb950">✅ OK</span>':'<span style="color:#f85149">❌ Lỗi</span>')+'</td><td class="mono">'+(v.http_code||'?')+'</td><td style="font-size:11px">'+(v.error?htmlspecialchars(v.error):'')+'</td></tr>';}
-      h+='</table>'; res.innerHTML=h;
-    } else { res.innerHTML='<div class="err">❌ Lỗi: '+(j.error||'Không xác định')+'</div>'; }
-  } catch(e){ res.innerHTML='<div class="err">❌ Lỗi kết nối: '+e.message+'</div>'; }
-  res.style.display='block'; btn.disabled=false; btn.textContent='🚀 Test tất cả Cron Jobs';
+<h3 style="margin-top:20px">⚡ Cron Jobs — URL cần cấu hình</h3>
+<p style="color:#8b949e;font-size:13px;margin-bottom:12px">Copy các URL dưới đây vào <a href="https://cron-job.org" target="_blank" style="color:#58a6ff">cron-job.org</a> (hoặc cPanel Cron Jobs). Tất cả chạy qua HTTP, không cần SSH/exec().</p>
+<div class="codebox"><?php
+$cronJobs = [
+    ['label'=>'🏦 MBBANK Auto-bank', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=mbbank'],
+    ['label'=>'🧹 Maintenance', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=maintenance'],
+    ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
+    ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=automation'],
+    ['label'=>'🏥 Health Check', 'schedule'=>'9h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=health'],
+];
+foreach($cronJobs as $cj){
+    echo '<div style="margin-bottom:8px;padding:6px 0;border-bottom:1px solid #21262d">';
+    echo '<b>'.htmlspecialchars($cj['label']).'</b> <span style="color:#8b949e">('.htmlspecialchars($cj['schedule']).')</span><br>';
+    echo '<span class="mono" style="word-break:break-all">'.htmlspecialchars($cj['url']).'</span>';
+    echo '</div>';
 }
-function htmlspecialchars(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-</script>
+?></div>
+<div class="warnbox">⚠️ Quan trọng nhất: <b>MBBANK Auto-bank</b> (mỗi 1 phút) — nếu không chạy, đơn thanh toán sẽ không tự duyệt. Setup xong, kiểm tra tại <a href="../setup_cron.php" target="_blank" style="color:#58a6ff">setup_cron.php</a>.</div>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
 <div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
