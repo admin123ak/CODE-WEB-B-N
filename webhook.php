@@ -4,6 +4,13 @@ require_once 'config.php';
 $input = file_get_contents('php://input');
 $update = json_decode($input, true);
 
+// Log để debug webhook
+$logFile = __DIR__ . '/webhook_debug.log';
+if ($update) {
+    $logEntry = date('Y-m-d H:i:s') . ' | ' . json_encode($update, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    file_put_contents($logFile, $logEntry, FILE_APPEND);
+}
+
 if (!$update) exit;
 
 $db = getDB();
@@ -13,49 +20,60 @@ if (isset($update['callback_query'])) {
     $callback = $update['callback_query'];
     $data = $callback['data'];
     $from = $callback['from'];
-    $chat_id = $callback['message']['chat']['id'];
-    $message_id = $callback['message']['message_id'];
+    $callback_id = $callback['id'];
+    $message = $callback['message'] ?? null;
+
+    if (!$message) {
+        answerCallback($callback_id, '❌ Không tìm thấy message!');
+        exit;
+    }
+
+    $chat_id = $message['chat']['id'];
+    $message_id = $message['message_id'];
 
     // Kiểm tra admin
     $stmt = $db->prepare("SELECT * FROM admins WHERE telegram_id = ?");
     $stmt->execute([$from['id']]);
     $admin = $stmt->fetch();
     if (!$admin) {
-        answerCallback($callback['id'], '❌ Bạn không có quyền admin!');
+        answerCallback($callback_id, '❌ Bạn không có quyền admin!');
         exit;
     }
 
-    // DUYỆT đơn: approve_ORDERCODE
+    // Log debug
+    $logFile = __DIR__ . '/webhook_debug.log';
+    file_put_contents($logFile, date('Y-m-d H:i:s') . " | Callback: data=$data, from=" . $from['id'] . ", chat=$chat_id, msg=$message_id\n", FILE_APPEND);
+
+    // DUYỆT: approve_ORDERCODE
     if (strpos($data, 'approve_') === 0) {
         $order_code = substr($data, 8);
-        approveOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback['id'], $chat_id, $message_id);
+        approveOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback_id, $chat_id, $message_id);
     }
-
-    // TỪ CHỐI đơn: reject_ORDERCODE
-    if (strpos($data, 'reject_') === 0) {
+    // TỪ CHỐI: reject_ORDERCODE
+    elseif (strpos($data, 'reject_') === 0) {
         $order_code = substr($data, 7);
-        rejectOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback['id'], $chat_id, $message_id);
+        rejectOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback_id, $chat_id, $message_id);
     }
-
     // KHOÁ key: lock_KEYID
-    if (strpos($data, 'lock_') === 0) {
+    elseif (strpos($data, 'lock_') === 0) {
         $key_id = substr($data, 5);
         $db->prepare("UPDATE `keys` SET status='locked' WHERE id=?")->execute([$key_id]);
-        answerCallback($callback['id'], '🔒 Đã khoá key!');
+        answerCallback($callback_id, '🔒 Đã khoá key!');
     }
-
     // MỞ KHOÁ key: unlock_KEYID
-    if (strpos($data, 'unlock_') === 0) {
+    elseif (strpos($data, 'unlock_') === 0) {
         $key_id = substr($data, 7);
         $db->prepare("UPDATE `keys` SET status='active' WHERE id=?")->execute([$key_id]);
-        answerCallback($callback['id'], '🔓 Đã mở khoá key!');
+        answerCallback($callback_id, '🔓 Đã mở khoá key!');
     }
-
     // XOÁ key: delete_KEYID
-    if (strpos($data, 'delete_') === 0) {
+    elseif (strpos($data, 'delete_') === 0) {
         $key_id = substr($data, 7);
         $db->prepare("DELETE FROM `keys` WHERE id=?")->execute([$key_id]);
-        answerCallback($callback['id'], '🗑 Đã xoá key!');
+        answerCallback($callback_id, '🗑 Đã xoá key!');
+    }
+    else {
+        answerCallback($callback_id, "⚠️ Lệnh không hợp lệ: $data");
     }
     exit;
 }
@@ -200,8 +218,7 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
             ->execute([$admin_name, $order['id']]);
         $db->commit();
 
-        answerCallback($callback_id, '✅ Đã duyệt đơn!');
-
+        // Gửi thông báo cho user
         $shortOrder = preg_replace('/^ORD/i', '', $order_code);
         $packageName = $order['package_name'] ?: $order['game_name'];
         $type = strtoupper($order['key_type']) === 'VIP' ? 'VIP' : 'Normal';
@@ -213,12 +230,15 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
             "Duration will start when license login.\n\n" .
             "<b>Lưu ý:</b> để sử dụng một cách an toàn vui lòng không sử dụng bất cứ thứ gì có liên quan tới mod khác hoặc ứng dụng lạ trên thiết bị của bạn.";
         sendTelegram($order['telegram_id'], $userMsg);
-        editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}\n🔑 <code>{$key['key_code']}</code>");
     } catch (Exception $e) {
         $db->rollBack();
         answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
         return;
     }
+
+    // Trả lời callback TRƯỚC khi edit message để dismiss loading nhanh
+    answerCallback($callback_id, '✅ Đã duyệt đơn!');
+    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}\n🔑 <code>{$key['key_code']}</code>");
 }
 
 function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
@@ -256,9 +276,19 @@ Vui lòng liên hệ admin để được hỗ trợ.");
 function answerCallback($callback_id, $text) {
     $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/answerCallbackQuery");
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, ['callback_query_id' => $callback_id, 'text' => $text, 'show_alert' => true]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['callback_query_id' => $callback_id, 'text' => $text, 'show_alert' => false]));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_exec($ch); curl_close($ch);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    // Log lỗi nếu có
+    if ($httpCode !== 200 || $curlError) {
+        $logFile = __DIR__ . '/webhook_debug.log';
+        file_put_contents($logFile, date('Y-m-d H:i:s') . " | answerCallback ERROR: http=$httpCode, curl=$curlError, result=$result\n", FILE_APPEND);
+    }
 }
 
 function editMessage($chat_id, $message_id, $text) {
