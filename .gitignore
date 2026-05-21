@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Data and logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bk
+*.bk1
+*.bk2
+*.bk3
+*.backup
+
+# Environment
+.env
+!.env.example
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
