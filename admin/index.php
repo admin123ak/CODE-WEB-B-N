@@ -206,10 +206,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $keyLines = explode("\n", trim($_POST['key_codes']));
         $gameId = (int)($_POST['key_game_id'] ?? 0);
         $pkgId = (int)($_POST['key_package_id'] ?? 0);
-        $days = (int)($_POST['key_days'] ?? 0);
-        if (!$gameId || !$pkgId || $days <= 0) {
+        if (!$gameId || !$pkgId) {
             header("Location: ?tab=keys&err=Thiếu thông tin"); exit;
         }
+        // Lấy days từ package
+        $pkgStmt = $db->prepare("SELECT days FROM packages WHERE id=? AND game_id=?");
+        $pkgStmt->execute([$pkgId, $gameId]);
+        $pkg = $pkgStmt->fetch();
+        if (!$pkg) {
+            header("Location: ?tab=keys&err=Gói không tồn tại"); exit;
+        }
+        $days = (int)$pkg['days'];
         $count = 0;
         foreach ($keyLines as $line) {
             $code = trim($line);
@@ -442,7 +449,6 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
       <option value="">-- Chọn game trước --</option>
     </select>
   </div>
-  <div><label>Ngày sử dụng</label><input name="key_days" type="number" value="1" min="1" style="width:80px"></div>
 </div>
 <div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
   <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABC123&#10;DEF456&#10;GHI789" style="width:100%;font-family:monospace;font-size:13px;resize:vertical"></textarea>
@@ -456,15 +462,29 @@ function updatePkgOptions(gameId) {
   var sel = document.getElementById('keyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
-  var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll()))?>');
-  pkgs.forEach(function(p) {
-    if (p.game_id == gameId) {
-      var opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)' + (p.is_active == '0' ? ' [TẮT]' : '');
-      sel.appendChild(opt);
+  try {
+    var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll()))?>');
+    console.log('All packages:', pkgs);
+    console.log('Selected game_id:', gameId);
+    var count = 0;
+    pkgs.forEach(function(p) {
+      console.log('Checking package:', p.id, 'game_id:', p.game_id, 'vs selected:', gameId);
+      if (p.game_id == gameId) {
+        var opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)' + (p.is_active == '0' ? ' [TẮT]' : '');
+        sel.appendChild(opt);
+        count++;
+      }
+    });
+    console.log('Added', count, 'packages for game', gameId);
+    if (count === 0) {
+      sel.innerHTML += '<option value="" disabled>Chưa có gói nào cho game này</option>';
     }
-  });
+  } catch(e) {
+    console.error('Error loading packages:', e);
+    sel.innerHTML += '<option value="" disabled>Lỗi load gói: ' + e.message + '</option>';
+  }
 }
 </script>
 
