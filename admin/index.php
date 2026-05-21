@@ -456,7 +456,7 @@ function updatePkgOptions(gameId) {
   var sel = document.getElementById('keyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
-  var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price FROM packages WHERE is_active=1 ORDER BY days ASC")->fetchAll()))?>');
+  var pkgs = <?=json_encode($db->query("SELECT id, game_id, name, days, price FROM packages WHERE is_active=1 ORDER BY days ASC")->fetchAll(), JSON_UNESCAPED_UNICODE)?>;
   pkgs.forEach(function(p) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
@@ -629,7 +629,7 @@ function updateFreeKeyPkgOptions(gameId) {
   var sel = document.getElementById('freeKeyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
-  var pkgs = <?=json_encode($packagesAll)?>;
+  var pkgs = <?=json_encode($packagesAll, JSON_UNESCAPED_UNICODE)?>;
   pkgs.forEach(function(p) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
