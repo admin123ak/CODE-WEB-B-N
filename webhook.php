@@ -203,6 +203,7 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
     $order = $stmt->fetch();
     if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
 
+    $key = null;
     $db->beginTransaction();
     try {
         $keyStmt = $db->prepare("SELECT * FROM `keys` WHERE order_id=? AND status='pending' LIMIT 1 FOR UPDATE");
@@ -217,28 +218,31 @@ function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $me
         $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=?")
             ->execute([$admin_name, $order['id']]);
         $db->commit();
-
-        // Gửi thông báo cho user
-        $shortOrder = preg_replace('/^ORD/i', '', $order_code);
-        $packageName = $order['package_name'] ?: $order['game_name'];
-        $type = strtoupper($order['key_type']) === 'VIP' ? 'VIP' : 'Normal';
-        $userMsg = "✅ <b>Key Purchase Successful!</b>\n\n" .
-            "• Order code : <code>{$shortOrder}</code>\n" .
-            "• License : <code>{$key['key_code']}</code>\n" .
-            "• Package : <code>{$packageName}</code>\n" .
-            "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ\n\n" .
-            "Duration will start when license login.\n\n" .
-            "<b>Lưu ý:</b> để sử dụng một cách an toàn vui lòng không sử dụng bất cứ thứ gì có liên quan tới mod khác hoặc ứng dụng lạ trên thiết bị của bạn.";
-        sendTelegram($order['telegram_id'], $userMsg);
     } catch (Exception $e) {
         $db->rollBack();
         answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
         return;
     }
 
-    // Trả lời callback TRƯỚC khi edit message để dismiss loading nhanh
+    // Gửi thông báo cho user
+    $shortOrder = preg_replace('/^ORD/i', '', $order_code);
+    $packageName = $order['package_name'] ?: $order['game_name'];
+    $type = strtoupper($order['key_type']) === 'VIP' ? 'VIP' : 'Normal';
+    $userMsg = "✅ <b>Key Purchase Successful!</b>\n\n" .
+        "• Order code : <code>{$shortOrder}</code>\n" .
+        "• License : <code>{$key['key_code']}</code>\n" .
+        "• Package : <code>{$packageName}</code>\n" .
+        "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ\n\n" .
+        "Duration will start when license login.\n\n" .
+        "<b>Lưu ý:</b> để sử dụng một cách an toàn vui lòng không sử dụng bất cứ thứ gì có liên quan tới mod khác hoặc ứng dụng lạ trên thiết bị của bạn.";
+    sendTelegram($order['telegram_id'], $userMsg);
+
+    // Trả lời callback TRƯỚC để dismiss loading
     answerCallback($callback_id, '✅ Đã duyệt đơn!');
-    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}\n🔑 <code>{$key['key_code']}</code>");
+
+    // Edit message
+    $editText = "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}\n🔑 <code>{$key['key_code']}</code>";
+    editMessage($chat_id, $message_id, $editText);
 }
 
 function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
@@ -249,8 +253,8 @@ function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $mes
 
     $db->beginTransaction();
     try {
-        // Trả key về pool available
-        $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+        // Xoá key pending khi từ chối đơn
+        $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")
             ->execute([$order['id']]);
         $db->prepare("UPDATE orders SET status='rejected', approved_by=? WHERE id=?")
             ->execute([$admin_name, $order['id']]);

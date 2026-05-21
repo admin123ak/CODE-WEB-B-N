@@ -135,34 +135,24 @@ switch ($action) {
         }
         
         $order_code = generateOrderCode();
+        $key_code = generateKey();
         $db->beginTransaction();
         try {
-            // Lấy key có sẵn từ pool theo game + package
-            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT 1 FOR UPDATE");
-            $keyStmt->execute([$game_id, $package_id]);
-            $poolKey = $keyStmt->fetch();
-
-            if (!$poolKey) {
-                $db->rollBack();
-                jsonResponse(['error' => 'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
-            }
-
             // Tạo đơn hàng
             $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, status) VALUES (?,?,?,?,?,'pending')")
                ->execute([$order_code, $user['id'], $game_id, $package_id, $package['price']]);
             $order_id = $db->lastInsertId();
 
-            // Gán key từ pool vào đơn hàng
-            $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
-               ->execute([$user['id'], $order_id, $package['days'], $poolKey['id']]);
-            $key_code = $poolKey['key_code'];
+            // Sinh key pending cho đơn hàng
+            $db->prepare("INSERT INTO `keys` (key_code, user_id, game_id, package_id, order_id, status, days) VALUES (?,?,?,?,?,'pending',?)")
+               ->execute([$key_code, $user['id'], $game_id, $package_id, $order_id, $package['days']]);
 
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
             jsonResponse(['error' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()], 500);
         }
-        
+
         // Thông báo admin qua Telegram
         $amt = number_format($package['price'], 0, ',', '.');
         $username = $user['telegram_username'] ?? $user['full_name'];

@@ -199,8 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
         $db->beginTransaction();
         try {
-            // Trả key về pool available
-            $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+            // Xoá key pending khi từ chối đơn
+            $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")
                ->execute([$order['id']]);
             $db->prepare("UPDATE orders SET status='rejected', approved_by='web_admin' WHERE order_code=?")->execute([$order_code]);
             $db->commit();
@@ -227,7 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$gameId || !$pkgId) {
             header("Location: ?tab=keys&err=Thiếu thông tin"); exit;
         }
-        // Lấy days từ package
         $pkgStmt = $db->prepare("SELECT days FROM packages WHERE id=? AND game_id=?");
         $pkgStmt->execute([$pkgId, $gameId]);
         $pkg = $pkgStmt->fetch();
