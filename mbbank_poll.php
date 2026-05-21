@@ -86,8 +86,8 @@ function approvePaidOrder(PDO $db, string $orderCode, float $amount, string $txH
         $finalKeyCode = $key['key_code'];
         $start = date('Y-m-d H:i:s');
         $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-        $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=?, expire_at=? WHERE id=?")
-           ->execute([$finalKeyCode, $start, $expire, $key['id']]);
+        $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=?")
+           ->execute([$start, $expire, $key['id']]);
         $key['key_code'] = $finalKeyCode;
         $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=? AND status='pending'")
            ->execute(['mbbank_api', $order['id']]);
@@ -144,6 +144,11 @@ try {
             $dupStmt->execute([$orderCode, $amount]);
             if ($dupStmt->fetchColumn()) continue;
         }
+
+        // Check if already processed
+        $existStmt = $db->prepare("SELECT id FROM bank_transactions WHERE tx_hash=? LIMIT 1");
+        $existStmt->execute([$hash]);
+        if ($existStmt->fetch()) continue;
 
         $ins = $db->prepare("INSERT IGNORE INTO bank_transactions (tx_hash, tx_date, amount, description, order_code, status) VALUES (?,?,?,?,?,?)");
         $ins->execute([$hash, $date, $amount, $desc, $orderCode ?: null, $orderCode ? 'matched' : 'seen']);

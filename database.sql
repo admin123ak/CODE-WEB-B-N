@@ -255,7 +255,7 @@ CREATE TABLE `keys` (
   `game_id` int(11) NOT NULL,
   `package_id` int(11) NOT NULL,
   `order_id` int(11) DEFAULT NULL,
-  `status` enum('pending','active','expired','locked') DEFAULT 'pending',
+  `status` enum('available','pending','active','expired','locked') DEFAULT 'available',
   `days` int(11) NOT NULL,
   `reset_count` int(11) DEFAULT 0,
   `max_reset` int(11) DEFAULT 3,
@@ -267,6 +267,7 @@ CREATE TABLE `keys` (
   KEY `user_id` (`user_id`),
   KEY `game_id` (`game_id`),
   KEY `package_id` (`package_id`),
+  KEY `idx_key_pool` (`status`,`game_id`,`package_id`),
   CONSTRAINT `keys_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `keys_ibfk_2` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`),
   CONSTRAINT `keys_ibfk_3` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`)

@@ -154,23 +154,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=packages"); exit;
     }
     if ($act === 'approve_order') {
-        header("Location: ?tab=orders&err=" . urlencode('Duyệt tay đã tắt. Đơn sẽ tự duyệt qua MBBANK API.'));
-        exit;
+        $order_code = $_POST['order_code'];
+        $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+        $stmt->execute([$order_code]);
+        $order = $stmt->fetch();
+        if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
+        $db->beginTransaction();
+        try {
+            $now = date('Y-m-d H:i:s');
+            $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
+            $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE order_id=? AND status='pending'")
+               ->execute([$now, $expire, $order['id']]);
+            $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=?")
+               ->execute([$order_code]);
+            $db->commit();
+            if ($order) sendTelegram($order['telegram_id'], "✅ <b>Đơn #{$order_code} đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: {$order['days']} ngày.");
+        } catch (Exception $e) { $db->rollBack(); header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit; }
+        header("Location: ?tab=orders&ok=1"); exit;
     }
-
 
     if ($act === 'reject_order') {
         $order_code = $_POST['order_code'];
-        $stmt = $db->prepare("SELECT o.*, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
+        $stmt = $db->prepare("SELECT o.id, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
         $stmt->execute([$order_code]);
         $order = $stmt->fetch();
+        if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
         $db->beginTransaction();
         try {
-            $db->prepare("UPDATE orders SET status='rejected',approved_by='web_admin' WHERE order_code=?")->execute([$order_code]);
-            $db->prepare("UPDATE `keys` k JOIN orders o ON k.order_id=o.id SET k.status='locked' WHERE o.order_code=? AND k.status='pending'")->execute([$order_code]);
+            // Trả key về pool available
+            $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+               ->execute([$order['id']]);
+            $db->prepare("UPDATE orders SET status='rejected', approved_by='web_admin' WHERE order_code=?")->execute([$order_code]);
             $db->commit();
-            if ($order) sendTelegram($order['telegram_id'], "❌ <b>Đơn #{$order_code} bị từ chối.</b>
-Vui lòng liên hệ admin để được hỗ trợ.");
+            if ($order) sendTelegram($order['telegram_id'], "❌ <b>Đơn #{$order_code} bị từ chối.</b>\nVui lòng liên hệ admin để được hỗ trợ.");
         } catch (Exception $e) { $db->rollBack(); header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit; }
         header("Location: ?tab=orders"); exit;
     }
@@ -186,6 +202,27 @@ Vui lòng liên hệ admin để được hỗ trợ.");
         $db->prepare("DELETE FROM `keys` WHERE id=?")->execute([$_POST['key_id']]);
         header("Location: ?tab=keys&ok=1"); exit;
     }
+    if ($act === 'add_keys_to_pool') {
+        $keyLines = explode("\n", trim($_POST['key_codes']));
+        $gameId = (int)($_POST['key_game_id'] ?? 0);
+        $pkgId = (int)($_POST['key_package_id'] ?? 0);
+        $days = (int)($_POST['key_days'] ?? 0);
+        if (!$gameId || !$pkgId || $days <= 0) {
+            header("Location: ?tab=keys&err=Thiếu thông tin"); exit;
+        }
+        $count = 0;
+        foreach ($keyLines as $line) {
+            $code = trim($line);
+            if (!$code) continue;
+            $check = $db->prepare("SELECT id FROM `keys` WHERE key_code=?");
+            $check->execute([$code]);
+            if ($check->fetch()) continue;
+            $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, days, status) VALUES (?,?,?,?,'available')")
+               ->execute([$code, $gameId, $pkgId, $days]);
+            $count++;
+        }
+        header("Location: ?tab=keys&ok=1&added=" . $count); exit;
+    }
 }
 
 // Lấy data cho dashboard
@@ -195,6 +232,7 @@ $stats = [
     'orders_approved' => $db->query("SELECT COUNT(*) FROM orders WHERE status='approved'")->fetchColumn(),
     'revenue' => $db->query("SELECT SUM(amount) FROM orders WHERE status='approved'")->fetchColumn() ?? 0,
     'keys_active' => $db->query("SELECT COUNT(*) FROM `keys` WHERE status='active'")->fetchColumn(),
+    'keys_available' => $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")->fetchColumn(),
     'keys_total' => $db->query("SELECT COUNT(*) FROM `keys`")->fetchColumn(),
 ];
 ?>
@@ -264,6 +302,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
   <div class="stat-card"><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">🛒 Chờ thanh toán</div></div>
   <div class="stat-card"><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">✅ Đơn thành công</div></div>
   <div class="stat-card"><div class="stat-val green"><?=number_format($stats['revenue'],0,',','.')?> đ</div><div class="stat-label">💰 Doanh thu</div></div>
+  <div class="stat-card"><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">📦 Key trong pool</div></div>
   <div class="stat-card"><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">🔑 Key đang active</div></div>
   <div class="stat-card"><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">🔑 Tổng keys</div></div>
 </div>
@@ -283,6 +322,7 @@ if($pending): ?>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m H:i',strtotime($o['created_at']))?></td>
   <td>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
     <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
   </td>
 </tr>
@@ -378,16 +418,95 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
 
 <?php elseif($tab==='keys'): ?>
 <h1>🔑 Quản lý Keys</h1>
+
+<?php if(isset($_GET['ok'])): ?><div class="alert alert-green">✅ Thành công!<?php if(isset($_GET['added'])):?> Đã thêm <?=(int)$_GET['added']?> key vào pool.<?php endif?></div><?php endif ?>
+<?php if(isset($_GET['err'])): ?><div class="warnbox">⚠️ <?=$_GET['err']?></div><?php endif ?>
+
+<!-- Form thêm key vào pool -->
+<div class="form-card">
+<h3>➕ Thêm key vào pool</h3>
+<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<input type="hidden" name="act" value="add_keys_to_pool">
+<div class="form-row">
+  <div><label>Game</label>
+    <select name="key_game_id" id="keyGameSelect" required onchange="updatePkgOptions(this.value)">
+      <option value="">-- Chọn game --</option>
+      <?php $allGames = $db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll();
+            foreach($allGames as $g): ?>
+      <option value="<?=$g['id']?>"><?=$g['name']?></option>
+      <?php endforeach ?>
+    </select>
+  </div>
+  <div><label>Gói</label>
+    <select name="key_package_id" id="keyPkgSelect" required>
+      <option value="">-- Chọn game trước --</option>
+    </select>
+  </div>
+  <div><label>Ngày sử dụng</label><input name="key_days" type="number" value="1" min="1" style="width:80px"></div>
+</div>
+<div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
+  <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABC123&#10;DEF456&#10;GHI789" style="width:100%;font-family:monospace;font-size:13px;resize:vertical"></textarea>
+</div>
+<div style="margin-top:10px"><button class="btn btn-green" type="submit">➕ Thêm vào pool</button></div>
+</form>
+</div>
+
+<script>
+function updatePkgOptions(gameId) {
+  var sel = document.getElementById('keyPkgSelect');
+  sel.innerHTML = '<option value="">-- Chọn gói --</option>';
+  if (!gameId) return;
+  var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price FROM packages WHERE is_active=1 ORDER BY days ASC")->fetchAll()))?>');
+  pkgs.forEach(function(p) {
+    if (p.game_id == gameId) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)';
+      sel.appendChild(opt);
+    }
+  });
+}
+</script>
+
+<!-- Key pool available -->
+<h2>📦 Key trong pool (Available)</h2>
 <?php
-$keys = $db->query("SELECT k.*,u.telegram_username,g.name as game_name,p.name as pkg_name,p.key_type,o.order_code FROM `keys` k JOIN users u ON k.user_id=u.id JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id LEFT JOIN orders o ON k.order_id=o.id ORDER BY k.created_at DESC LIMIT 100")->fetchAll();
+$poolKeys = $db->query("SELECT k.*, g.name as game_name, p.name as pkg_name FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id WHERE k.status='available' ORDER BY k.created_at DESC LIMIT 200")->fetchAll();
+$poolCount = $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")->fetchColumn();
 ?>
+<p style="color:var(--muted);margin-bottom:10px">Tổng: <b style="color:var(--green)"><?=$poolCount?> key</b> sẵn sàng trong pool</p>
+<?php if($poolKeys): ?>
+<table>
+<tr><th>Key</th><th>Game</th><th>Gói</th><th>Ngày</th><th>Thao tác</th></tr>
+<?php foreach($poolKeys as $k): ?>
+<tr>
+  <td style="font-family:monospace;font-size:12px"><?=$k['key_code']?></td>
+  <td><?=$k['game_name']?></td>
+  <td style="font-size:12px"><?=$k['pkg_name']?></td>
+  <td><?=$k['days']?> ngày</td>
+  <td>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=$k['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá key này khỏi pool?')">🗑</button></form>
+  </td>
+</tr>
+<?php endforeach ?>
+</table>
+<?php else: ?>
+<div class="alert">Chưa có key nào trong pool. Thêm key bằng form trên.</div>
+<?php endif ?>
+
+<!-- Key đã bán/đã dùng -->
+<h2 style="margin-top:24px">🔐 Key đã giao (Pending/Active/Expired/Locked)</h2>
+<?php
+$usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_username,g.name as game_name,p.name as pkg_name,p.key_type,IFNULL(o.order_code,'--') as order_code FROM `keys` k LEFT JOIN users u ON k.user_id=u.id JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id LEFT JOIN orders o ON k.order_id=o.id WHERE k.status IN ('pending','active','expired','locked') ORDER BY k.created_at DESC LIMIT 100")->fetchAll();
+?>
+<?php if($usedKeys): ?>
 <table>
 <tr><th>Key</th><th>User</th><th>Game / Gói</th><th>Ngày</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr>
-<?php foreach($keys as $k): $cls=['active'=>'green','expired'=>'orange','locked'=>'red','pending'=>'blue'][$k['status']]??'gray'; ?>
+<?php foreach($usedKeys as $k): $cls=['active'=>'green','expired'=>'orange','locked'=>'red','pending'=>'blue'][$k['status']]??'gray'; ?>
 <tr>
   <td style="font-family:monospace;font-size:12px"><?=$k['key_code']?></td>
   <td>@<?=$k['telegram_username']?></td>
-  <td style="font-size:12px"><b><?=$k['game_name']?></b><br><small style="color:#8b949e"><?=$k['pkg_name']?> · <?=$k['key_type']?><?php if($k['order_code']): ?> · <?=$k['order_code']?><?php endif ?></small></td>
+  <td style="font-size:12px"><b><?=$k['game_name']?></b><br><small style="color:#8b949e"><?=$k['pkg_name']?> · <?=$k['key_type']?><?php if($k['order_code']!=='--'): ?> · <?=$k['order_code']?><?php endif ?></small></td>
   <td><?=$k['days']?> ngày</td>
   <td><span class="badge <?=$cls?>"><?=$k['status']?></span><?php if($k['status']==='expired' && !empty($k['expire_at'])):?><br><small style="color:#fbbf24">Tự xoá sau 3 ngày nếu không gia hạn</small><?php endif?></td>
   <td style="font-size:12px;color:#8b949e"><?=$k['expire_at']?date('d/m/Y H:i',strtotime($k['expire_at'])):'--'?></td>
@@ -402,6 +521,9 @@ $keys = $db->query("SELECT k.*,u.telegram_username,g.name as game_name,p.name as
 </tr>
 <?php endforeach ?>
 </table>
+<?php else: ?>
+<div class="alert">Chưa có key đã giao nào.</div>
+<?php endif ?>
 
 <?php elseif($tab==='games'): ?>
 <h1>🎮 Quản lý Games</h1>

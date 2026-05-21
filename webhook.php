@@ -25,10 +25,10 @@ if (isset($update['callback_query'])) {
         exit;
     }
 
-    // Duyệt tay đã tắt: đơn được auto duyệt bằng MBBANK API.
+    // DUYỆT đơn: approve_ORDERCODE
     if (strpos($data, 'approve_') === 0) {
-        answerCallback($callback['id'], 'Duyệt tay đã tắt. Hệ thống sẽ tự duyệt khi bank ghi nhận.');
-        exit;
+        $order_code = substr($data, 8);
+        approveOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback['id'], $chat_id, $message_id);
     }
 
     // TỪ CHỐI đơn: reject_ORDERCODE
@@ -42,6 +42,20 @@ if (isset($update['callback_query'])) {
         $key_id = substr($data, 5);
         $db->prepare("UPDATE `keys` SET status='locked' WHERE id=?")->execute([$key_id]);
         answerCallback($callback['id'], '🔒 Đã khoá key!');
+    }
+
+    // MỞ KHOÁ key: unlock_KEYID
+    if (strpos($data, 'unlock_') === 0) {
+        $key_id = substr($data, 7);
+        $db->prepare("UPDATE `keys` SET status='active' WHERE id=?")->execute([$key_id]);
+        answerCallback($callback['id'], '🔓 Đã mở khoá key!');
+    }
+
+    // XOÁ key: delete_KEYID
+    if (strpos($data, 'delete_') === 0) {
+        $key_id = substr($data, 7);
+        $db->prepare("DELETE FROM `keys` WHERE id=?")->execute([$key_id]);
+        answerCallback($callback['id'], '🗑 Đã xoá key!');
     }
     exit;
 }
@@ -141,6 +155,7 @@ if (isset($update['message'])) {
                 $text .= "💰 Số tiền: {$amt}đ\n";
                 $text .= "🕐 Thời gian: " . date('d/m/Y H:i', strtotime($o['created_at']));
                 $markup = ['inline_keyboard' => [[
+                    ['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $o['order_code']],
                     ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $o['order_code']]
                 ]]];
                 sendTelegram($chat_id, $text, $markup);
@@ -164,6 +179,33 @@ if (isset($update['message'])) {
 // HÀM XỬ LÝ
 // =============================================
 
+function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
+    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days FROM orders o JOIN users u ON o.user_id=u.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+    $stmt->execute([$order_code]);
+    $order = $stmt->fetch();
+    if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
+
+    $db->beginTransaction();
+    try {
+        $now = date('Y-m-d H:i:s');
+        $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
+        $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE order_id=? AND status='pending'")
+            ->execute([$now, $expire, $order['id']]);
+        $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE order_code=?")
+            ->execute([$admin_name, $order_code]);
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
+        return;
+    }
+
+    answerCallback($callback_id, '✅ Đã duyệt đơn!');
+    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}");
+
+    if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn hàng #{$order_code} đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: {$order['days']} ngày.");
+}
+
 function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
     $stmt = $db->prepare("SELECT * FROM orders WHERE order_code=? AND status='pending'");
     $stmt->execute([$order_code]);
@@ -172,10 +214,11 @@ function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $mes
 
     $db->beginTransaction();
     try {
+        // Trả key về pool available
+        $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+            ->execute([$order['id']]);
         $db->prepare("UPDATE orders SET status='rejected', approved_by=? WHERE id=?")
             ->execute([$admin_name, $order['id']]);
-        $db->prepare("UPDATE `keys` SET status='locked' WHERE order_id=? AND status='pending'")
-            ->execute([$order['id']]);
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();

@@ -137,37 +137,40 @@ switch ($action) {
         $order_code = generateOrderCode();
         $db->beginTransaction();
         try {
+            // Lấy key có sẵn từ pool theo game + package
+            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT 1 FOR UPDATE");
+            $keyStmt->execute([$game_id, $package_id]);
+            $poolKey = $keyStmt->fetch();
+
+            if (!$poolKey) {
+                $db->rollBack();
+                jsonResponse(['error' => 'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
+            }
+
+            // Tạo đơn hàng
             $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, status) VALUES (?,?,?,?,?,'pending')")
                ->execute([$order_code, $user['id'], $game_id, $package_id, $package['price']]);
             $order_id = $db->lastInsertId();
 
-            // Tạo key pending ngay để user thấy trong lịch sử; chỉ active sau khi auto-bank xác nhận.
-            $key_code = generateKey();
-            $check = $db->prepare("SELECT id FROM `keys` WHERE key_code=?");
-            do {
-                $check->execute([$key_code]);
-                if (!$check->fetch()) break;
-                $key_code = generateKey();
-            } while (true);
+            // Gán key từ pool vào đơn hàng
+            $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
+               ->execute([$user['id'], $order_id, $package['days'], $poolKey['id']]);
+            $key_code = $poolKey['key_code'];
 
-            $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,order_id,status,days,start_at,expire_at) VALUES (?,?,?,?,?,'pending',?,NULL,NULL)")
-               ->execute([$key_code, $user['id'], $game_id, $package_id, $order_id, $package['days']]);
             $db->commit();
         } catch (Exception $e) {
             $db->rollBack();
-            jsonResponse(['error' => 'Lỗi tạo đơn hàng'], 500);
+            jsonResponse(['error' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()], 500);
         }
         
         // Thông báo admin qua Telegram
         $amt = number_format($package['price'], 0, ',', '.');
         $username = $user['telegram_username'] ?? $user['full_name'];
-        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$package['days']} ngày)\n🔑 Key đã tạo: <code>{$key_code}</code>\n💰 Số tiền: {$amt}đ\n🕐 " . date('d/m/Y H:i:s');
-        $markup = ['inline_keyboard' => [[
-            ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $order_code]
-        ]]];
-        sendTelegram(ADMIN_CHAT_ID, $msg . "
-
-🤖 Auto-bank sẽ tự duyệt khi nhận đúng tiền + nội dung.", $markup);
+        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$package['days']} ngày)\n🔑 Key: <code>{$key_code}</code>\n💰 Số tiền: {$amt}đ\n🕐 " . date('d/m/Y H:i:s');
+        $markup = ['inline_keyboard' => [
+            [['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $order_code], ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $order_code]]
+        ]];
+        sendTelegram(ADMIN_CHAT_ID, $msg, $markup);
         
         jsonResponse([
             'success' => true,

@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config.php';
 
 function runMaintenance(PDO $db): array {
-    $out = ['expired_keys'=>0, 'deleted_expired_keys'=>0, 'cancelled_orders'=>0, 'locked_keys'=>0];
+    $out = ['expired_keys'=>0, 'deleted_expired_keys'=>0, 'cancelled_orders'=>0, 'returned_to_pool'=>0];
     $stmt = $db->prepare("UPDATE `keys` SET status='expired' WHERE status='active' AND expire_at IS NOT NULL AND expire_at < NOW()");
     $stmt->execute();
     $out['expired_keys'] = $stmt->rowCount();
@@ -12,19 +12,21 @@ function runMaintenance(PDO $db): array {
     $stmt->execute();
     $out['deleted_expired_keys'] = $stmt->rowCount();
 
-    // Hủy đơn pending quá 15 phút để khớp countdown thanh toán trên Mini App.
+    // Hủy đơn pending quá 15 phút — key quay lại pool để người khác mua
     $db->beginTransaction();
     try {
         $orders = $db->query("SELECT id FROM orders WHERE status='pending' AND created_at < (NOW() - INTERVAL 15 MINUTE) FOR UPDATE")->fetchAll();
         if ($orders) {
             $ids = array_map(fn($r)=>(int)$r['id'], $orders);
             $in = implode(',', array_fill(0, count($ids), '?'));
+            // Trả key về pool available để người khác mua
+            $stmt = $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id IN ($in) AND status='pending'");
+            $stmt->execute($ids);
+            $out['returned_to_pool'] = $stmt->rowCount();
+            // Hủy đơn quá hạn
             $stmt = $db->prepare("UPDATE orders SET status='cancelled', admin_note='Tự huỷ do quá 15 phút chưa thanh toán' WHERE id IN ($in) AND status='pending'");
             $stmt->execute($ids);
             $out['cancelled_orders'] = $stmt->rowCount();
-            $stmt = $db->prepare("UPDATE `keys` SET status='locked' WHERE order_id IN ($in) AND status='pending'");
-            $stmt->execute($ids);
-            $out['locked_keys'] = $stmt->rowCount();
         }
         $db->commit();
     } catch (Throwable $e) {
