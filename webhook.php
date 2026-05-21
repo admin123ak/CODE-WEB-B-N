@@ -1,6 +1,26 @@
 <?php
 require_once 'config.php';
 
+// Auto-setup webhook on first run after config change
+$lockFile = __DIR__ . '/.webhook_setup_done';
+$configHash = md5(SITE_URL . BOT_TOKEN);
+$lastHash = @file_get_contents($lockFile);
+
+if ($lastHash !== $configHash) {
+    $expectedUrl = SITE_URL . '/webhook.php';
+    $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/setWebhook");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, [
+        'url' => $expectedUrl,
+        'allowed_updates' => json_encode(['message', 'callback_query'])
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    @curl_exec($ch);
+    curl_close($ch);
+    @file_put_contents($lockFile, $configHash);
+}
+
 $input = file_get_contents('php://input');
 $update = json_decode($input, true);
 
