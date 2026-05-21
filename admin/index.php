@@ -64,12 +64,12 @@ function hclouAutomationRunToken() {
     $src = file_get_contents($file);
     return preg_match("/const\s+AUTOMATION_RUN_TOKEN\s*=\s*'([^']+)'/", $src, $m) ? $m[1] : '';
 }
-function hclouCronRunUrl($job, $masked = true) {
+function hclouCronRunUrl($job, $masked = false) {
     $token = hclouCronRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
     return rtrim(SITE_URL, '/') . '/cron_run.php?token=' . $show . '&job=' . rawurlencode($job);
 }
-function hclouAutomationRunUrl($masked = true) {
+function hclouAutomationRunUrl($masked = false) {
     $token = hclouAutomationRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
     return rtrim(SITE_URL, '/') . '/automation_run.php?token=' . $show;
@@ -518,12 +518,40 @@ $keys = $db->query("SELECT k.*,u.telegram_username,g.name as game_name,p.name as
 <div><label><?=$label?></label><input name="cfg[<?=$k?>]" value="<?=htmlspecialchars((string)hclouConfigValue($k))?>"></div>
 <?php endforeach; ?></div>
 <h3 style="margin-top:20px">API / Auto-bank / GetKey Free</h3><div class="form-row">
-<div style="flex:1;min-width:300px"><label>MBBANK API</label><input style="width:100%" value="Direct local service: http://127.0.0.1:3120/history" readonly><small>Hiện đã dùng API gốc MBBank qua service nội bộ <code>mbbank-direct-service</code>. Không cần token queenvps ở đây nữa. Cấu hình user/pass/STK nằm trong <code>mbbank-direct-service/.env</code>.</small></div>
+<div style="flex:1;min-width:300px"><label>MBBANK API Key</label><input style="width:100%" name="cfg[MBBANK_HISTORY_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('MBBANK_HISTORY_API_KEY'))?>" placeholder="Nhập API Key từ Queenvps"><small>API Queenvps: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code>. Liên hệ Zalo/Messenger/Hotline để lấy key.</small></div>
 <div><label>Auto-bank</label><select name="cfg[MBBANK_AUTO_APPROVE_ENABLED]"><option value="1" <?=MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Tắt</option></select></div>
 <div><label>GetKey Free</label><select name="cfg[FREE_GETKEY_ENABLED]"><option value="1" <?=FREE_GETKEY_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!FREE_GETKEY_ENABLED?'selected':''?>>Tắt</option></select></div>
 <div style="flex:1;min-width:260px"><label>Link4M token</label><input style="width:100%" name="cfg[LINK4M_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LINK4M_API_TOKEN'))?>"></div>
 <div style="flex:1;min-width:260px"><label>YeuMoney token</label><input style="width:100%" name="cfg[YEUMONEY_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('YEUMONEY_API_TOKEN'))?>"></div>
 </div>
+<h3 style="margin-top:20px">Cron Tokens</h3><div class="form-row">
+<div style="flex:1;min-width:260px"><label>CRON_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[CRON_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('CRON_RUN_TOKEN'))?>"></div>
+<div style="flex:1;min-width:260px"><label>AUTOMATION_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[AUTOMATION_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('AUTOMATION_RUN_TOKEN'))?>"></div>
+</div>
+<h3 style="margin-top:20px">⚡ Cron Jobs Auto-Setup</h3>
+<div style="margin-top:8px">
+<button type="button" class="btn btn-blue" onclick="setupCronJobs()" style="width:auto;padding:10px 24px">🚀 Tự động đăng ký tất cả Cron Jobs</button>
+<div id="cronResult" style="margin-top:12px;display:none"></div>
+</div>
+<script>
+async function setupCronJobs(){
+  var btn=document.querySelector('button[onclick="setupCronJobs()"]');
+  var res=document.getElementById('cronResult');
+  btn.disabled=true; btn.textContent='⏳ Đang đăng ký...';
+  try{
+    var fd=new FormData(); fd.append('setup_cron','1');
+    var r=await fetch('../setup_cron.php',{method:'POST',body:fd,credentials:'same-origin'});
+    var j=await r.json();
+    if(j.success){
+      var h='<div class="okbox">✅ Đăng ký cron thành công!</div><table style="width:100%;margin-top:8px"><tr><th>Job</th><th>Trạng thái</th><th>Lệnh</th></tr>';
+      if(j.results) for(var k in j.results){var v=j.results[k];
+        h+='<tr><td>'+k+'</td><td>'+(v.added?'✅ OK':'❌ Lỗi: '+(v.error||''))+'</td><td style="font-size:11px;word-break:break-all">'+(v.line||'')+'</td></tr>';}
+      h+='</table>'; res.innerHTML=h;
+    } else { res.innerHTML='<div class="err">❌ Lỗi: '+(j.error||'Không xác định')+'</div>'; }
+  } catch(e){ res.innerHTML='<div class="err">❌ Lỗi kết nối: '+e.message+'</div>'; }
+  res.style.display='block'; btn.disabled=false; btn.textContent='🚀 Tự động đăng ký tất cả Cron Jobs';
+}
+</script>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
 <div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
@@ -547,20 +575,17 @@ curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=packages&amp;game_id=4'</div><
 
   <div class="guide-card"><span class="where">config.php + index.php</span><h3>🏦 Bank/VietQR</h3><ul><li>Sửa <code>BANK_NAME</code>, <code>BANK_ACCOUNT</code>, <code>BANK_OWNER</code>, <code>VIETQR_BANK_ID</code>.</li><li>MBBank BIN hiện tại: <code>970422</code>.</li><li>VietQR tự điền số tiền + mã đơn ORD.</li></ul><div class="codebox">php -r "require '/www/wwwroot/hclou.com/config.php'; echo buildVietQrUrl(25000,'ORDTEST'), PHP_EOL;"</div></div>
 
-  <div class="guide-card"><span class="where">mbbank-direct-service + cron_run.php + mbbank_poll.php</span><h3>✅ MBBANK Auto-bank Direct</h3><ul><li>Hiện dùng API gốc MBBank qua service nội bộ, không còn phụ thuộc queenvps để lấy lịch sử giao dịch.</li><li>Service local: <code>http://127.0.0.1:3120/history</code>, source tại <code>/www/wwwroot/hclou.com/mbbank-direct-service</code>.</li><li>Thông tin MBBank nằm trong <code>mbbank-direct-service/.env</code>: <code>MBB_USER</code>, <code>MBB_PASS</code>, <code>MBB_ACCOUNT_NUMBER</code>.</li><li>Service dùng Puppeteer login MBBank, giải CAPTCHA, giữ session, tự login lại khi session hết hạn.</li><li>Endpoint ngoài vẫn gọi <code>cron_run.php?job=mbbank</code>; script thật vẫn là <code>mbbank_poll.php</code>.</li><li>Tuyệt đối không public thư mục <code>mbbank-direct-service</code>; nginx đã chặn public 404.</li></ul><div class="codebox">Job cron-job.org: HCLOU MBBANK
-Lịch: mỗi phút
-URL: <?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>
+  <div class="guide-card"><span class="where">config.php + mbbank_poll.php</span><h3>✅ MBBANK Auto-bank (Queenvps API)</h3><ul><li>API: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code></li><li>Nhập API Key vào config <code>MBBANK_HISTORY_API_KEY</code> hoặc qua form admin phía trên.</li><li>Script poll: <code>mbbank_poll.php</code> — chạy qua cron mỗi 1-5 phút.</li><li>Response: <code>{ "success": true, "api_info": {...}, "transactions": [{"amount": 100000, "type": "IN", "description": "...", "formatted_date": "..."}] }</code></li><li>Nội dung chuyển khoản có mã <code>ORDxxxxx</code> để auto match đơn.</li></ul><div class="codebox">Test API:
+curl -sS "https://queenvps.com/api/historymb/{API_KEY}"
 
-Service nội bộ:
-systemctl status hclou-mbbank-direct.service --no-pager -l
-curl http://127.0.0.1:3120/health
-curl -m 80 http://127.0.0.1:3120/history
+Test VPS:
+php /www/wwwroot/hclou.com/mbbank_poll.php
 
-Script thật: /www/wwwroot/hclou.com/mbbank_poll.php
-Test VPS: php /www/wwwroot/hclou.com/mbbank_poll.php
-Test HTTP: curl '<?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>'
+Test HTTP (qua cron wrapper):
+curl '<?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>'
 
-Docs chi tiết: /www/wwwroot/hclou.com/README_MBBANK_DIRECT.md</div></div>
+Cron (mỗi 1-5 phút):
+*/1 * * * * php /www/wwwroot/hclou.com/mbbank_poll.php</div></div>
 
   <div class="guide-card"><span class="where">cron-job.org + cron_run.php</span><h3>🤖 Cron ngoài đang dùng</h3><ul><li>Web quản lý/tạo job: <code>https://console.cron-job.org/</code>.</li><li>API key cron-job.org lấy tại Console → Settings → API keys.</li><li><code>CRON_RUN_TOKEN</code> nằm trong file <code>cron_run.php</code>; dùng chung cho các job wrapper.</li><li>Token chỉ hiển thị dạng rút gọn để tránh lộ secret.</li></ul><div class="codebox">HCLOU MBBANK     | mỗi phút   | <?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>
 HCLOU Maintenance| mỗi 5 phút | <?=htmlspecialchars(hclouCronRunUrl('maintenance'))?>
@@ -620,7 +645,7 @@ curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div>
 <table><tr><th>Lỗi</th><th>Kiểm tra</th><th>File liên quan</th></tr>
 <tr><td>API games lỗi DB</td><td>DB_HOST/DB_USER/DB_PASS, dùng 127.0.0.1</td><td>config.php</td></tr>
 <tr><td>Bot không trả lời</td><td>BOT_TOKEN, webhook, php -l webhook.php</td><td>config.php, webhook.php</td></tr>
-<tr><td>Thanh toán không auto active</td><td>Kiểm tra cron ngoài, <code>hclou-mbbank-direct.service</code>, <code>curl 127.0.0.1:3120/health</code>, description có ORD, amount đủ tiền</td><td>mbbank_poll.php, mbbank-direct-service/server.mjs</td></tr>
+<tr><td>Thanh toán không auto active</td><td>Kiểm tra <code>MBBANK_HISTORY_API_KEY</code> trong config.php, cron chạy <code>mbbank_poll.php</code>, API key còn hạn, description có mã ORD, amount đủ tiền</td><td>mbbank_poll.php, config.php</td></tr>
 <tr><td>VietQR không hiện</td><td>buildVietQrUrl, bank id, img.vietqr.io</td><td>config.php, index.php</td></tr>
 <tr><td>GetKey Free lỗi link</td><td>Token Link4M/YeuMoney, endpoint, curl internet</td><td>config.php, admin/index.php</td></tr>
 </table>

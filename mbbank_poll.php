@@ -34,13 +34,18 @@ function ensureMBBankTables(PDO $db) {
 function fetchMBBankTransactions() {
     $res = httpJsonRequest(MBBANK_HISTORY_API_URL, 'GET', [
         'Accept: application/json',
-        'User-Agent: Mozilla/5.0 HCLOU-AutoBank/1.0'
+        'User-Agent: HCLOU-AutoBank/2.0'
     ]);
     if (!$res['ok'] || !is_array($res['json'])) {
         throw new Exception('API MBBANK lỗi HTTP '.$res['code']);
     }
     $json = $res['json'];
-    $txs = $json['transactions'] ?? ($json['data']['mb_data']['transactions'] ?? null);
+
+    // Queenvps API: { "success": true, "api_info": {...}, "transactions": [...] }
+    if (empty($json['success'])) {
+        throw new Exception('API MBBANK trả về success=false');
+    }
+    $txs = $json['transactions'] ?? null;
     if (!is_array($txs)) throw new Exception('API MBBANK không có transactions hợp lệ');
     return $txs;
 }

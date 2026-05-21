@@ -2,7 +2,7 @@
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 
-const CRON_RUN_TOKEN = '512b48e26f47d889486ecbecbdd7f21517422ac9ea0849de';
+defined('CRON_RUN_TOKEN') || define('CRON_RUN_TOKEN', '512b48e26f47d889486ecbecbdd7f21517422ac9ea0849de');
 const CRON_RUN_LOG = __DIR__ . '/data/cron_run.log';
 
 function hclouCronRunLog(string $job, int $status, bool $success, int $durationMs, string $detail = ''): void {
@@ -34,15 +34,8 @@ if (!hash_equals(CRON_RUN_TOKEN, $token)) {
     exit;
 }
 
-// MBBANK auto-bank đã chuyển sang VPS local loop: hclou-mbbank-poll.service mỗi 5 giây.
-// Chặn riêng cron-job.org gọi job=mbbank để tránh chạy trùng; các job ngoài khác vẫn hoạt động.
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-if ($job === 'mbbank' && stripos($ua, 'cron-job.org') !== false) {
-    $ms = (int)round((microtime(true) - $requestStarted) * 1000);
-    hclouCronRunLog($job, 204, true, $ms, 'Skipped: mbbank runs locally via hclou-mbbank-poll.service every 5s');
-    http_response_code(204);
-    exit;
-}
+// MBBANK auto-bank dùng Queenvps API (GET /api/historymb/{KEY}).
+// Cho phép cron-job.org gọi job=mbbank bình thường.
 
 $jobs = [
     'mbbank' => ['/usr/bin/php', __DIR__ . '/mbbank_poll.php'],

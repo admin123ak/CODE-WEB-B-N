@@ -82,8 +82,8 @@ try {
     $bankEnabled = defined('MBBANK_AUTO_APPROVE_ENABLED') && MBBANK_AUTO_APPROVE_ENABLED;
     $checks[] = hclouMonResult('MBBANK auto approve', $bankEnabled, $bankEnabled ? 'enabled' : 'disabled');
 
-    $bankCfg = defined('MBBANK_HISTORY_API_TOKEN') && MBBANK_HISTORY_API_TOKEN !== '' && defined('MBBANK_HISTORY_API_URL') && MBBANK_HISTORY_API_URL !== '';
-    $checks[] = hclouMonResult('MBBANK API config', $bankCfg, $bankCfg ? 'token/url present' : 'missing token/url');
+    $bankCfg = defined('MBBANK_HISTORY_API_KEY') && MBBANK_HISTORY_API_KEY !== '' && defined('MBBANK_HISTORY_API_URL') && MBBANK_HISTORY_API_URL !== '';
+    $checks[] = hclouMonResult('MBBANK API config', $bankCfg, $bankCfg ? 'api_key/url present' : 'missing api_key/url');
 
     $pendingOld = (int)$db->query("SELECT COUNT(*) FROM orders WHERE status='pending' AND created_at < (NOW() - INTERVAL 20 MINUTE)")->fetchColumn();
     $checks[] = hclouMonResult('Stuck pending orders', $pendingOld === 0, $pendingOld . ' orders older than 20m');

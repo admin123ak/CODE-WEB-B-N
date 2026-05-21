@@ -31,11 +31,11 @@ define('VIETQR_BANK_ID', '970422'); // MBBank BIN/NAPAS bank id
 
 
 // MBBANK transaction history API (Queenvps)
-// Admin chỉ cần nhập token, hệ thống tự ghép URL: https://queenvps.com/api/historymb/{TOKEN}
-define('MBBANK_HISTORY_API_TOKEN', 'MB_FREE_021FA4D804026B08');
-define('MBBANK_HISTORY_API_URL', 'http://127.0.0.1:3120/history');
+// Docs: GET https://queenvps.com/api/historymb/{API_KEY}
+define('MBBANK_HISTORY_API_KEY', '');  // API Key từ Queenvps (liên hệ Zalo/Messenger/Hotline để lấy)
+define('MBBANK_HISTORY_API_URL', 'https://queenvps.com/api/historymb/' . MBBANK_HISTORY_API_KEY);
 define('MBBANK_AUTO_APPROVE_ENABLED', true);
-define('MBBANK_POLL_SECRET', hash_hmac('sha256', MBBANK_HISTORY_API_URL, BOT_TOKEN));
+define('MBBANK_POLL_SECRET', hash_hmac('sha256', MBBANK_HISTORY_API_KEY, BOT_TOKEN));
 
 // Free GetKey shortlink APIs
 define('LINK4M_API_TOKEN', '69f0894f3bb1c61f3703a5d7');
@@ -44,6 +44,10 @@ define('FREE_GETKEY_ENABLED', true);
 
 // Timezone
 date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+// Cron job tokens — edit here or in admin panel
+if (!defined('CRON_RUN_TOKEN')) define('CRON_RUN_TOKEN', '512b48e26f47d889486ecbecbdd7f21517422ac9ea0849de');
+if (!defined('AUTOMATION_RUN_TOKEN')) define('AUTOMATION_RUN_TOKEN', 'a9f2c1b8e7d6f3a4');
 
 
 
@@ -243,8 +247,9 @@ function hclouConfigEditableKeys() {
     return [
         'SITE_URL'=>'string','SITE_NAME'=>'string','ADMIN_CHAT_ID'=>'string','BOT_USERNAME'=>'string',
         'BANK_NAME'=>'string','BANK_ACCOUNT'=>'string','BANK_OWNER'=>'string','VIETQR_BANK_ID'=>'string',
-        'MBBANK_HISTORY_API_TOKEN'=>'string','MBBANK_AUTO_APPROVE_ENABLED'=>'bool',
+        'MBBANK_HISTORY_API_KEY'=>'string','MBBANK_AUTO_APPROVE_ENABLED'=>'bool',
         'LINK4M_API_TOKEN'=>'string','YEUMONEY_API_TOKEN'=>'string','FREE_GETKEY_ENABLED'=>'bool',
+        'CRON_RUN_TOKEN'=>'string','AUTOMATION_RUN_TOKEN'=>'string',
     ];
 }
 function hclouConfigValue($key) { return defined($key) ? constant($key) : null; }
