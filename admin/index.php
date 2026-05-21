@@ -206,19 +206,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $keyLines = explode("\n", trim($_POST['key_codes']));
         $gameId = (int)($_POST['key_game_id'] ?? 0);
         $pkgId = (int)($_POST['key_package_id'] ?? 0);
-        $days = (int)($_POST['key_days'] ?? 0);
-        if (!$gameId || !$pkgId || $days <= 0) {
-            header("Location: ?tab=keys&err=Thiếu thông tin"); exit;
-        }
-        $count = 0;
+        $count = 0; $pkgDays = 0;
         foreach ($keyLines as $line) {
             $code = trim($line);
             if (!$code) continue;
             $check = $db->prepare("SELECT id FROM `keys` WHERE key_code=?");
             $check->execute([$code]);
             if ($check->fetch()) continue;
+            if ($pkgDays === 0) {
+                $pkgStmt = $db->prepare("SELECT days FROM packages WHERE id=? AND game_id=?");
+                $pkgStmt->execute([$pkgId, $gameId]);
+                $pkgRow = $pkgStmt->fetch();
+                if (!$pkgRow || $pkgRow['days'] <= 0) { header("Location: ?tab=keys&err=Gói không hợp lệ"); exit; }
+                $pkgDays = (int)$pkgRow['days'];
+            }
             $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, days, status) VALUES (?,?,?,?,'available')")
-               ->execute([$code, $gameId, $pkgId, $days]);
+               ->execute([$code, $gameId, $pkgId, $pkgDays]);
             $count++;
         }
         header("Location: ?tab=keys&ok=1&added=" . $count); exit;
@@ -442,7 +445,6 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
       <option value="">-- Chọn game trước --</option>
     </select>
   </div>
-  <div><label>Ngày sử dụng</label><input name="key_days" type="number" value="1" min="1" style="width:80px"></div>
 </div>
 <div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
   <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABC123&#10;DEF456&#10;GHI789" style="width:100%;font-family:monospace;font-size:13px;resize:vertical"></textarea>
