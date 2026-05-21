@@ -634,7 +634,7 @@ function updateFreeKeyPkgOptions(gameId) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ) · ' + p.key_type;
+      opt.textContent = p.days + ' ngày (' + p.name + ')';
       sel.appendChild(opt);
     }
   });
