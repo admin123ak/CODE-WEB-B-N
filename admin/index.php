@@ -456,12 +456,12 @@ function updatePkgOptions(gameId) {
   var sel = document.getElementById('keyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
-  var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price FROM packages WHERE is_active=1 ORDER BY days ASC")->fetchAll()))?>');
+  var pkgs = JSON.parse('<?=htmlspecialchars(json_encode($db->query("SELECT id, game_id, name, days, price, is_active FROM packages ORDER BY days ASC")->fetchAll()))?>');
   pkgs.forEach(function(p) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)';
+      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)' + (p.is_active == '0' ? ' [TẮT]' : '');
       sel.appendChild(opt);
     }
   });
