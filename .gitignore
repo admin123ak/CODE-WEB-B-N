@@ -1,33 +1,62 @@
-# Dependencies
-node_modules/
-*/node_modules/
+# =============================================
+# LOCAL CONFIG - KHÔNG BAO GIỜ PUSH SECRET LÊN GIT
+# =============================================
+config.local.php
+.install_lock
+.env
+!.env.example
 
-# Data and logs
+# =============================================
+# DATA - RUNTIME STATE & DATABASE DUMPS THẬT
+# =============================================
+data/*.json
+data/*.log
+data/*.lock
+!data/.gitkeep
+
+# Database dumps có data thật của khách hàng
+hcloucom_bankey.sql
+*_dump.sql
+*_backup.sql
+
+# =============================================
+# BACKUP FILES
+# =============================================
+.backups_original/
+*.bk
+*.bk1
+*.bk2
+*.bk3
+*.bk_*
+*.backup
+
+# =============================================
+# LOGS
+# =============================================
 *.log
+logs/
 
-# IDE
+# =============================================
+# DEPENDENCIES
+# =============================================
+node_modules/
+vendor/
+
+# =============================================
+# IDE / OS
+# =============================================
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# OS files
 .DS_Store
 Thumbs.db
 
-# Backups
-*.bk
-*.bk1
-*.bk2
-*.bk3
-*.backup
-
-# Environment
-.env
-!.env.example
-
-# Temporary files
+# =============================================
+# TEMP
+# =============================================
 *.tmp
 *.temp
 *.cache
+tmp/

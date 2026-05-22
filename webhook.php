@@ -1,273 +1,281 @@
 <?php
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
-// Auto-setup webhook on first run after config change
-$lockFile = __DIR__ . '/.webhook_setup_done';
-$configHash = md5(SITE_URL . BOT_TOKEN);
-$lastHash = @file_get_contents($lockFile);
-
-if ($lastHash !== $configHash) {
-    $expectedUrl = SITE_URL . '/webhook.php';
-    $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/setWebhook");
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, [
-        'url' => $expectedUrl,
-        'allowed_updates' => json_encode(['message', 'callback_query'])
-    ]);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    @curl_exec($ch);
-    curl_close($ch);
-    @file_put_contents($lockFile, $configHash);
+// =============================================
+// VERIFY WEBHOOK FROM TELEGRAM
+// =============================================
+// Telegram gửi header `X-Telegram-Bot-Api-Secret-Token` khớp với
+// secret_token đã set khi gọi setWebhook (installer làm việc này).
+$incoming = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+if (defined('TELEGRAM_WEBHOOK_SECRET') && TELEGRAM_WEBHOOK_SECRET !== '') {
+    if (!hash_equals(TELEGRAM_WEBHOOK_SECRET, $incoming)) {
+        http_response_code(403);
+        exit('Forbidden');
+    }
+} else {
+    // Webhook chưa được installer setup - reject để tránh giả mạo
+    http_response_code(503);
+    exit('Webhook not configured');
 }
 
-$input = file_get_contents('php://input');
+$input  = file_get_contents('php://input');
 $update = json_decode($input, true);
-
 if (!$update) exit;
 
 $db = getDB();
 
-// Xử lý callback_query (nút bấm inline)
+// =============================================
+// CALLBACK QUERY (nút bấm inline)
+// =============================================
 if (isset($update['callback_query'])) {
-    $callback = $update['callback_query'];
-    $data = $callback['data'];
-    $from = $callback['from'];
-    $chat_id = $callback['message']['chat']['id'];
-    $message_id = $callback['message']['message_id'];
+    $callback   = $update['callback_query'];
+    $data       = $callback['data']          ?? '';
+    $from       = $callback['from']          ?? [];
+    $chat_id    = $callback['message']['chat']['id']    ?? 0;
+    $message_id = $callback['message']['message_id']    ?? 0;
 
-    // Kiểm tra admin: trong bảng admins HOẶC khớp ADMIN_CHAT_ID trong config
+    // Kiểm tra admin
     $stmt = $db->prepare("SELECT * FROM admins WHERE telegram_id = ?");
-    $stmt->execute([$from['id']]);
+    $stmt->execute([$from['id'] ?? 0]);
     $admin = $stmt->fetch();
-    $isAdminFromConfig = ((string)$from['id'] === (string)ADMIN_CHAT_ID);
+    $isAdminFromConfig = ((string)($from['id'] ?? '') === (string)ADMIN_CHAT_ID);
     if (!$admin && !$isAdminFromConfig) {
         answerCallback($callback['id'], '❌ Bạn không có quyền admin!');
         exit;
     }
-    $admin_name = $admin ? ($admin['username'] ?? $admin['name'] ?? 'admin') : ($from['username'] ?? $from['first_name'] ?? 'admin');
+    $admin_name = $admin
+        ? ($admin['username'] ?? 'admin')
+        : ($from['username'] ?? $from['first_name'] ?? 'admin');
 
-    // DUYỆT đơn: approve_ORDERCODE
     if (strpos($data, 'approve_') === 0) {
-        $order_code = substr($data, 8);
-        approveOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback['id'], $chat_id, $message_id);
-    }
-
-    // TỪ CHỐI đơn: reject_ORDERCODE
-    if (strpos($data, 'reject_') === 0) {
-        $order_code = substr($data, 7);
-        rejectOrder($db, $order_code, $from['username'] ?? $from['first_name'], $callback['id'], $chat_id, $message_id);
-    }
-
-    // KHOÁ key: lock_KEYID
-    if (strpos($data, 'lock_') === 0) {
-        $key_id = substr($data, 5);
+        approveOrder($db, substr($data, 8), $admin_name, $callback['id'], $chat_id, $message_id);
+    } elseif (strpos($data, 'reject_') === 0) {
+        rejectOrder($db, substr($data, 7), $admin_name, $callback['id'], $chat_id, $message_id);
+    } elseif (strpos($data, 'lock_') === 0) {
+        $key_id = (int)substr($data, 5);
         $db->prepare("UPDATE `keys` SET status='locked' WHERE id=?")->execute([$key_id]);
         answerCallback($callback['id'], '🔒 Đã khoá key!');
-    }
-
-    // MỞ KHOÁ key: unlock_KEYID
-    if (strpos($data, 'unlock_') === 0) {
-        $key_id = substr($data, 7);
+    } elseif (strpos($data, 'unlock_') === 0) {
+        $key_id = (int)substr($data, 7);
         $db->prepare("UPDATE `keys` SET status='active' WHERE id=?")->execute([$key_id]);
         answerCallback($callback['id'], '🔓 Đã mở khoá key!');
-    }
-
-    // XOÁ key: delete_KEYID
-    if (strpos($data, 'delete_') === 0) {
-        $key_id = substr($data, 7);
+    } elseif (strpos($data, 'delete_') === 0) {
+        $key_id = (int)substr($data, 7);
         $db->prepare("DELETE FROM `keys` WHERE id=?")->execute([$key_id]);
         answerCallback($callback['id'], '🗑 Đã xoá key!');
     }
     exit;
 }
 
-// Xử lý message text
+// =============================================
+// MESSAGE
+// =============================================
 if (isset($update['message'])) {
-    $msg = $update['message'];
-    $chat_id = $msg['chat']['id'];
-    $text = trim($msg['text'] ?? '');
-    $from = $msg['from'];
+    $msg     = $update['message'];
+    $chat_id = $msg['chat']['id']         ?? 0;
+    $text    = trim($msg['text']          ?? '');
+    $from    = $msg['from']               ?? [];
 
-    // Kiểm tra admin
     $stmt = $db->prepare("SELECT * FROM admins WHERE telegram_id = ?");
-    $stmt->execute([$from['id']]);
+    $stmt->execute([$from['id'] ?? 0]);
     $admin = $stmt->fetch();
 
     if ($text === '/start') {
-        // Bot phục vụ user mua hàng và admin quản lý.
-        $keyboard = ['inline_keyboard' => [[
-            ['text' => '🛒 Mua Key', 'web_app' => ['url' => SITE_URL . '/?v=payauto20260428_1']]
-        ], [
-            ['text' => '📢 HCLOU SERVER TEAM', 'url' => 'https://t.me/hclouserver']
-        ]]];
+        $miniAppUrl = SITE_URL . '/?v=app';
+        $keyboard = ['inline_keyboard' => [
+            [['text' => '🛒 Mua Key', 'web_app' => ['url' => $miniAppUrl]]],
+            [['text' => '📢 ' . SITE_NAME . ' TEAM', 'url' => 'https://t.me/']],
+        ]];
 
-        $welcome = "<b>Bot này có thể làm gì?</b>\n\n" .
-                   "Chào mừng bạn đến với <b>HCLOU SERVER Bot</b>\n\n" .
-                   "✅ Quản lý key chính bạn\n" .
-                   "✅ Nhận key ngay sau khi bank\n" .
-                   "✅ Reset key không giới hạn\n" .
-                   "✅ Cập nhật đầy đủ bản giá mods\n\n" .
-                   "<b>Lưu ý:</b> toàn bộ thông tin và link tải root và noroot đều được cập nhật tại kênh Telegram <b>HCLOU SERVER TEAM</b> chính thức.\n\n" .
-                   "Nhấp vào nút <b>[Mua Key]</b> bên dưới để quản lý key của bạn.\n\n" .
-                   "🆔 ID Telegram của bạn: <code>{$from['id']}</code>";
-
+        $welcome = "<b>Bot này có thể làm gì?</b>\n\n"
+                 . "Chào mừng bạn đến với <b>" . h(SITE_NAME) . " Bot</b>\n\n"
+                 . "✅ Quản lý key chính bạn\n"
+                 . "✅ Nhận key ngay sau khi bank\n"
+                 . "✅ Reset key không giới hạn\n"
+                 . "✅ Cập nhật đầy đủ bản giá mods\n\n"
+                 . "Nhấp <b>[Mua Key]</b> bên dưới để bắt đầu.\n\n"
+                 . "🆔 ID Telegram của bạn: <code>" . (int)($from['id'] ?? 0) . "</code>";
         if ($admin) {
             $welcome .= "\n\n🔑 Lệnh nhanh: /mykeys\n🔐 <b>Admin:</b> /orders · /stats";
         }
         sendTelegram($chat_id, $welcome, $keyboard);
-    }
-
-
-
-    if ($text === '/help') {
-        $help = "🆘 <b>HCLOU SERVER - Hướng dẫn nhanh</b>
-
-" .
-                "🛒 <b>Mua key:</b> bấm nút Mua Key, chọn game/gói, xác nhận đơn.
-" .
-                "💳 <b>Thanh toán:</b> quét VietQR, hệ thống tự điền số tiền + nội dung ORD. Không sửa nội dung chuyển khoản.
-" .
-                "⏳ <b>Lỡ thoát app:</b> mở lại Mini App trong 15 phút để hiện lại QR thanh toán.
-" .
-                "✅ <b>Đã thanh toán:</b> auto-bank kiểm tra MBBANK mỗi phút; đúng tiền + đúng mã ORD sẽ tự active key.
-" .
-                "🎁 <b>GetKey Free:</b> vào Mini App, chọn Get Key Free và đi theo Link4M → YeuMoney → HCLOU claim.
-" .
-                "🔑 <b>Xem key:</b> dùng /mykeys hoặc mở Mini App.
-" .
-                "📢 <b>Hỗ trợ:</b> vào HCLOU SERVER TEAM nếu chuyển tiền sai nội dung/sai số tiền.";
-        sendTelegram($chat_id, $help, ['inline_keyboard'=>[[['text'=>'🛒 Mở Mini App','web_app'=>['url'=>SITE_URL . '/?v=payauto20260428_1']],[ 'text'=>'📢 Team hỗ trợ','url'=>'https://t.me/hclouserver']]]]);
-    }
-
-
-    if ($text === '/mykeys') {
-        $stmt = $db->prepare("SELECT k.*, g.name AS game_name, p.name AS pkg_name FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id JOIN users u ON k.user_id=u.id WHERE u.telegram_id=? ORDER BY k.created_at DESC LIMIT 10");
-        $stmt->execute([$from['id']]);
+    } elseif ($text === '/help') {
+        $miniAppUrl = SITE_URL . '/?v=app';
+        $help = "🆘 <b>" . h(SITE_NAME) . " - Hướng dẫn nhanh</b>\n\n"
+              . "🛒 <b>Mua key:</b> bấm Mua Key, chọn game/gói, xác nhận đơn.\n"
+              . "💳 <b>Thanh toán:</b> quét VietQR, hệ thống tự điền số tiền + nội dung ORD.\n"
+              . "⏳ <b>Lỡ thoát app:</b> mở lại Mini App trong 15 phút.\n"
+              . "✅ <b>Auto-bank</b> kiểm tra MBBANK mỗi phút.\n"
+              . "🎁 <b>GetKey Free:</b> Mini App → Get Key Free.\n"
+              . "🔑 <b>Xem key:</b> /mykeys hoặc Mini App.";
+        sendTelegram($chat_id, $help, ['inline_keyboard' => [[['text' => '🛒 Mở Mini App', 'web_app' => ['url' => $miniAppUrl]]]]]);
+    } elseif ($text === '/mykeys') {
+        $stmt = $db->prepare("SELECT k.*, g.name AS game_name, p.name AS pkg_name
+            FROM `keys` k
+            JOIN games g    ON k.game_id    = g.id
+            JOIN packages p ON k.package_id = p.id
+            JOIN users u    ON k.user_id    = u.id
+            WHERE u.telegram_id = ?
+            ORDER BY k.created_at DESC LIMIT 10");
+        $stmt->execute([$from['id'] ?? 0]);
         $keys = $stmt->fetchAll();
+        $miniAppUrl = SITE_URL . '/?v=app';
         if (!$keys) {
-            sendTelegram($chat_id, "🔑 Bạn chưa có key nào. Bấm <b>Mua Key</b> để tạo đơn.", ['inline_keyboard'=>[[['text'=>'🛒 Mua Key','web_app'=>['url'=>SITE_URL . '/?v=payauto20260428_1']]]]]);
+            sendTelegram($chat_id, '🔑 Bạn chưa có key nào. Bấm <b>Mua Key</b> để tạo đơn.',
+                ['inline_keyboard' => [[['text' => '🛒 Mua Key', 'web_app' => ['url' => $miniAppUrl]]]]]);
         } else {
             $out = "🔑 <b>KEY CỦA BẠN</b>\n\n";
             foreach ($keys as $k) {
                 $exp = $k['expire_at'] ? date('d/m/Y H:i', strtotime($k['expire_at'])) : 'Chờ thanh toán';
-                $out .= "🎮 <b>{$k['game_name']}</b> - {$k['pkg_name']}\n";
-                $out .= "🔐 <code>{$k['key_code']}</code>\n";
-                $out .= "📌 Trạng thái: <b>{$k['status']}</b> · Hết hạn: {$exp}\n\n";
+                $out .= "🎮 <b>" . h($k['game_name']) . "</b> - " . h($k['pkg_name']) . "\n"
+                     .  "🔐 <code>" . h($k['key_code']) . "</code>\n"
+                     .  "📌 Trạng thái: <b>" . h($k['status']) . "</b> · Hết hạn: " . h($exp) . "\n\n";
             }
-            sendTelegram($chat_id, $out, ['inline_keyboard'=>[[['text'=>'🛒 Mua / Quản lý Key','web_app'=>['url'=>SITE_URL . '/?v=payauto20260428_1']]]]]);
+            sendTelegram($chat_id, $out, ['inline_keyboard' => [[['text' => '🛒 Mua / Quản lý Key', 'web_app' => ['url' => $miniAppUrl]]]]]);
         }
-    }
-
-    if ($text === '/orders' && $admin) {
-        $stmt = $db->query("SELECT o.*, u.telegram_username, g.name as game_name, p.name as pkg_name, p.days, k.key_code 
-            FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending'
-            WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 10");
+    } elseif ($text === '/orders' && $admin) {
+        $stmt = $db->query("SELECT o.*, u.telegram_username, g.name as game_name, p.name as pkg_name, p.days, k.key_code
+            FROM orders o
+            JOIN users u    ON o.user_id    = u.id
+            JOIN games g    ON o.game_id    = g.id
+            JOIN packages p ON o.package_id = p.id
+            LEFT JOIN `keys` k ON k.order_id = o.id AND k.status = 'pending'
+            WHERE o.status = 'pending'
+            ORDER BY o.created_at DESC LIMIT 10");
         $orders = $stmt->fetchAll();
         if (empty($orders)) {
-            sendTelegram($chat_id, "✅ Không có đơn hàng nào đang chờ thanh toán.");
+            sendTelegram($chat_id, '✅ Không có đơn hàng nào đang chờ thanh toán.');
         } else {
             foreach ($orders as $o) {
                 $amt = number_format($o['amount'], 0, ',', '.');
-                $text = "🛒 <b>ĐƠN HÀNG #{$o['order_code']}</b>\n";
-                $text .= "👤 User: @{$o['telegram_username']}\n";
-                $text .= "🎮 Game: {$o['game_name']}\n";
-                $text .= "📦 Gói: {$o['pkg_name']} ({$o['days']} ngày)\n";
-                $text .= "🔑 Key đã tạo: <code>" . ($o['key_code'] ?: 'Chưa có') . "</code>\n";
-                $text .= "💰 Số tiền: {$amt}đ\n";
-                $text .= "🕐 Thời gian: " . date('d/m/Y H:i', strtotime($o['created_at']));
+                $body = "🛒 <b>ĐƠN HÀNG #" . h($o['order_code']) . "</b>\n"
+                      . "👤 User: @" . h($o['telegram_username']) . "\n"
+                      . "🎮 Game: " . h($o['game_name']) . "\n"
+                      . "📦 Gói: " . h($o['pkg_name']) . " (" . (int)$o['days'] . " ngày)\n"
+                      . "🔑 Key đã tạo: <code>" . h($o['key_code'] ?: 'Chưa có') . "</code>\n"
+                      . "💰 Số tiền: " . $amt . "đ\n"
+                      . "🕐 " . date('d/m/Y H:i', strtotime($o['created_at']));
                 $markup = ['inline_keyboard' => [[
                     ['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $o['order_code']],
-                    ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $o['order_code']]
+                    ['text' => '❌ Từ chối',   'callback_data' => 'reject_'  . $o['order_code']],
                 ]]];
-                sendTelegram($chat_id, $text, $markup);
+                sendTelegram($chat_id, $body, $markup);
             }
         }
-    }
-
-    if ($text === '/stats' && $admin) {
-        $total_orders = $db->query("SELECT COUNT(*) FROM orders WHERE status='approved'")->fetchColumn();
-        $total_revenue = $db->query("SELECT SUM(amount) FROM orders WHERE status='approved'")->fetchColumn();
-        $total_keys = $db->query("SELECT COUNT(*) FROM `keys`")->fetchColumn();
-        $active_keys = $db->query("SELECT COUNT(*) FROM `keys` WHERE status='active'")->fetchColumn();
-        $total_users = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
-        $rev = number_format($total_revenue ?? 0, 0, ',', '.');
-        sendTelegram($chat_id, "📊 <b>THỐNG KÊ HỆ THỐNG</b>\n\n👥 Người dùng: {$total_users}\n🛒 Đơn thành công: {$total_orders}\n💰 Doanh thu: {$rev}đ\n🔑 Tổng key: {$total_keys}\n✅ Key đang active: {$active_keys}");
+    } elseif ($text === '/stats' && $admin) {
+        // Gộp thành 1 query
+        $row = $db->query("SELECT
+            (SELECT COUNT(*) FROM orders WHERE status='approved') AS total_orders,
+            (SELECT COALESCE(SUM(amount),0) FROM orders WHERE status='approved') AS total_revenue,
+            (SELECT COUNT(*) FROM `keys`)                                       AS total_keys,
+            (SELECT COUNT(*) FROM `keys` WHERE status='active')                 AS active_keys,
+            (SELECT COUNT(*) FROM users)                                        AS total_users")->fetch();
+        $rev = number_format((float)($row['total_revenue'] ?? 0), 0, ',', '.');
+        sendTelegram($chat_id,
+            "📊 <b>THỐNG KÊ HỆ THỐNG</b>\n\n"
+            . "👥 Người dùng: " . (int)$row['total_users'] . "\n"
+            . "🛒 Đơn thành công: " . (int)$row['total_orders'] . "\n"
+            . "💰 Doanh thu: " . $rev . "đ\n"
+            . "🔑 Tổng key: " . (int)$row['total_keys'] . "\n"
+            . "✅ Key đang active: " . (int)$row['active_keys']);
     }
     exit;
 }
 
 // =============================================
-// HÀM XỬ LÝ
+// HANDLERS
 // =============================================
-
-function approveOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
-    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days FROM orders o JOIN users u ON o.user_id=u.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+function approveOrder(PDO $db, string $order_code, string $admin_name, string $callback_id, $chat_id, $message_id) {
+    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days
+        FROM orders o
+        JOIN users u    ON o.user_id    = u.id
+        JOIN packages p ON o.package_id = p.id
+        WHERE o.order_code = ? AND o.status = 'pending'");
     $stmt->execute([$order_code]);
     $order = $stmt->fetch();
-    if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
+    if (!$order) {
+        answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!');
+        return;
+    }
 
     $db->beginTransaction();
     try {
-        $now = date('Y-m-d H:i:s');
-        $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-        // Duyệt key — chấp nhận cả pending (từ pool) và available (chưa gán)
+        // Atomic: chỉ update khi vẫn pending
+        $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE order_code=? AND status='pending'");
+        $upOrder->execute([$admin_name, $order_code]);
+        if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
+
+        $now    = date('Y-m-d H:i:s');
+        $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$order['days'] . ' days'));
         $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
-            ->execute([$now, $expire, $order['id']]);
-        $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE order_code=?")
-            ->execute([$admin_name, $order_code]);
+           ->execute([$now, $expire, $order['id']]);
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();
-        answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
+        error_log('[APPROVE_ORDER] ' . $e->getMessage());
+        answerCallback($callback_id, '❌ ' . $e->getMessage());
         return;
     }
 
     answerCallback($callback_id, '✅ Đã duyệt đơn!');
-    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #{$order_code}</b>\nAdmin: @{$admin_name}");
-
-    if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn hàng #{$order_code} đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: {$order['days']} ngày.");
+    editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #" . h($order_code) . "</b>\nAdmin: @" . h($admin_name));
+    if ($order['telegram_id']) {
+        sendTelegram($order['telegram_id'],
+            "✅ <b>Đơn hàng #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
+    }
 }
 
-function rejectOrder($db, $order_code, $admin_name, $callback_id, $chat_id, $message_id) {
-    $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
+function rejectOrder(PDO $db, string $order_code, string $admin_name, string $callback_id, $chat_id, $message_id) {
+    $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id
+        FROM orders o JOIN users u ON o.user_id = u.id
+        WHERE o.order_code = ? AND o.status = 'pending'");
     $stmt->execute([$order_code]);
     $order = $stmt->fetch();
-    if (!$order) { answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!'); return; }
+    if (!$order) {
+        answerCallback($callback_id, '❌ Đơn không tồn tại hoặc đã xử lý!');
+        return;
+    }
 
     $db->beginTransaction();
     try {
-        // Trả key về pool available
+        $upOrder = $db->prepare("UPDATE orders SET status='rejected', approved_by=? WHERE id=? AND status='pending'");
+        $upOrder->execute([$admin_name, $order['id']]);
+        if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
+
         $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status IN ('pending','available')")
-            ->execute([$order['id']]);
-        $db->prepare("UPDATE orders SET status='rejected', approved_by=? WHERE id=?")
-            ->execute([$admin_name, $order['id']]);
+           ->execute([$order['id']]);
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();
-        answerCallback($callback_id, '❌ Lỗi hệ thống: ' . $e->getMessage());
+        error_log('[REJECT_ORDER] ' . $e->getMessage());
+        answerCallback($callback_id, '❌ ' . $e->getMessage());
         return;
     }
 
     answerCallback($callback_id, '❌ Đã từ chối đơn!');
-    editMessage($chat_id, $message_id, "❌ <b>ĐÃ TỪ CHỐI #{$order_code}</b>\nAdmin: @{$admin_name}");
-
-    if ($order['telegram_id']) sendTelegram($order['telegram_id'], "❌ <b>Đơn hàng #{$order_code} bị từ chối.</b>\nVui lòng liên hệ admin để được hỗ trợ.");
+    editMessage($chat_id, $message_id, "❌ <b>ĐÃ TỪ CHỐI #" . h($order_code) . "</b>\nAdmin: @" . h($admin_name));
+    if ($order['telegram_id']) {
+        sendTelegram($order['telegram_id'],
+            "❌ <b>Đơn hàng #" . h($order_code) . " bị từ chối.</b>\nLiên hệ admin để được hỗ trợ.");
+    }
 }
 
-
 function answerCallback($callback_id, $text) {
-    $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/answerCallbackQuery");
+    $ch = curl_init('https://api.telegram.org/bot' . BOT_TOKEN . '/answerCallbackQuery');
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, ['callback_query_id' => $callback_id, 'text' => $text, 'show_alert' => true]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_exec($ch); curl_close($ch);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_exec($ch);
+    curl_close($ch);
 }
 
 function editMessage($chat_id, $message_id, $text) {
-    $ch = curl_init("https://api.telegram.org/bot" . BOT_TOKEN . "/editMessageText");
+    $ch = curl_init('https://api.telegram.org/bot' . BOT_TOKEN . '/editMessageText');
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, ['chat_id' => $chat_id, 'message_id' => $message_id, 'text' => $text, 'parse_mode' => 'HTML']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_exec($ch); curl_close($ch);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_exec($ch);
+    curl_close($ch);
 }

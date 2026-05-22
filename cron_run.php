@@ -2,28 +2,27 @@
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json; charset=utf-8');
 
-defined('CRON_RUN_TOKEN') || define('CRON_RUN_TOKEN', '512b48e26f47d889486ecbecbdd7f21517422ac9ea0849de');
+defined('CRON_RUN_TOKEN') || define('CRON_RUN_TOKEN', '');
 const CRON_RUN_LOG = __DIR__ . '/data/cron_run.log';
 
 function hclouCronRunLog(string $job, int $status, bool $success, int $durationMs, string $detail = ''): void {
     $dir = dirname(CRON_RUN_LOG);
     if (!is_dir($dir)) { @mkdir($dir, 0755, true); }
     $entry = [
-        'ts' => date('c'),
-        'ip' => $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '',
-        'ua' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 180),
-        'job' => $job,
-        'status' => $status,
-        'success' => $success,
+        'ts'          => date('c'),
+        'ip'          => $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '',
+        'ua'          => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 180),
+        'job'         => $job,
+        'status'      => $status,
+        'success'     => $success,
         'duration_ms' => $durationMs,
-        'detail' => substr($detail, 0, 500),
+        'detail'      => substr($detail, 0, 500),
     ];
     @file_put_contents(CRON_RUN_LOG, json_encode($entry, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND | LOCK_EX);
 }
 
 /**
- * Gọi script qua HTTP — không dùng exec() nên hoạt động trên mọi hosting.
- * Mỗi script tự validate token/secret của riêng nó.
+ * Gọi script qua HTTP - hoạt động trên mọi hosting (không cần exec).
  */
 function hclouHttpCall(string $path, array $params = [], int $timeout = 30): array {
     $url = rtrim(SITE_URL, '/') . $path;
@@ -44,7 +43,7 @@ function hclouHttpCall(string $path, array $params = [], int $timeout = 30): arr
 }
 
 $token = $_GET['token'] ?? '';
-$job   = $_GET['job'] ?? '';
+$job   = $_GET['job']   ?? '';
 $requestStarted = microtime(true);
 
 if (!hash_equals(CRON_RUN_TOKEN, $token)) {
@@ -53,6 +52,22 @@ if (!hash_equals(CRON_RUN_TOKEN, $token)) {
     echo json_encode(['success' => false, 'error' => 'Forbidden'], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+// =============================================
+// LOCK: tránh chạy chồng cùng job
+// =============================================
+$lockDir = __DIR__ . '/data/locks';
+if (!is_dir($lockDir)) @mkdir($lockDir, 0755, true);
+$lockFile = $lockDir . '/cron_' . preg_replace('/[^a-z0-9_]/i', '_', $job) . '.lock';
+$lockHandle = fopen($lockFile, 'c');
+if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    hclouCronRunLog($job, 200, true, (int)round((microtime(true) - $requestStarted) * 1000), 'skipped: previous_still_running');
+    echo json_encode(['success' => true, 'job' => $job, 'skipped' => true, 'reason' => 'previous_still_running'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+register_shutdown_function(function() use ($lockHandle) {
+    if ($lockHandle) { flock($lockHandle, LOCK_UN); fclose($lockHandle); }
+});
 
 $jobMap = [
     'mbbank'      => function() {
@@ -80,9 +95,9 @@ if (!isset($jobMap[$job])) {
 }
 
 $started = microtime(true);
-$res = $jobMap[$job]();
-$ms = (int)round((microtime(true) - $started) * 1000);
-$json = json_decode($res['body'] ?? '', true);
+$res     = $jobMap[$job]();
+$ms      = (int)round((microtime(true) - $started) * 1000);
+$json    = json_decode($res['body'] ?? '', true);
 
 if (!$res['ok'] || $res['code'] !== 200) {
     http_response_code(500);

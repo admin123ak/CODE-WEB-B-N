@@ -1,0 +1,58 @@
+# =============================================
+# HCLOU SERVER - APACHE .HTACCESS
+# =============================================
+
+# Block direct access to sensitive files
+<FilesMatch "^(config\.local\.php|\.install_lock|\.gitignore|\.htaccess|\.env|.*\.bk|.*\.bk[0-9]|.*\.backup|.*\.sql|.*\.log|.*\.md)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block access to backup/migration/data directories from web
+RedirectMatch 403 ^/\.backups_original/.*$
+RedirectMatch 403 ^/migrations/.*$
+RedirectMatch 403 ^/data/.*$
+
+# Disable directory listing
+Options -Indexes
+
+# Block PHP execution in data/ uploads/
+<Directory "data">
+    php_flag engine off
+    <FilesMatch "\.php$">
+        Order Deny,Allow
+        Deny from all
+    </FilesMatch>
+</Directory>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# Force HTTPS (uncomment khi có SSL)
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# Gzip compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json text/xml application/xml
+</IfModule>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>

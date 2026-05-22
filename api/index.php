@@ -199,23 +199,33 @@ switch ($action) {
         $fk = $stmt->fetch();
         if (!$fk) jsonResponse(['error' => 'Link claim không hợp lệ'], 404);
         if (!$fk['is_active'] || strtotime($fk['expire_at']) < time()) jsonResponse(['error' => 'Key free đã hết hạn'], 410);
-        $chk = $db->prepare("SELECT c.*, k.key_code, c.user_id AS claimed_user_id FROM free_key_claims c LEFT JOIN `keys` k ON c.key_id=k.id WHERE c.free_key_id=? LIMIT 1");
-        $chk->execute([$fk['id']]);
-        $old = $chk->fetch();
-        if ($old && (int)$old['claimed_user_id'] === (int)$user['id']) jsonResponse(['success'=>true, 'already'=>true, 'message'=>'Bạn đã nhận key free này rồi', 'key_code'=>$old['key_code']]);
-        if ($old) jsonResponse(['error'=>'Key free này đã có người nhận'], 410);
+
         $db->beginTransaction();
         try {
+            // INSERT IGNORE trước để claim atomic (uniq_free_user constraint)
+            $claimIns = $db->prepare("INSERT IGNORE INTO free_key_claims (free_key_id, user_id) VALUES (?, ?)");
+            $claimIns->execute([$fk['id'], $user['id']]);
+            if ($claimIns->rowCount() === 0) {
+                // User đã claim trước đó
+                $db->rollBack();
+                $oldRow = $db->prepare("SELECT k.key_code FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.free_key_id=? AND fkc.user_id=?");
+                $oldRow->execute([$fk['id'], $user['id']]);
+                $row = $oldRow->fetch();
+                jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key free này rồi', 'key_code' => $row['key_code'] ?? $fk['key_code']]);
+            }
+            $claimId = $db->lastInsertId();
+
+            // Insert key
             $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,status,days,start_at,expire_at) VALUES (?,?,?,?, 'active', ?, ?, ?)")
-               ->execute([$fk['key_code'],$user['id'],$fk['game_id'],$fk['package_id'],$fk['days'],$fk['start_at'],$fk['expire_at']]);
-            $kid = $db->lastInsertId();
-            $db->prepare("INSERT INTO free_key_claims (free_key_id,user_id,key_id) VALUES (?,?,?)")->execute([$fk['id'],$user['id'],$kid]);
-            $db->prepare("UPDATE free_keys SET is_active=0 WHERE id=?")->execute([$fk['id']]);
+               ->execute([$fk['key_code'], $user['id'], $fk['game_id'], $fk['package_id'], $fk['days'], $fk['start_at'], $fk['expire_at']]);
+            $kid = (int)$db->lastInsertId();
+            $db->prepare("UPDATE free_key_claims SET key_id=? WHERE id=?")->execute([$kid, $claimId]);
             $db->commit();
-            jsonResponse(['success'=>true, 'message'=>'Nhận key free thành công', 'key_code'=>$fk['key_code']]);
+            jsonResponse(['success' => true, 'message' => 'Nhận key free thành công', 'key_code' => $fk['key_code']]);
         } catch (Exception $e) {
-            $db->rollBack();
-            jsonResponse(['error'=>'Không nhận được key: '.$e->getMessage()], 500);
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('[CLAIM_FREE_KEY] ' . $e->getMessage());
+            jsonResponse(['error' => 'Không nhận được key. Vui lòng thử lại.'], 500);
         }
 
     case 'get_free_link':
@@ -309,11 +319,15 @@ switch ($action) {
     // ===== TÌM KIẾM KEY =====
     case 'search_key':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $q = $_GET['q'] ?? '';
+        $q = trim((string)($_GET['q'] ?? ''));
+        if ($q === '') jsonResponse(['success' => true, 'keys' => []]);
+        // Escape LIKE wildcards % và _ để user input không match nhiều hơn intent
+        $qLike = '%' . likeEscape($q) . '%';
         $stmt = $db->prepare("SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type
             FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id
-            WHERE k.user_id=? AND k.status != 'pending' AND k.key_code LIKE ?");
-        $stmt->execute([$user['id'], "%$q%"]);
+            WHERE k.user_id=? AND k.status != 'pending' AND k.key_code LIKE ? ESCAPE '\\\\'
+            LIMIT 100");
+        $stmt->execute([$user['id'], $qLike]);
         jsonResponse(['success' => true, 'keys' => $stmt->fetchAll()]);
 
     // ===== RESET KEY =====
@@ -356,20 +370,20 @@ switch ($action) {
     case 'profile_stats':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $uid = $user['id'];
-        $totalOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=?");
-        $totalOrders->execute([$uid]);
-        $approvedOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND status='approved'");
-        $approvedOrders->execute([$uid]);
-        $pendingOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND status='pending'");
-        $pendingOrders->execute([$uid]);
-        $activeKeys = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE user_id=? AND status='active'");
-        $activeKeys->execute([$uid]);
+        // Gộp 4 query thành 1 với SUM(CASE WHEN ...)
+        $stmt = $db->prepare("SELECT
+            (SELECT COUNT(*) FROM orders WHERE user_id=?)                            AS total_orders,
+            (SELECT COUNT(*) FROM orders WHERE user_id=? AND status='approved')      AS approved_orders,
+            (SELECT COUNT(*) FROM orders WHERE user_id=? AND status='pending')       AS pending_orders,
+            (SELECT COUNT(*) FROM `keys` WHERE user_id=? AND status='active')        AS active_keys");
+        $stmt->execute([$uid, $uid, $uid, $uid]);
+        $row = $stmt->fetch();
         jsonResponse([
-            'success' => true,
-            'total_orders' => $totalOrders->fetchColumn(),
-            'approved_orders' => $approvedOrders->fetchColumn(),
-            'pending_orders' => $pendingOrders->fetchColumn(),
-            'active_keys' => $activeKeys->fetchColumn(),
+            'success'         => true,
+            'total_orders'    => (int)$row['total_orders'],
+            'approved_orders' => (int)$row['approved_orders'],
+            'pending_orders'  => (int)$row['pending_orders'],
+            'active_keys'     => (int)$row['active_keys'],
         ]);
 
     // ===== KIỂM TRA TRẠNG THÁI KEY FREE HÔM NAY =====
