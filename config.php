@@ -275,7 +275,10 @@ function likeEscape($str) {
 // ADMIN CONFIG EDITOR HELPERS
 // =============================================
 function hclouConfigEditableKeys() {
-    // Lưu ý: TOKEN/SECRET/PASS/HASH KHÔNG cho edit qua web để giảm rủi ro
+    // Lưu ý: SECRET/PASS/HASH KHÔNG cho edit qua web để giảm rủi ro.
+    // Riêng API key của bên thứ 3 (MBBank/Link4M/YeuMoney) cho phép sửa
+    // qua web để admin tự xoay vòng mà không cần SSH — input sẽ mask trong UI,
+    // log ghi '[hidden]' (xem hclouWriteConfigValues).
     return [
         'SITE_URL'                    => 'string',
         'SITE_NAME'                   => 'string',
@@ -287,6 +290,9 @@ function hclouConfigEditableKeys() {
         'VIETQR_BANK_ID'              => 'string',
         'MBBANK_AUTO_APPROVE_ENABLED' => 'bool',
         'FREE_GETKEY_ENABLED'         => 'bool',
+        'MBBANK_HISTORY_API_KEY'      => 'string',
+        'LINK4M_API_TOKEN'            => 'string',
+        'YEUMONEY_API_TOKEN'          => 'string',
     ];
 }
 
