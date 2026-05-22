@@ -4,10 +4,33 @@ require_once __DIR__ . '/config.php';
 // =============================================
 // SCRIPT LOCK - tránh chạy chồng cron jobs
 // =============================================
+$mbPollStartedAt = microtime(true);
+$mbPollSource    = (PHP_SAPI === 'cli') ? 'cron' : (isset($_GET['src']) && $_GET['src'] === 'admin' ? 'admin' : 'http');
+
+// Ghi status file để admin panel hiển thị quan sát.
+// Bỏ qua trên Windows-style FS nếu lỗi - không ảnh hưởng poll logic.
+function writeMBPollStatus(array $extra) {
+    global $mbPollStartedAt, $mbPollSource;
+    $file = APP_ROOT . '/data/mbbank_poll_status.json';
+    if (!is_dir(dirname($file))) @mkdir(dirname($file), 0755, true);
+    $payload = array_merge([
+        'last_run_at'  => date('c'),
+        'duration_ms'  => (int) round((microtime(true) - $mbPollStartedAt) * 1000),
+        'source'       => $mbPollSource,
+        'seen_new'     => 0,
+        'matched'      => 0,
+        'approved'     => 0,
+        'skipped'      => false,
+        'error'        => null,
+    ], $extra);
+    @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
 $lockFile = APP_ROOT . '/data/mbbank_poll.lock';
 if (!is_dir(dirname($lockFile))) @mkdir(dirname($lockFile), 0755, true);
 $lockHandle = fopen($lockFile, 'c');
 if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
+    writeMBPollStatus(['skipped' => true, 'error' => 'previous_run_still_active']);
     http_response_code(200);
     echo json_encode(['success' => true, 'skipped' => true, 'reason' => 'previous_run_still_active']);
     exit;
@@ -203,10 +226,12 @@ try {
     }
 
     $out = ['success' => true, 'seen_new' => $seen, 'matched' => $matched, 'approved' => $approved];
+    writeMBPollStatus(['seen_new' => $seen, 'matched' => $matched, 'approved' => $approved]);
     if (PHP_SAPI === 'cli') mbLog(json_encode($out, JSON_UNESCAPED_UNICODE));
     else jsonResponse($out);
 } catch (Exception $e) {
     error_log('[MBBANK_POLL] ' . $e->getMessage());
+    writeMBPollStatus(['error' => $e->getMessage()]);
     if (PHP_SAPI === 'cli') { fwrite(STDERR, $e->getMessage() . PHP_EOL); exit(1); }
     jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
 }

@@ -127,6 +127,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
     }
 
+    if ($act === 'mbbank_test_poll') {
+        // Gọi mbbank_poll.php cùng-host qua cURL với MBBANK_POLL_SECRET.
+        // Tránh require trực tiếp để giữ nguyên cơ chế lock + môi trường giống cron.
+        try {
+            if (!defined('MBBANK_POLL_SECRET') || MBBANK_POLL_SECRET === '') {
+                throw new Exception('MBBANK_POLL_SECRET chưa khả dụng (kiểm tra MBBANK_HISTORY_API_KEY + BOT_TOKEN).');
+            }
+            $url = rtrim(SITE_URL, '/') . '/mbbank_poll.php?src=admin&secret=' . rawurlencode(MBBANK_POLL_SECRET);
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 25,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+            ]);
+            $body = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+            if ($body === false) throw new Exception('cURL: ' . $err);
+            $j = json_decode((string)$body, true);
+            if (!is_array($j)) throw new Exception('HTTP ' . $code . ' - response không phải JSON: ' . substr((string)$body, 0, 200));
+            if (empty($j['success'])) throw new Exception($j['error'] ?? ('HTTP ' . $code));
+            header("Location: ?tab=sysconfig&ok=1&mbtest=" . urlencode(json_encode($j, JSON_UNESCAPED_UNICODE))); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode('MBBank test: ' . $e->getMessage())); exit;
+        }
+    }
+
     if ($act === 'add_free_key') {
         $game_id=(int)$_POST['game_id']; $package_id=(int)$_POST['package_id']; $key_code=trim($_POST['key_code']);
         $pkg=$db->prepare("SELECT * FROM packages WHERE id=? AND game_id=?"); $pkg->execute([$package_id,$game_id]); $p=$pkg->fetch();
@@ -714,6 +744,51 @@ function updateFreeKeyPkgOptions(gameId) {
 <h1>⚙️ Cấu hình hệ thống</h1>
 <?php ensureAdminConfigLogTable($db); $cfgKeys = hclouConfigEditableKeys(); $logs = $db->query("SELECT * FROM admin_config_logs ORDER BY id DESC LIMIT 30")->fetchAll(); ?>
 <div class="warnbox">⚠️ Chỉ sửa các mục thật sự cần. Token/API key không được public. Khi lưu, hệ thống tự tạo backup <span class="mono">config.php.bk_admincfg_*</span> rồi ghi log vào SQL.</div>
+<?php
+// Panel observability MBBank poll — đọc data/mbbank_poll_status.json
+$_mbStatusFile = APP_ROOT . '/data/mbbank_poll_status.json';
+$_mbS = is_file($_mbStatusFile) ? json_decode((string)@file_get_contents($_mbStatusFile), true) : null;
+if (!is_array($_mbS)) $_mbS = null;
+$_mbAgo = '—';
+if ($_mbS && !empty($_mbS['last_run_at'])) {
+    $_t = strtotime($_mbS['last_run_at']);
+    if ($_t) {
+        $d = max(0, time() - $_t);
+        if ($d < 60) $_mbAgo = $d . 's trước';
+        elseif ($d < 3600) $_mbAgo = floor($d/60) . ' phút trước';
+        elseif ($d < 86400) $_mbAgo = floor($d/3600) . ' giờ trước';
+        else $_mbAgo = floor($d/86400) . ' ngày trước';
+    }
+}
+$_mbFresh = ($_mbS && !empty($_mbS['last_run_at']) && (time() - strtotime($_mbS['last_run_at'])) < 180);
+?>
+<div class="form-card" style="margin-bottom:16px;border:1px solid <?= $_mbFresh ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.35)' ?>">
+  <h3>🏦 MBBank Poll — Quan sát</h3>
+  <?php if (!$_mbS): ?>
+    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhấn <b>Test Poll Ngay</b> hoặc đợi cron chạy mbbank_poll.php.</p>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+      <div><small style="color:#8b949e">Lần chạy cuối</small><div style="font-weight:800;color:<?= $_mbFresh ? '#bbf7d0' : '#fde68a' ?>"><?= h($_mbAgo) ?></div><div class="mono" style="font-size:11px;color:#6b7f9e"><?= h($_mbS['last_run_at']) ?></div></div>
+      <div><small style="color:#8b949e">Nguồn</small><div style="font-weight:800"><?= h($_mbS['source'] ?? '—') ?></div></div>
+      <div><small style="color:#8b949e">Thời gian xử lý</small><div style="font-weight:800"><?= h((string)($_mbS['duration_ms'] ?? '—')) ?> ms</div></div>
+      <div><small style="color:#8b949e">TX mới (seen)</small><div style="font-weight:800;color:#67e8f9"><?= (int)($_mbS['seen_new'] ?? 0) ?></div></div>
+      <div><small style="color:#8b949e">Match ORD</small><div style="font-weight:800;color:#67e8f9"><?= (int)($_mbS['matched'] ?? 0) ?></div></div>
+      <div><small style="color:#8b949e">Đã duyệt</small><div style="font-weight:800;color:#bbf7d0"><?= (int)($_mbS['approved'] ?? 0) ?></div></div>
+    </div>
+    <?php if (!empty($_mbS['skipped'])): ?>
+      <div class="warnbox" style="margin:0 0 10px">⏭️ Lần chạy này bị bỏ qua: <?= h((string)($_mbS['error'] ?? 'skipped')) ?></div>
+    <?php elseif (!empty($_mbS['error'])): ?>
+      <div class="warnbox" style="margin:0 0 10px;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.30);color:#fecaca">❌ Lỗi: <?= h((string)$_mbS['error']) ?></div>
+    <?php endif; ?>
+  <?php endif; ?>
+  <?php if(isset($_GET['mbtest'])): ?><div class="codebox" style="margin:0 0 10px">📊 <?= htmlspecialchars((string)$_GET['mbtest']) ?></div><?php endif; ?>
+  <form method="POST" style="display:flex;gap:10px;align-items:center">
+    <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+    <input type="hidden" name="act" value="mbbank_test_poll">
+    <button class="btn btn-blue" type="submit">▶️ Test Poll Ngay</button>
+    <small style="color:#8b949e">Gọi <span class="mono">mbbank_poll.php</span> đồng bộ qua cURL — kết quả hiển thị ngay phía trên.</small>
+  </form>
+</div>
 <form method="POST" class="form-card">
 <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
 <h3>Thông tin site/bot</h3><div class="form-row">
