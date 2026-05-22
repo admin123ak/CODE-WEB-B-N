@@ -26,6 +26,66 @@ function writeMBPollStatus(array $extra) {
     @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_UNICODE), LOCK_EX);
 }
 
+/**
+ * Alert tới ADMIN_CHAT_ID khi MBBank poll lỗi liên tục.
+ * - Counter persistent trong data/mbbank_poll_alert.json
+ * - Ngưỡng: 3 lần lỗi liền nhau
+ * - Throttle: 30 phút giữa các alert (tránh spam)
+ * - Bỏ qua nếu error là "Auto approve disabled" (admin chủ động tắt)
+ * - Reset counter khi có lần chạy success
+ */
+function maybeMBPollAlert(?string $error): void {
+    $file = APP_ROOT . '/data/mbbank_poll_alert.json';
+    if (!is_dir(dirname($file))) @mkdir(dirname($file), 0755, true);
+    $state = ['consecutive_failures' => 0, 'last_alert_at' => null, 'last_error' => null];
+    if (is_file($file)) {
+        $prev = json_decode((string)@file_get_contents($file), true);
+        if (is_array($prev)) $state = array_merge($state, $prev);
+    }
+
+    if ($error === null) {
+        // Success — recovery: notify admin nếu trước đó đã từng cảnh báo
+        if (!empty($state['last_alert_at']) && (int)$state['consecutive_failures'] >= 3) {
+            try {
+                sendTelegram(ADMIN_CHAT_ID,
+                    "✅ <b>MBBank Poll đã hồi phục</b>\n" .
+                    "🕐 " . date('Y-m-d H:i:s') . "\n" .
+                    "Sau " . (int)$state['consecutive_failures'] . " lần lỗi liên tục, lần chạy này đã thành công.");
+            } catch (Throwable $e) { /* ignore */ }
+        }
+        $state = ['consecutive_failures' => 0, 'last_alert_at' => null, 'last_error' => null];
+    } else {
+        // Admin chủ động tắt thì không alert
+        if (stripos($error, 'Auto approve disabled') !== false) {
+            $state['consecutive_failures'] = 0;
+            $state['last_error'] = $error;
+            @file_put_contents($file, json_encode($state, JSON_UNESCAPED_UNICODE), LOCK_EX);
+            return;
+        }
+        $state['consecutive_failures'] = (int)$state['consecutive_failures'] + 1;
+        $state['last_error'] = substr($error, 0, 200);
+
+        $threshold   = 3;
+        $throttleSec = 1800; // 30 phút
+        $now         = time();
+        $lastAlertTs = !empty($state['last_alert_at']) ? (int)strtotime($state['last_alert_at']) : 0;
+
+        if ($state['consecutive_failures'] >= $threshold && ($now - $lastAlertTs) >= $throttleSec) {
+            try {
+                $msg = "⚠️ <b>MBBank Poll lỗi liên tục</b>\n\n" .
+                       "🕐 " . date('Y-m-d H:i:s') . "\n" .
+                       "🔁 Số lần lỗi liền: <b>" . (int)$state['consecutive_failures'] . "</b>\n" .
+                       "❌ " . htmlspecialchars($state['last_error']) . "\n\n" .
+                       "Kiểm tra Queenvps API key, BOT_TOKEN, hoặc trạng thái MBBank Auto-bank.";
+                sendTelegram(ADMIN_CHAT_ID, $msg);
+                $state['last_alert_at'] = date('c');
+            } catch (Throwable $e) { /* ignore - không để telegram fail làm hỏng poll */ }
+        }
+    }
+
+    @file_put_contents($file, json_encode($state, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
 $lockFile = APP_ROOT . '/data/mbbank_poll.lock';
 if (!is_dir(dirname($lockFile))) @mkdir(dirname($lockFile), 0755, true);
 $lockHandle = fopen($lockFile, 'c');
@@ -227,11 +287,13 @@ try {
 
     $out = ['success' => true, 'seen_new' => $seen, 'matched' => $matched, 'approved' => $approved];
     writeMBPollStatus(['seen_new' => $seen, 'matched' => $matched, 'approved' => $approved]);
+    maybeMBPollAlert(null);
     if (PHP_SAPI === 'cli') mbLog(json_encode($out, JSON_UNESCAPED_UNICODE));
     else jsonResponse($out);
 } catch (Exception $e) {
     error_log('[MBBANK_POLL] ' . $e->getMessage());
     writeMBPollStatus(['error' => $e->getMessage()]);
+    maybeMBPollAlert($e->getMessage());
     if (PHP_SAPI === 'cli') { fwrite(STDERR, $e->getMessage() . PHP_EOL); exit(1); }
     jsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
 }
