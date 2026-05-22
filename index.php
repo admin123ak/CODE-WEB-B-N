@@ -53,6 +53,11 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .promo-badge{background:linear-gradient(135deg,#ff416c,#ff4b2b);border-radius:var(--radius-sm);padding:7px 12px;font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;gap:5px;animation:pulseBadge 2.5s ease-in-out infinite;box-shadow:0 0 18px rgba(255,65,108,.35)}
 @keyframes pulseBadge{0%,100%{transform:scale(1);box-shadow:0 0 18px rgba(255,65,108,.35)}50%{transform:scale(1.04);box-shadow:0 0 26px rgba(255,65,108,.5)}}
 .lang-btn{margin-left:auto;background:rgba(19,27,46,.8);border:1px solid var(--glass-border);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;color:var(--purple2);cursor:pointer;transition:all .2s var(--ease-spring);font-family:inherit}.lang-btn:active{transform:scale(.94);filter:brightness(1.15)}
+.lang-pills{margin-left:auto;display:flex;gap:4px;background:rgba(19,27,46,.85);border:1px solid var(--glass-border);border-radius:999px;padding:3px;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.lang-pill{appearance:none;border:0;background:transparent;width:30px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;transition:all .2s var(--ease-spring);font-family:inherit;line-height:1;padding:0}
+.lang-pill:active{transform:scale(.9)}
+.lang-pill.active{background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 4px 12px rgba(239,68,68,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+.lang-pill .flag{filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
 .bank-chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;color:var(--blue2);display:flex;align-items:center;gap:6px;cursor:pointer;transition:all .2s var(--ease-spring)}.bank-chip:active{transform:scale(.95);background:var(--bg4)}
 .pressable{transition:transform .18s var(--ease-spring),filter .18s,box-shadow .18s}.pressable.touching{transform:scale(.975)!important;filter:brightness(1.08)}
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:80px;perspective:900px}
@@ -300,11 +305,11 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 <div class="moverlay" id="confirmModal">
   <div class="mbox confirm-box">
     <div class="mhandle"></div>
-    <div class="mtitle">Xác nhận</div>
+    <div class="mtitle" data-i18n="confirmTitle">Xác nhận</div>
     <div class="confirm-content" id="confirmContent"></div>
     <div class="confirm-actions">
-      <button class="confirm-btn cancel" onclick="cancelOrderConfirm()">Huỷ</button>
-      <button class="confirm-btn ok" onclick="confirmCreateOrder()">Đồng Ý</button>
+      <button class="confirm-btn cancel" onclick="cancelOrderConfirm()" data-i18n="huy">Huỷ</button>
+      <button class="confirm-btn ok" onclick="confirmCreateOrder()" data-i18n="dongY">Đồng Ý</button>
     </div>
   </div>
 </div>
@@ -312,7 +317,11 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 <div id="app" style="opacity:0;transition:opacity .4s ease">
   <div class="app-header">
     <div class="promo-badge" data-i18n="promo">🔥 KHUYẾN MÃI HOT!</div>
-    <button class="lang-btn" id="langBtn" onclick="toggleLang()">EN</button>
+    <div class="lang-pills" id="langPills" role="group" aria-label="Language">
+      <button type="button" class="lang-pill" data-lang="vi" onclick="setLang('vi')" title="Tiếng Việt"><span class="flag">&#127483;&#127475;</span></button>
+      <button type="button" class="lang-pill" data-lang="en" onclick="setLang('en')" title="English"><span class="flag">&#127468;&#127463;</span></button>
+      <button type="button" class="lang-pill" data-lang="es" onclick="setLang('es')" title="Español"><span class="flag">&#127466;&#127480;</span></button>
+    </div>
     <div class="bank-chip" id="telegramIdChip" onclick="copyTelegramId()">
       <span id="telegramIdText">Đang tải...</span> &#x1F4CB;
     </div>
@@ -409,26 +418,26 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
     </div>
 
     <div id="keyWrap">
-      <div class="loading"><div class="spin"></div>&#x110;ang t&#x1EA3;i keys...</div>
+      <div class="loading"><div class="spin"></div><span data-i18n="loadingKeys">&#x110;ang t&#x1EA3;i keys...</span></div>
     </div>
     <footer class="hclou-footer" aria-label="HCLOU footer">
       <div class="hclou-footer-main">
         <section>
           <h3>HCLOU SERVER</h3>
           <div class="hf-list">
-            <div class="hf-item"><span class="hf-icon">📍</span><span>Địa chỉ: Thành phố Quảng Ngãi</span></div>
-            <div class="hf-item"><span class="hf-icon">🧾</span><span>Mã số thuế: <span class="hf-muted">Đang cập nhật</span></span></div>
-            <div class="hf-item"><span class="hf-icon">📄</span><span>Số GPKD: <span class="hf-muted">Đang cập nhật</span></span></div>
-            <div class="hf-item"><span class="hf-icon">☎️</span><span>Hotline: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
-            <div class="hf-item"><span class="hf-icon">⚠️</span><span>Phản ánh chất lượng: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
-            <div class="hf-item"><span class="hf-icon">✉️</span><span>Email liên hệ: <a class="hf-hot" href="mailto:suphuhoangsp@gmail.com">suphuhoangsp@gmail.com</a></span></div>
-            <div class="hf-item"><span class="hf-icon">👤</span><span>Chịu trách nhiệm nội dung: <span class="hf-hot">HCLOU Server</span></span></div>
+            <div class="hf-item"><span class="hf-icon">📍</span><span><span data-i18n="footerAddress">Địa chỉ</span>: Thành phố Quảng Ngãi</span></div>
+            <div class="hf-item"><span class="hf-icon">🧾</span><span><span data-i18n="footerTaxId">Mã số thuế</span>: <span class="hf-muted" data-i18n="footerUpdating">Đang cập nhật</span></span></div>
+            <div class="hf-item"><span class="hf-icon">📄</span><span><span data-i18n="footerBizLic">Số GPKD</span>: <span class="hf-muted" data-i18n="footerUpdating">Đang cập nhật</span></span></div>
+            <div class="hf-item"><span class="hf-icon">☎️</span><span><span data-i18n="footerHotline">Hotline</span>: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
+            <div class="hf-item"><span class="hf-icon">⚠️</span><span><span data-i18n="footerComplaint">Phản ánh chất lượng</span>: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
+            <div class="hf-item"><span class="hf-icon">✉️</span><span><span data-i18n="footerEmail">Email liên hệ</span>: <a class="hf-hot" href="mailto:suphuhoangsp@gmail.com">suphuhoangsp@gmail.com</a></span></div>
+            <div class="hf-item"><span class="hf-icon">👤</span><span><span data-i18n="footerRespContent">Chịu trách nhiệm nội dung</span>: <span class="hf-hot">HCLOU Server</span></span></div>
           </div>
-          <a class="hf-btn" href="https://t.me/hcloucom" target="_blank" rel="noopener">Follow on Telegram</a>
+          <a class="hf-btn" href="https://t.me/hcloucom" target="_blank" rel="noopener" data-i18n="footerFollowTg">Follow on Telegram</a>
         </section>
 
         <section>
-          <h4>Kết nối mạng xã hội</h4>
+          <h4 data-i18n="footerSocial">Kết nối mạng xã hội</h4>
           <div class="hf-social-grid">
             <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">📘 Facebook</a>
             <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">💼 LinkedIn</a>
@@ -441,7 +450,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
         </section>
 
         <section>
-          <h4>Chứng chỉ trang web</h4>
+          <h4 data-i18n="footerCertSite">Chứng chỉ trang web</h4>
           <div class="hf-badge-grid" aria-label="Chứng chỉ website">
             <span class="hf-logo gold cert-text" title="Đã thông báo Bộ Công Thương">Bộ CT</span>
             <span class="hf-logo red cert-text" title="DMCA Protected">DMCA</span>
@@ -453,7 +462,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
         </section>
 
         <section>
-          <h4>Hỗ trợ thanh toán</h4>
+          <h4 data-i18n="footerPaymentSupport">Hỗ trợ thanh toán</h4>
           <div class="hf-pay-grid" aria-label="Phương thức thanh toán">
             <span class="hf-logo pay-master" title="MasterCard">●●</span>
             <span class="hf-logo blue" title="PayPal">PayPal</span>
@@ -474,15 +483,15 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 
     <!-- TAB: Key Free mỗi ngày -->
     <div id="tab-freekey" class="tab-content">
-      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900">⭐ Key miễn phí mỗi ngày</h2>
+      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900" data-i18n="freeDayTitle">⭐ Key miễn phí mỗi ngày</h2>
       <div id="freeKeyWrap">
-        <div class="loading"><div class="spin"></div>Đang kiểm tra key...</div>
+        <div class="loading"><div class="spin"></div><span data-i18n="freeChecking">Đang kiểm tra key...</span></div>
       </div>
     </div>
 
     <!-- TAB: Lịch sử đơn hàng -->
     <div id="tab-history" class="tab-content">
-      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900">📜 Lịch sử đơn hàng</h2>
+      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900" data-i18n="historyTitle">📜 Lịch sử đơn hàng</h2>
       <div id="histWrap"></div>
     </div>
 
@@ -502,42 +511,42 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
       </div>
 
       <div class="profile-card">
-        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Tổng quan</h3>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span><span data-i18n="profileOverview">Tổng quan</span></h3>
         <div class="profile-stats-grid">
-          <div class="profile-stat"><div class="num blue" id="pfTotalOrders">0</div><div class="lbl">Tổng đơn</div></div>
-          <div class="profile-stat"><div class="num green" id="pfApproved">0</div><div class="lbl">Đã duyệt</div></div>
-          <div class="profile-stat"><div class="num orange" id="pfPending">0</div><div class="lbl">Chờ xử lý</div></div>
-          <div class="profile-stat"><div class="num blue" id="pfKeys">0</div><div class="lbl">Key đang có</div></div>
+          <div class="profile-stat"><div class="num blue" id="pfTotalOrders">0</div><div class="lbl" data-i18n="profileTotalOrders">Tổng đơn</div></div>
+          <div class="profile-stat"><div class="num green" id="pfApproved">0</div><div class="lbl" data-i18n="profileApproved">Đã duyệt</div></div>
+          <div class="profile-stat"><div class="num orange" id="pfPending">0</div><div class="lbl" data-i18n="profilePending">Chờ xử lý</div></div>
+          <div class="profile-stat"><div class="num blue" id="pfKeys">0</div><div class="lbl" data-i18n="profileKeysOwned">Key đang có</div></div>
         </div>
       </div>
 
       <div class="profile-card">
-        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></span>Thông tin tài khoản</h3>
-        <div class="profile-row"><span class="lbl">Telegram ID</span><span class="val" id="pfTgId">--</span></div>
-        <div class="profile-row"><span class="lbl">Username</span><span class="val" id="pfTgUser">--</span></div>
-        <div class="profile-row"><span class="lbl">Họ tên</span><span class="val" id="pfFullName">--</span></div>
-        <div class="profile-row"><span class="lbl">Ngày tham gia</span><span class="val" id="pfJoined">--</span></div>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></span><span data-i18n="profileAccount">Thông tin tài khoản</span></h3>
+        <div class="profile-row"><span class="lbl" data-i18n="profileTgId">Telegram ID</span><span class="val" id="pfTgId">--</span></div>
+        <div class="profile-row"><span class="lbl" data-i18n="profileUsername">Username</span><span class="val" id="pfTgUser">--</span></div>
+        <div class="profile-row"><span class="lbl" data-i18n="profileFullName">Họ tên</span><span class="val" id="pfFullName">--</span></div>
+        <div class="profile-row"><span class="lbl" data-i18n="profileJoined">Ngày tham gia</span><span class="val" id="pfJoined">--</span></div>
       </div>
 
       <div class="profile-card">
-        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>Liên kết nhanh</h3>
-        <div class="profile-btn" onclick="switchTab('buykey')">🔑 Mua Key</div>
-        <div class="profile-btn" onclick="switchTab('history')">📜 Lịch sử đơn hàng</div>
-        <div class="profile-btn red" onclick="location.reload()">🔄 Tải lại</div>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span><span data-i18n="profileLinks">Liên kết nhanh</span></h3>
+        <div class="profile-btn" onclick="switchTab('buykey')"><span data-i18n="profileBtnBuy">🔑 Mua Key</span></div>
+        <div class="profile-btn" onclick="switchTab('history')"><span data-i18n="profileBtnHistory">📜 Lịch sử đơn hàng</span></div>
+        <div class="profile-btn red" onclick="location.reload()"><span data-i18n="profileBtnReload">🔄 Tải lại</span></div>
       </div>
 
       <footer class="hclou-footer" aria-label="HCLOU footer">
         <div class="hclou-footer-main">
-          <h3>Liên hệ hỗ trợ</h3>
+          <h3 data-i18n="footerSupport">Liên hệ hỗ trợ</h3>
           <div class="hf-list"><div class="hf-item"><span class="hf-icon">📱</span><a class="hf-hot" href="tel:+84865770720">0865770720</a></div></div>
-          <h4>Phương thức thanh toán</h4>
+          <h4 data-i18n="footerPayment">Phương thức thanh toán</h4>
           <div class="hf-pay-grid">
             <span class="hf-logo blue pay-visa">VISA</span>
             <span class="hf-logo gold pay-master">MasterCard</span>
             <span class="hf-logo red pay-momo">MoMo</span>
             <span class="hf-logo green pay-bank">VietQR</span>
           </div>
-          <h4>Chứng nhận</h4>
+          <h4 data-i18n="footerCert">Chứng nhận</h4>
           <div class="hf-badge-grid">
             <span class="hf-logo cert-text cert-iso">ISO 27001</span>
             <span class="hf-logo cert-text">🔒 SSL</span>
@@ -545,7 +554,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
         </div>
         <div class="hclou-footer-bottom">
           <div class="hf-brand">HCLOU SERVER</div>
-          <div>Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
+          <div data-i18n="footerCopyright">Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
         </div>
       </footer>
     </div>
@@ -556,19 +565,19 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
   <nav class="bottom-nav">
     <div class="nav-tab active" onclick="switchTab('buykey')" id="nav-buykey">
       <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      <span class="nav-lbl">Mua Key</span>
+      <span class="nav-lbl" data-i18n="navBuy">Mua Key</span>
     </div>
     <div class="nav-tab" onclick="switchTab('freekey')" id="nav-freekey">
       <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      <span class="nav-lbl">Key Free</span>
+      <span class="nav-lbl" data-i18n="navFree">Key Free</span>
     </div>
     <div class="nav-tab" onclick="switchTab('history')" id="nav-history">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span class="nav-lbl">Lịch sử</span>
+      <span class="nav-lbl" data-i18n="navHistory">Lịch sử</span>
     </div>
     <div class="nav-tab" onclick="switchTab('profile')" id="nav-profile">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span class="nav-lbl">Cá nhân</span>
+      <span class="nav-lbl" data-i18n="navProfile">Cá nhân</span>
     </div>
   </nav>
 
@@ -621,22 +630,52 @@ var ICONS={
 
 /* TEXT dung HTML entities - khong bi loi encoding */
 var LANG=localStorage.getItem('hclou_lang')||'vi';
+if(['vi','en','es'].indexOf(LANG)<0) LANG='vi';
 var I18N={
   vi:{webTitle:'Mở HCLOU trong Telegram',webSub:'Web này chỉ sử dụng trong Telegram Mini App để xác thực tài khoản và bảo vệ key của bạn.',openTelegram:'🚀 Mở trong Telegram',tapChooseGame:'Nhấn chọn game',noGameSelected:'Chưa chọn game',noPackageSelected:'Chưa chọn gói',promo:'🔥 KHUYẾN MÃI HOT!',totalKey:'Tổng key',activeLabel:'Hoạt động',expiredLabel:'Hết hạn',buyNew:'Mua Key mới',buySub:'Chọn ứng dụng và gói ngày',chooseApp:'Chọn ứng dụng',choosePackage:'Chọn gói',buyNow:'Mua ngay',yourKeys:'Key của bạn',all:'Tất cả',lockedLabel:'Bị khoá',chooseGameTitle:'🎮 Chọn game',paymentTitle:'💳 Thanh toán',search:'Tìm kiếm GKey...',
-    tongKey:'Tổng key',hoatDong:'Hoạt động',hetHan:'Hết hạn',biKhoa:'Bị khoá',tatCa:'Tất cả',soNgay:'Số ngày',conLai:'Còn lại',batDau:'Bắt đầu',ketThuc:'Kết thúc',dangTinh:'⏱ Đang tính...',conLaiLbl:'⏱ Còn lại: ',reset:'Reset',copy:'📋 Copy',giaHan:'Gia hạn',xoa:'Xóa',active:'✅ Hoạt động',expired:'⏰ Hết hạn',locked:'🔒 Bị khoá',pending:'⏳ Chờ thanh toán',hetHanLbl:'Hết hạn',chuaCoKey:'Chưa có key nào',goiNgay:'Gói ',ngay:' ngày',cheDoKey:'Chế độ ',keyMode:' key',khongCoGoi:'Không có gói nào',muaNgay:'Mua ngay',dangTaiGame:'Đang tải game...',chonGame:'Chọn game',nganHang:'Ngân hàng',soTK:'Số tài khoản',noiDungCK:'Nội dung CK',copyTK:'Đã copy số TK!',copyDon:'Đã copy mã đơn!',copyKey:'Đã copy key!',daCopy:'Đã copy!',luuY:'⚠️ Quét VietQR để tự điền đúng số tiền + nội dung. Nếu chuyển tay, bắt buộc ghi đúng nội dung bên trên.',daCK:'🔄 Kiểm tra thanh toán',choAdmin:'Đang kiểm tra thanh toán tự động...',giuManHinh:'Không thoát Mini App trong lúc thanh toán. Sau khi chuyển xong, key sẽ tự hiện trong mục Key của bạn.',hetGioTT:'Hết 15 phút chờ thanh toán. Nếu đã chuyển tiền, mở lại mục Key của bạn hoặc liên hệ admin kèm mã đơn.',daDuyetAuto:'Thanh toán đã xác nhận, key đã hoạt động!',resetOk:'Reset thành công!',xoaOk:'Đã xóa key!',confirmReset:'Reset thiết bị cho key này?',confirmXoa:'Xóa key này?',loiKetNoi:'Lỗi kết nối',moQuaBot:'Vui lòng mở qua bot Telegram!',giaHanMsg:'Chọn gói mới ở phần Mua Key để gia hạn!',chonGameTruoc:'Vui lòng chọn game trước',chuaChonGoi:'Chưa chọn gói',dangTai:'Đang tải...',loiTaoDon:'Lỗi tạo đơn!',copyFail:'Copy thất bại',taiKeyLoi:'Không tải được key. Hãy đóng Mini App và mở lại từ bot Telegram.',getFree:'Get Key Free',dangLayLink:'Đang lấy link...',freeHet:'Chưa có key free khả dụng',mienPhi:'Miễn phí',vuotLinkNhan:'Vượt link để nhận key',xacNhan:'Xác nhận',xacNhanMua:'Bạn đã chọn',capDo:'cấp độ',keyMotGame:'key chỉ được sử dụng cho một game. Bạn có muốn tiếp tục tạo đơn không?',huy:'Huỷ',dongY:'Đồng Ý',expiredDeleteNote:'Không gia hạn sau 3 ngày sẽ tự xoá',tuXoaLuc:'Tự xoá lúc',helpSub:'Chọn câu hỏi để xem hướng dẫn nhanh',pendingPayTitle:'Bạn còn đơn chờ thanh toán',pendingPaySub:'Nếu lỡ thoát trước khi chụp QR, bấm để mở lại thông tin thanh toán.',resumePay:'Mở lại QR thanh toán',pendingPayExpired:'Đơn đã quá 15 phút. Nếu đã chuyển tiền, liên hệ admin kèm mã đơn.',copyTelegramId:'Đã copy Telegram ID!',freeClaimOk:'Nhận key free thành công',freeClaimFail:'Không nhận được key free'},
+    tongKey:'Tổng key',hoatDong:'Hoạt động',hetHan:'Hết hạn',biKhoa:'Bị khoá',tatCa:'Tất cả',soNgay:'Số ngày',conLai:'Còn lại',batDau:'Bắt đầu',ketThuc:'Kết thúc',dangTinh:'⏱ Đang tính...',conLaiLbl:'⏱ Còn lại: ',reset:'Reset',copy:'📋 Copy',giaHan:'Gia hạn',xoa:'Xóa',active:'✅ Hoạt động',expired:'⏰ Hết hạn',locked:'🔒 Bị khoá',pending:'⏳ Chờ thanh toán',hetHanLbl:'Hết hạn',chuaCoKey:'Chưa có key nào',goiNgay:'Gói ',ngay:' ngày',cheDoKey:'Chế độ ',keyMode:' key',khongCoGoi:'Không có gói nào',muaNgay:'Mua ngay',dangTaiGame:'Đang tải game...',chonGame:'Chọn game',nganHang:'Ngân hàng',soTK:'Số tài khoản',noiDungCK:'Nội dung CK',copyTK:'Đã copy số TK!',copyDon:'Đã copy mã đơn!',copyKey:'Đã copy key!',daCopy:'Đã copy!',luuY:'⚠️ Quét VietQR để tự điền đúng số tiền + nội dung. Nếu chuyển tay, bắt buộc ghi đúng nội dung bên trên.',daCK:'🔄 Kiểm tra thanh toán',choAdmin:'Đang kiểm tra thanh toán tự động...',giuManHinh:'Không thoát Mini App trong lúc thanh toán. Sau khi chuyển xong, key sẽ tự hiện trong mục Key của bạn.',hetGioTT:'Hết 15 phút chờ thanh toán. Nếu đã chuyển tiền, mở lại mục Key của bạn hoặc liên hệ admin kèm mã đơn.',daDuyetAuto:'Thanh toán đã xác nhận, key đã hoạt động!',resetOk:'Reset thành công!',xoaOk:'Đã xóa key!',confirmReset:'Reset thiết bị cho key này?',confirmXoa:'Xóa key này?',loiKetNoi:'Lỗi kết nối',moQuaBot:'Vui lòng mở qua bot Telegram!',giaHanMsg:'Chọn gói mới ở phần Mua Key để gia hạn!',chonGameTruoc:'Vui lòng chọn game trước',chuaChonGoi:'Chưa chọn gói',dangTai:'Đang tải...',loiTaoDon:'Lỗi tạo đơn!',copyFail:'Copy thất bại',taiKeyLoi:'Không tải được key. Hãy đóng Mini App và mở lại từ bot Telegram.',getFree:'Get Key Free',dangLayLink:'Đang lấy link...',freeHet:'Chưa có key free khả dụng',mienPhi:'Miễn phí',vuotLinkNhan:'Vượt link để nhận key',xacNhan:'Xác nhận',xacNhanMua:'Bạn đã chọn',capDo:'cấp độ',keyMotGame:'key chỉ được sử dụng cho một game. Bạn có muốn tiếp tục tạo đơn không?',huy:'Huỷ',dongY:'Đồng Ý',expiredDeleteNote:'Không gia hạn sau 3 ngày sẽ tự xoá',tuXoaLuc:'Tự xoá lúc',helpSub:'Chọn câu hỏi để xem hướng dẫn nhanh',pendingPayTitle:'Bạn còn đơn chờ thanh toán',pendingPaySub:'Nếu lỡ thoát trước khi chụp QR, bấm để mở lại thông tin thanh toán.',resumePay:'Mở lại QR thanh toán',pendingPayExpired:'Đơn đã quá 15 phút. Nếu đã chuyển tiền, liên hệ admin kèm mã đơn.',copyTelegramId:'Đã copy Telegram ID!',freeClaimOk:'Nhận key free thành công',freeClaimFail:'Không nhận được key free',
+    confirmTitle:'Xác nhận',freeDayTitle:'⭐ Key miễn phí mỗi ngày',freeChecking:'Đang kiểm tra key...',historyTitle:'📜 Lịch sử đơn hàng',loadingKeys:'Đang tải keys...',histEmpty:'Chưa có đơn hàng nào',histLoading:'Đang tải lịch sử...',histOrderCode:'Mã đơn',histAmount:'Số tiền',histStatus:'Trạng thái',histDate:'Ngày tạo',histPending:'Chờ duyệt',histApproved:'Đã duyệt',histRejected:'Đã huỷ',
+    profileOverview:'Tổng quan',profileAccount:'Thông tin tài khoản',profileLinks:'Liên kết nhanh',profileTotalOrders:'Tổng đơn',profileApproved:'Đã duyệt',profilePending:'Chờ xử lý',profileKeysOwned:'Key đang có',profileTgId:'Telegram ID',profileUsername:'Username',profileFullName:'Họ tên',profileJoined:'Ngày tham gia',profileBtnBuy:'🔑 Mua Key',profileBtnHistory:'📜 Lịch sử đơn hàng',profileBtnReload:'🔄 Tải lại',
+    navBuy:'Mua Key',navFree:'Key Free',navHistory:'Lịch sử',navProfile:'Cá nhân',
+    footerSupport:'Liên hệ hỗ trợ',footerPayment:'Phương thức thanh toán',footerCert:'Chứng nhận',footerCopyright:'Copyright © 2026 HCLOU Server. All Rights Reserved.',footerAddress:'Địa chỉ',footerTaxId:'Mã số thuế',footerBizLic:'Số GPKD',footerUpdating:'Đang cập nhật',footerHotline:'Hotline',footerComplaint:'Phản ánh chất lượng',footerEmail:'Email liên hệ',footerRespContent:'Chịu trách nhiệm nội dung',footerFollowTg:'Theo dõi trên Telegram',footerSocial:'Kết nối mạng xã hội',footerCertSite:'Chứng chỉ trang web',footerPaymentSupport:'Hỗ trợ thanh toán',
+    freeChecking2:'Đang kiểm tra...',freeClaimedToday:'Bạn đã nhận key free hôm nay!',freeReceivedAt:'Nhận lúc',freeBackTomorrow:'🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp',freeKeyToday:'Key miễn phí hôm nay',freeSub:'Nhận ngay 1 key free mỗi ngày!<br>Admin đã thêm key sẵn, mỗi người nhận 1 link riêng',freeBtnGetLink:'🔗 Lấy Link Claim Key',freeResetDaily:'⏰ Reset lúc 0h00 hàng ngày',freePeopleSuffix:'người đã nhận hôm nay',freeNoneToday:'Chưa có key free hôm nay',freeAdminNotYet:'Admin chưa thêm key. Vui lòng quay lại sau!',freeNewMorning:'🔄 Key mới sẽ có vào buổi sáng hàng ngày',freeCannotLoad:'Không thể tải thông tin key free',freeCreatingLink:'⏳ Đang tạo link...',freeAlready:'Bạn đã nhận key free hôm nay rồi!',freeYourLink:'Link claim riêng của bạn:',freeOpenLink:'🔓 Mở Link Claim Key',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Đã copy link!',freeLinkCreated:'✅ Đã tạo link — Mở link để nhận key',freeErrorGeneric:'Có lỗi xảy ra!',toastLoadErr:'Lỗi kết nối, thử lại sau!',loadingHistory:'Đang tải lịch sử...',histLoadFail:'⚠️ Không thể tải lịch sử đơn hàng',histGame:'Game',histPkg:'Gói',histCreated:'Ngày tạo',histPkgDays:'ngày',statusApproved:'Đã duyệt',statusRejected:'Đã từ chối',statusCancelled:'Đã huỷ',statusPending:'Chờ xử lý'},
   en:{webTitle:'Open HCLOU in Telegram',webSub:'This web app only works inside Telegram Mini App to verify your account and protect your keys.',openTelegram:'🚀 Open in Telegram',tapChooseGame:'Tap to choose game',noGameSelected:'No game selected',noPackageSelected:'No package selected',promo:'🔥 HOT PROMO!',totalKey:'Total keys',activeLabel:'Active',expiredLabel:'Expired',buyNew:'Buy new key',buySub:'Choose app and duration package',chooseApp:'Choose app',choosePackage:'Choose package',buyNow:'Buy now',yourKeys:'Your keys',all:'All',lockedLabel:'Locked',chooseGameTitle:'🎮 Choose game',paymentTitle:'💳 Payment',search:'Search GKey...',
-    tongKey:'Total keys',hoatDong:'Active',hetHan:'Expired',biKhoa:'Locked',tatCa:'All',soNgay:'Days',conLai:'Remaining',batDau:'Start',ketThuc:'End',dangTinh:'⏱ Calculating...',conLaiLbl:'⏱ Remaining: ',reset:'Reset',copy:'📋 Copy',giaHan:'Renew',xoa:'Delete',active:'✅ Active',expired:'⏰ Expired',locked:'🔒 Locked',pending:'⏳ Waiting payment',hetHanLbl:'Expired',chuaCoKey:'No keys yet',goiNgay:'Package ',ngay:' days',cheDoKey:'Mode ',keyMode:' key',khongCoGoi:'No packages available',muaNgay:'Buy now',dangTaiGame:'Loading games...',chonGame:'Choose game',nganHang:'Bank',soTK:'Account number',noiDungCK:'Transfer note',copyTK:'Account copied!',copyDon:'Order code copied!',copyKey:'Key copied!',daCopy:'Copied!',luuY:'⚠️ Scan VietQR to auto-fill amount + content. If transferring manually, enter the exact content above.',daCK:'🔄 Check payment',choAdmin:'Checking payment automatically...',giuManHinh:'Do not close the Mini App while paying. After payment, your key will appear automatically in Your keys.',hetGioTT:'15-minute payment wait ended. If you already paid, reopen Your keys or contact admin with the order code.',daDuyetAuto:'Payment confirmed, key is active!',resetOk:'Reset successfully!',xoaOk:'Key deleted!',confirmReset:'Reset device for this key?',confirmXoa:'Delete this key?',loiKetNoi:'Connection error',moQuaBot:'Please open via Telegram bot!',giaHanMsg:'Choose a new package in Buy Key to renew!',chonGameTruoc:'Please choose a game first',chuaChonGoi:'No package selected',dangTai:'Loading...',loiTaoDon:'Create order failed!',copyFail:'Copy failed',taiKeyLoi:'Cannot load keys. Please close the Mini App and open it again from Telegram bot.',getFree:'Get Key Free',dangLayLink:'Getting link...',freeHet:'No free key available',mienPhi:'Free',vuotLinkNhan:'Complete link to claim key',xacNhan:'Confirm',xacNhanMua:'You selected',capDo:'level',keyMotGame:'this key can only be used for one game. Do you want to continue?',huy:'Cancel',dongY:'Agree',expiredDeleteNote:'If not renewed, this key will be auto-deleted after 3 days',tuXoaLuc:'Auto delete at',helpSub:'Choose a question for quick help',pendingPayTitle:'You have a pending payment',pendingPaySub:'If you closed before saving the QR, tap to reopen payment details.',resumePay:'Reopen payment QR',pendingPayExpired:'This order is older than 15 minutes. If you already paid, contact admin with the order code.',copyTelegramId:'Telegram ID copied!',freeClaimOk:'Free key claimed successfully',freeClaimFail:'Cannot claim free key'}
+    tongKey:'Total keys',hoatDong:'Active',hetHan:'Expired',biKhoa:'Locked',tatCa:'All',soNgay:'Days',conLai:'Remaining',batDau:'Start',ketThuc:'End',dangTinh:'⏱ Calculating...',conLaiLbl:'⏱ Remaining: ',reset:'Reset',copy:'📋 Copy',giaHan:'Renew',xoa:'Delete',active:'✅ Active',expired:'⏰ Expired',locked:'🔒 Locked',pending:'⏳ Waiting payment',hetHanLbl:'Expired',chuaCoKey:'No keys yet',goiNgay:'Package ',ngay:' days',cheDoKey:'Mode ',keyMode:' key',khongCoGoi:'No packages available',muaNgay:'Buy now',dangTaiGame:'Loading games...',chonGame:'Choose game',nganHang:'Bank',soTK:'Account number',noiDungCK:'Transfer note',copyTK:'Account copied!',copyDon:'Order code copied!',copyKey:'Key copied!',daCopy:'Copied!',luuY:'⚠️ Scan VietQR to auto-fill amount + content. If transferring manually, enter the exact content above.',daCK:'🔄 Check payment',choAdmin:'Checking payment automatically...',giuManHinh:'Do not close the Mini App while paying. After payment, your key will appear automatically in Your keys.',hetGioTT:'15-minute payment wait ended. If you already paid, reopen Your keys or contact admin with the order code.',daDuyetAuto:'Payment confirmed, key is active!',resetOk:'Reset successfully!',xoaOk:'Key deleted!',confirmReset:'Reset device for this key?',confirmXoa:'Delete this key?',loiKetNoi:'Connection error',moQuaBot:'Please open via Telegram bot!',giaHanMsg:'Choose a new package in Buy Key to renew!',chonGameTruoc:'Please choose a game first',chuaChonGoi:'No package selected',dangTai:'Loading...',loiTaoDon:'Create order failed!',copyFail:'Copy failed',taiKeyLoi:'Cannot load keys. Please close the Mini App and open it again from Telegram bot.',getFree:'Get Key Free',dangLayLink:'Getting link...',freeHet:'No free key available',mienPhi:'Free',vuotLinkNhan:'Complete link to claim key',xacNhan:'Confirm',xacNhanMua:'You selected',capDo:'level',keyMotGame:'this key can only be used for one game. Do you want to continue?',huy:'Cancel',dongY:'Agree',expiredDeleteNote:'If not renewed, this key will be auto-deleted after 3 days',tuXoaLuc:'Auto delete at',helpSub:'Choose a question for quick help',pendingPayTitle:'You have a pending payment',pendingPaySub:'If you closed before saving the QR, tap to reopen payment details.',resumePay:'Reopen payment QR',pendingPayExpired:'This order is older than 15 minutes. If you already paid, contact admin with the order code.',copyTelegramId:'Telegram ID copied!',freeClaimOk:'Free key claimed successfully',freeClaimFail:'Cannot claim free key',
+    confirmTitle:'Confirm',freeDayTitle:'⭐ Daily free key',freeChecking:'Checking key...',historyTitle:'📜 Order history',loadingKeys:'Loading keys...',histEmpty:'No orders yet',histLoading:'Loading history...',histOrderCode:'Order code',histAmount:'Amount',histStatus:'Status',histDate:'Created',histPending:'Pending',histApproved:'Approved',histRejected:'Cancelled',
+    profileOverview:'Overview',profileAccount:'Account info',profileLinks:'Quick links',profileTotalOrders:'Total orders',profileApproved:'Approved',profilePending:'Pending',profileKeysOwned:'Keys owned',profileTgId:'Telegram ID',profileUsername:'Username',profileFullName:'Full name',profileJoined:'Joined',profileBtnBuy:'🔑 Buy Key',profileBtnHistory:'📜 Order history',profileBtnReload:'🔄 Reload',
+    navBuy:'Buy Key',navFree:'Free Key',navHistory:'History',navProfile:'Profile',
+    footerSupport:'Contact support',footerPayment:'Payment methods',footerCert:'Certifications',footerCopyright:'Copyright © 2026 HCLOU Server. All Rights Reserved.',footerAddress:'Address',footerTaxId:'Tax ID',footerBizLic:'Business license',footerUpdating:'Updating',footerHotline:'Hotline',footerComplaint:'Quality complaints',footerEmail:'Contact email',footerRespContent:'Content responsibility',footerFollowTg:'Follow on Telegram',footerSocial:'Social networks',footerCertSite:'Website certifications',footerPaymentSupport:'Payment support',
+    freeChecking2:'Checking...',freeClaimedToday:'You already claimed today\'s free key!',freeReceivedAt:'Received at',freeBackTomorrow:'🔄 Come back at 00:00 tomorrow for a new key',freeKeyToday:'Today\'s free key',freeSub:'Get 1 free key per day!<br>Admin pre-added keys, each user gets a unique link',freeBtnGetLink:'🔗 Get Claim Link',freeResetDaily:'⏰ Resets at 00:00 daily',freePeopleSuffix:'people claimed today',freeNoneToday:'No free key today',freeAdminNotYet:'Admin has not added a key yet. Please check back later!',freeNewMorning:'🔄 A new key will be available each morning',freeCannotLoad:'Cannot load free key info',freeCreatingLink:'⏳ Creating link...',freeAlready:'You already claimed today\'s free key!',freeYourLink:'Your personal claim link:',freeOpenLink:'🔓 Open Claim Link',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Link copied!',freeLinkCreated:'✅ Link created — open it to claim key',freeErrorGeneric:'Something went wrong!',toastLoadErr:'Connection error, please retry!',loadingHistory:'Loading history...',histLoadFail:'⚠️ Cannot load order history',histGame:'Game',histPkg:'Package',histCreated:'Created',histPkgDays:'days',statusApproved:'Approved',statusRejected:'Rejected',statusCancelled:'Cancelled',statusPending:'Pending'},
+  es:{webTitle:'Abrir HCLOU en Telegram',webSub:'Esta web solo funciona dentro de Telegram Mini App para verificar tu cuenta y proteger tus claves.',openTelegram:'🚀 Abrir en Telegram',tapChooseGame:'Toca para elegir juego',noGameSelected:'Sin juego seleccionado',noPackageSelected:'Sin paquete seleccionado',promo:'🔥 ¡PROMO CALIENTE!',totalKey:'Total de claves',activeLabel:'Activa',expiredLabel:'Expirada',buyNew:'Comprar clave',buySub:'Elige aplicación y paquete',chooseApp:'Elegir aplicación',choosePackage:'Elegir paquete',buyNow:'Comprar ahora',yourKeys:'Tus claves',all:'Todas',lockedLabel:'Bloqueada',chooseGameTitle:'🎮 Elegir juego',paymentTitle:'💳 Pago',search:'Buscar GKey...',
+    tongKey:'Total de claves',hoatDong:'Activa',hetHan:'Expirada',biKhoa:'Bloqueada',tatCa:'Todas',soNgay:'Días',conLai:'Restante',batDau:'Inicio',ketThuc:'Fin',dangTinh:'⏱ Calculando...',conLaiLbl:'⏱ Restante: ',reset:'Restablecer',copy:'📋 Copiar',giaHan:'Renovar',xoa:'Eliminar',active:'✅ Activa',expired:'⏰ Expirada',locked:'🔒 Bloqueada',pending:'⏳ Esperando pago',hetHanLbl:'Expirada',chuaCoKey:'Sin claves aún',goiNgay:'Paquete ',ngay:' días',cheDoKey:'Modo ',keyMode:' clave',khongCoGoi:'No hay paquetes disponibles',muaNgay:'Comprar ahora',dangTaiGame:'Cargando juegos...',chonGame:'Elegir juego',nganHang:'Banco',soTK:'Número de cuenta',noiDungCK:'Nota de transferencia',copyTK:'¡Cuenta copiada!',copyDon:'¡Código de orden copiado!',copyKey:'¡Clave copiada!',daCopy:'¡Copiado!',luuY:'⚠️ Escanea VietQR para auto-completar el monto y la nota. Si transfieres manualmente, incluye exactamente la nota anterior.',daCK:'🔄 Verificar pago',choAdmin:'Verificando pago automáticamente...',giuManHinh:'No cierres la Mini App mientras pagas. Después del pago, tu clave aparecerá automáticamente en Tus claves.',hetGioTT:'Terminaron los 15 minutos de espera. Si ya pagaste, abre Tus claves o contacta al admin con el código de orden.',daDuyetAuto:'¡Pago confirmado, la clave está activa!',resetOk:'¡Restablecido con éxito!',xoaOk:'¡Clave eliminada!',confirmReset:'¿Restablecer dispositivo para esta clave?',confirmXoa:'¿Eliminar esta clave?',loiKetNoi:'Error de conexión',moQuaBot:'¡Por favor abre vía el bot de Telegram!',giaHanMsg:'¡Elige un paquete nuevo en Comprar Clave para renovar!',chonGameTruoc:'Por favor elige un juego primero',chuaChonGoi:'Sin paquete seleccionado',dangTai:'Cargando...',loiTaoDon:'¡Error al crear la orden!',copyFail:'Error al copiar',taiKeyLoi:'No se pueden cargar las claves. Cierra la Mini App y reábrela desde el bot de Telegram.',getFree:'Obtener Clave Gratis',dangLayLink:'Obteniendo enlace...',freeHet:'Sin claves gratis disponibles',mienPhi:'Gratis',vuotLinkNhan:'Completa el enlace para reclamar la clave',xacNhan:'Confirmar',xacNhanMua:'Has seleccionado',capDo:'nivel',keyMotGame:'esta clave solo puede usarse para un juego. ¿Deseas continuar?',huy:'Cancelar',dongY:'Aceptar',expiredDeleteNote:'Si no se renueva, esta clave se eliminará automáticamente después de 3 días',tuXoaLuc:'Auto-eliminar a las',helpSub:'Elige una pregunta para ayuda rápida',pendingPayTitle:'Tienes un pago pendiente',pendingPaySub:'Si cerraste antes de guardar el QR, toca para reabrir los detalles de pago.',resumePay:'Reabrir QR de pago',pendingPayExpired:'Esta orden tiene más de 15 minutos. Si ya pagaste, contacta al admin con el código.',copyTelegramId:'¡Telegram ID copiado!',freeClaimOk:'Clave gratis reclamada con éxito',freeClaimFail:'No se pudo reclamar la clave gratis',
+    confirmTitle:'Confirmar',freeDayTitle:'⭐ Clave gratis diaria',freeChecking:'Verificando clave...',historyTitle:'📜 Historial de órdenes',loadingKeys:'Cargando claves...',histEmpty:'Aún no hay órdenes',histLoading:'Cargando historial...',histOrderCode:'Código',histAmount:'Monto',histStatus:'Estado',histDate:'Creado',histPending:'Pendiente',histApproved:'Aprobado',histRejected:'Cancelado',
+    profileOverview:'Resumen',profileAccount:'Datos de cuenta',profileLinks:'Enlaces rápidos',profileTotalOrders:'Total órdenes',profileApproved:'Aprobadas',profilePending:'Pendientes',profileKeysOwned:'Claves activas',profileTgId:'Telegram ID',profileUsername:'Usuario',profileFullName:'Nombre completo',profileJoined:'Se unió',profileBtnBuy:'🔑 Comprar Clave',profileBtnHistory:'📜 Historial',profileBtnReload:'🔄 Recargar',
+    navBuy:'Comprar',navFree:'Gratis',navHistory:'Historial',navProfile:'Perfil',
+    footerSupport:'Soporte',footerPayment:'Métodos de pago',footerCert:'Certificaciones',footerCopyright:'Copyright © 2026 HCLOU Server. Todos los derechos reservados.',footerAddress:'Dirección',footerTaxId:'NIF',footerBizLic:'Licencia comercial',footerUpdating:'Actualizando',footerHotline:'Línea directa',footerComplaint:'Reclamos de calidad',footerEmail:'Email de contacto',footerRespContent:'Responsable del contenido',footerFollowTg:'Síguenos en Telegram',footerSocial:'Redes sociales',footerCertSite:'Certificaciones del sitio',footerPaymentSupport:'Soporte de pago',
+    freeChecking2:'Verificando...',freeClaimedToday:'¡Ya reclamaste la clave gratis de hoy!',freeReceivedAt:'Recibida a las',freeBackTomorrow:'🔄 Vuelve a las 00:00 mañana para otra clave',freeKeyToday:'Clave gratis de hoy',freeSub:'¡Obtén 1 clave gratis por día!<br>El admin ya añadió claves, cada usuario tiene un enlace único',freeBtnGetLink:'🔗 Obtener Enlace',freeResetDaily:'⏰ Se reinicia a las 00:00 diariamente',freePeopleSuffix:'personas reclamaron hoy',freeNoneToday:'Sin clave gratis hoy',freeAdminNotYet:'El admin aún no añadió clave. ¡Vuelve más tarde!',freeNewMorning:'🔄 Una clave nueva estará disponible cada mañana',freeCannotLoad:'No se puede cargar la información',freeCreatingLink:'⏳ Creando enlace...',freeAlready:'¡Ya reclamaste la clave gratis de hoy!',freeYourLink:'Tu enlace personal de reclamo:',freeOpenLink:'🔓 Abrir Enlace',freeCopyLink:'📋 Copiar Enlace',freeCopiedLink:'¡Enlace copiado!',freeLinkCreated:'✅ Enlace creado — ábrelo para reclamar la clave',freeErrorGeneric:'¡Algo salió mal!',toastLoadErr:'Error de conexión, ¡reintenta!',loadingHistory:'Cargando historial...',histLoadFail:'⚠️ No se puede cargar el historial',histGame:'Juego',histPkg:'Paquete',histCreated:'Creado',histPkgDays:'días',statusApproved:'Aprobado',statusRejected:'Rechazado',statusCancelled:'Cancelado',statusPending:'Pendiente'}
 };
-var T=I18N[LANG];
+var T=I18N[LANG]||I18N.vi;
 function applyLang(){
-  T=I18N[LANG]; localStorage.setItem('hclou_lang',LANG);
+  T=I18N[LANG]||I18N.vi; localStorage.setItem('hclou_lang',LANG);
   document.documentElement.lang=LANG; renderHelpBot();
-  var lb=document.getElementById('langBtn'); if(lb) lb.textContent=(LANG==='vi'?'EN':'VI');
+  document.querySelectorAll('.lang-pill').forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-lang')===LANG); });
   document.querySelectorAll('[data-i18n]').forEach(function(el){var k=el.getAttribute('data-i18n'); if(T[k]) el.textContent=T[k];});
   document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){var k=el.getAttribute('data-i18n-placeholder'); if(T[k]) el.placeholder=T[k];});
   updBuyBtn(); if(allKeys&&allKeys.length) renderKeys(allKeys); renderPendingPayments();
+  // Re-render tabs có innerHTML đã được build trước đó (mất i18n khi đổi ngôn ngữ)
+  try{
+    if(typeof histLoaded!=='undefined' && histLoaded && typeof loadHistory==='function'){ histLoaded=false; loadHistory(); }
+    if(typeof freeKeyLoaded!=='undefined' && freeKeyLoaded && typeof loadFreeKey==='function'){ freeKeyLoaded=false; loadFreeKey(); }
+  }catch(e){}
 }
-function toggleLang(){ LANG=(LANG==='vi'?'en':'vi'); applyLang(); toast(LANG==='vi'?'Đã đổi sang Tiếng Việt':'Switched to English','success'); }
+function setLang(code){
+  if(['vi','en','es'].indexOf(code)<0) code='vi';
+  if(LANG===code) return;
+  LANG=code; applyLang();
+  var msg=(code==='vi')?'Đã đổi sang Tiếng Việt':(code==='en')?'Switched to English':'Cambiado a Español';
+  toast(msg,'success');
+}
+function toggleLang(){ setLang(LANG==='vi'?'en':LANG==='en'?'es':'vi'); }
 
 
 const helpFAQs={
@@ -657,6 +696,15 @@ const helpFAQs={
     ['🔑 What happens when key expires?', 'Expired keys stay visible for 3 days. If not renewed, the system will delete them automatically.'],
     ['📱 Site says open Telegram?', 'HCLOU only works inside Telegram Mini App for user/key security. Open the bot and tap Buy Key.'],
     ['👨‍💻 Need admin support?', 'For payment/key issues, send admin: ORD code, bill screenshot, Telegram ID and game error screenshot.']
+  ],
+  es:[
+    ['🛒 ¿Cómo comprar una clave?', 'Abre Comprar Clave → elige el juego → elige el paquete → toca Comprar ahora → confirma → escanea el VietQR. Cuando se reciba el monto correcto y el código ORD, tu clave se activará automáticamente.'],
+    ['💳 ¿Cómo pagar?', 'Escanea el VietQR en el popup para auto-completar el monto y la nota de transferencia. Las transferencias manuales deben incluir el código ORD exacto.'],
+    ['⏳ Pagué pero la clave no se activa', 'Mantén la Mini App abierta hasta 15 minutos. El banco se verifica cada ~5 segundos. Si sigue inactiva, envía al admin la captura del comprobante y el código ORD.'],
+    ['🎁 ¿Qué es la Clave Gratis?', 'Es un flujo de clave gratuita. Completa Link4M → YeuMoney → regresa a HCLOU para reclamar la clave. Cada clave gratis solo puede reclamarse una vez.'],
+    ['🔑 ¿Qué pasa cuando expira la clave?', 'Las claves expiradas siguen visibles 3 días. Si no se renuevan, el sistema las eliminará automáticamente.'],
+    ['📱 ¿La página pide abrir Telegram?', 'HCLOU solo funciona dentro de la Mini App de Telegram por seguridad. Abre el bot y toca Comprar Clave.'],
+    ['👨‍💻 ¿Necesito soporte del admin?', 'Para problemas de pago/clave, envía al admin: código ORD, captura del comprobante, Telegram ID y captura del error en el juego.']
   ]
 };
 function renderHelpBot(){var box=document.getElementById('helpBody'); if(!box)return; box.innerHTML=helpFAQs[LANG].map(function(x,i){return '<button class="help-q" onclick="showHelpAnswer('+i+')">'+x[0]+'</button><div class="help-a" id="helpA'+i+'">'+x[1]+'</div>';}).join('');}
@@ -1202,51 +1250,51 @@ function switchTab(tab){
 async function loadFreeKey(){
   freeKeyLoaded = true;
   var wrap = document.getElementById('freeKeyWrap');
-  wrap.innerHTML = '<div class="loading"><div class="spin"></div>Đang kiểm tra...</div>';
+  wrap.innerHTML = '<div class="loading"><div class="spin"></div>'+escapeHtml(T.freeChecking2||'Đang kiểm tra...')+'</div>';
   try {
     var res = await api('free_key_status','GET',{});
     if(res.claimed){
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">✅</div>'
-        +'<div class="free-title">Bạn đã nhận key free hôm nay!</div>'
+        +'<div class="free-title">'+escapeHtml(T.freeClaimedToday)+'</div>'
         +'<div class="free-claimed">'
         +'<div class="free-claimed-code">'+escapeHtml(res.key_code)+'</div>'
-        +'<div style="font-size:11px;color:var(--text2);margin-top:6px">Nhận lúc '+escapeHtml(fmtDateFull(res.claimed_at))+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:6px">'+escapeHtml(T.freeReceivedAt)+' '+escapeHtml(fmtDateFull(res.claimed_at))+'</div>'
         +'</div>'
-        +'<div class="free-timer">🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp</div>'
-        +'<button class="free-btn" style="margin-top:10px" onclick="copyText('+jsAttr(res.key_code)+',\'Đã copy key!\')">📋 Copy Key</button>'
+        +'<div class="free-timer">'+escapeHtml(T.freeBackTomorrow)+'</div>'
+        +'<button class="free-btn" style="margin-top:10px" onclick="copyText('+jsAttr(res.key_code)+','+jsAttr(T.copyKey)+')">'+escapeHtml(T.copy)+' Key</button>'
         +'</div>';
     } else if(res.available > 0){
-      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+(parseInt(res.total_claimed_today,10)||0)+' người</b> đã nhận hôm nay' : '';
+      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+(parseInt(res.total_claimed_today,10)||0)+' '+escapeHtml(T.freePeopleSuffix)+'</b>' : '';
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">🎁</div>'
-        +'<div class="free-title">Key miễn phí hôm nay</div>'
-        +'<div class="free-sub">Nhận ngay 1 key free mỗi ngày!<br>Admin đã thêm key sẵn, mỗi người nhận 1 link riêng</div>'
-        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">🔗 Lấy Link Claim Key</button>'
-        +'<div class="free-timer" style="margin-top:12px">⏰ Reset lúc 0h00 hàng ngày'+claimedInfo+'</div>'
+        +'<div class="free-title">'+escapeHtml(T.freeKeyToday)+'</div>'
+        +'<div class="free-sub">'+T.freeSub+'</div>'
+        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">'+escapeHtml(T.freeBtnGetLink)+'</button>'
+        +'<div class="free-timer" style="margin-top:12px">'+escapeHtml(T.freeResetDaily)+claimedInfo+'</div>'
         +'<div id="claimLinkArea" style="margin-top:12px;display:none"></div>'
         +'</div>';
     } else {
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">😔</div>'
-        +'<div class="free-title">Chưa có key free hôm nay</div>'
-        +'<div class="free-sub">Admin chưa thêm key. Vui lòng quay lại sau!</div>'
-        +'<div class="free-timer">🔄 Key mới sẽ có vào buổi sáng hàng ngày</div>'
+        +'<div class="free-title">'+escapeHtml(T.freeNoneToday)+'</div>'
+        +'<div class="free-sub">'+escapeHtml(T.freeAdminNotYet)+'</div>'
+        +'<div class="free-timer">'+escapeHtml(T.freeNewMorning)+'</div>'
         +'</div>';
     }
   } catch(e){
-    wrap.innerHTML = '<div class="free-empty"><div class="empty-ico">⚠️</div><div class="empty-lbl">Không thể tải thông tin key free</div></div>';
+    wrap.innerHTML = '<div class="free-empty"><div class="empty-ico">⚠️</div><div class="empty-lbl">'+escapeHtml(T.freeCannotLoad)+'</div></div>';
   }
 }
 
 async function claimDailyFree(){
   var btn = document.getElementById('claimFreeBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Đang tạo link...'; }
+  if(btn){ btn.disabled=true; btn.textContent=T.freeCreatingLink; }
   try {
     var res = await api('daily_free_key','POST',{});
     if(res.success){
       if(res.already){
-        toast('Bạn đã nhận key free hôm nay rồi!','info');
+        toast(T.freeAlready,'info');
         freeKeyLoaded = false;
         loadFreeKey();
       } else if(res.claim_url){
@@ -1256,25 +1304,25 @@ async function claimDailyFree(){
           area.style.display = 'block';
           var claimUrl = safeUrl(res.claim_url);
           area.innerHTML = '<div class="free-claimed">'
-            +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Link claim riêng của bạn:</div>'
+            +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+escapeHtml(T.freeYourLink)+'</div>'
             +'<div class="free-claimed-code" style="font-size:12px;word-break:break-all">'+escapeHtml(claimUrl)+'</div>'
-            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">🔓 Mở Link Claim Key</button>'
-            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText('+jsAttr(claimUrl)+',\'Đã copy link!\')">📋 Copy Link</button>'
+            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">'+escapeHtml(T.freeOpenLink)+'</button>'
+            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText('+jsAttr(claimUrl)+','+jsAttr(T.freeCopiedLink)+')">'+escapeHtml(T.freeCopyLink)+'</button>'
             +'</div>';
         }
-        if(btn){ btn.textContent='✅ Đã tạo link — Mở link để nhận key'; btn.disabled=true; }
+        if(btn){ btn.textContent=T.freeLinkCreated; btn.disabled=true; }
       } else {
-        toast(res.message || '🎉 Nhận key free thành công!','success');
+        toast(res.message || T.freeClaimOk,'success');
         freeKeyLoaded = false;
         loadFreeKey();
       }
     } else {
-      toast(res.error || 'Có lỗi xảy ra!','error');
-      if(btn){ btn.disabled=false; btn.textContent='🔗 Lấy Link Claim Key'; }
+      toast(res.error || T.freeErrorGeneric,'error');
+      if(btn){ btn.disabled=false; btn.textContent=T.freeBtnGetLink; }
     }
   } catch(e){
-    toast('Lỗi kết nối, thử lại sau!','error');
-    if(btn){ btn.disabled=false; btn.textContent='🔗 Lấy Link Claim Key'; }
+    toast(T.toastLoadErr,'error');
+    if(btn){ btn.disabled=false; btn.textContent=T.freeBtnGetLink; }
   }
 }
 
@@ -1282,23 +1330,23 @@ var histLoaded = false;
 async function loadHistory(){
   if(histLoaded) return;
   var wrap = document.getElementById('histWrap');
-  wrap.innerHTML = '<div class="loading"><div class="spin"></div>Đang tải lịch sử...</div>';
+  wrap.innerHTML = '<div class="loading"><div class="spin"></div>'+escapeHtml(T.loadingHistory)+'</div>';
   try {
     var res = await api('my_orders','GET',{});
     if(!res.orders || res.orders.length===0){
-      wrap.innerHTML = '<div class="hist-empty-note" style="padding:40px 20px"><div class="empty-ico">📭</div><div class="empty-lbl">Chưa có đơn hàng nào</div></div>';
+      wrap.innerHTML = '<div class="hist-empty-note" style="padding:40px 20px"><div class="empty-ico">📭</div><div class="empty-lbl">'+escapeHtml(T.histEmpty)+'</div></div>';
     } else {
       var html = '';
       res.orders.forEach(function(o){
         var badgeCls = o.status==='approved'?'approved':o.status==='rejected'?'rejected':o.status==='cancelled'?'cancelled':'pending';
-        var statusText = o.status==='approved'?'Đã duyệt':o.status==='rejected'?'Đã từ chối':o.status==='cancelled'?'Đã huỷ':'Chờ xử lý';
+        var statusText = o.status==='approved'?T.statusApproved:o.status==='rejected'?T.statusRejected:o.status==='cancelled'?T.statusCancelled:T.statusPending;
         html += '<div class="hist-order">'
           +'<div class="hist-header"><span class="hist-code">#'+escapeHtml(o.order_code)+'</span>'
-          +'<span class="hist-badge '+badgeCls+'">'+statusText+'</span></div>'
+          +'<span class="hist-badge '+badgeCls+'">'+escapeHtml(statusText)+'</span></div>'
           +'<div class="hist-detail">'
-          +'<span><span>Game</span><b>'+escapeHtml(o.game_name)+'</b></span>'
-          +'<span><span>Gói</span><b>'+escapeHtml(o.pkg_name)+' ('+(parseInt(o.days,10)||0)+' ngày)</b></span>'
-          +'<span><span>Ngày tạo</span><b>'+escapeHtml(fmtDate(o.created_at))+'</b></span>'
+          +'<span><span>'+escapeHtml(T.histGame)+'</span><b>'+escapeHtml(o.game_name)+'</b></span>'
+          +'<span><span>'+escapeHtml(T.histPkg)+'</span><b>'+escapeHtml(o.pkg_name)+' ('+(parseInt(o.days,10)||0)+' '+escapeHtml(T.histPkgDays)+')</b></span>'
+          +'<span><span>'+escapeHtml(T.histCreated)+'</span><b>'+escapeHtml(fmtDate(o.created_at))+'</b></span>'
           +'</div>'
           +'<div class="hist-amount">'+fmtMoney(o.amount)+'₫</div></div>';
       });
@@ -1306,7 +1354,7 @@ async function loadHistory(){
     }
     histLoaded = true;
   } catch(e){
-    wrap.innerHTML = '<div class="hist-empty-note">⚠️ Không thể tải lịch sử đơn hàng</div>';
+    wrap.innerHTML = '<div class="hist-empty-note">'+escapeHtml(T.histLoadFail)+'</div>';
   }
 }
 
