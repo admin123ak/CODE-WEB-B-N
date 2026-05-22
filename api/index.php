@@ -12,6 +12,7 @@ $rateRules = [
     'get_free_link' => [10, 60], 'claim_free_key' => [10, 60],
     'reset_key' => [12, 60], 'delete_key' => [20, 60], 'search_key' => [60, 60],
     'my_orders' => [60, 60], 'profile_stats' => [60, 60],
+    'free_key_status' => [30, 60], 'daily_free_key' => [5, 86400],
 ];
 if (isset($rateRules[$action])) { [$lim,$win] = $rateRules[$action]; rateLimit('api_'.$action, $lim, $win, $ip); }
 
@@ -370,6 +371,71 @@ switch ($action) {
             'pending_orders' => $pendingOrders->fetchColumn(),
             'active_keys' => $activeKeys->fetchColumn(),
         ]);
+
+    // ===== KIỂM TRA TRẠNG THÁI KEY FREE HÔM NAY =====
+    case 'free_key_status':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $today = date('Y-m-d');
+        $uid = $user['id'];
+        // Kiểm tra đã nhận free key hôm nay chưa (dùng free_key_claims có sẵn)
+        $claimed = $db->prepare("SELECT COUNT(*) FROM free_key_claims WHERE user_id=? AND DATE(claimed_at)=?");
+        $claimed->execute([$uid, $today]);
+        $alreadyClaimed = (int)$claimed->fetchColumn() > 0;
+        if ($alreadyClaimed) {
+            $log = $db->prepare("SELECT k.key_code, fkc.claimed_at FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.user_id=? AND DATE(fkc.claimed_at)=? ORDER BY fkc.claimed_at DESC LIMIT 1");
+            $log->execute([$uid, $today]);
+            $row = $log->fetch();
+            jsonResponse(['success' => true, 'claimed' => true, 'key_code' => $row['key_code'] ?? '', 'claimed_at' => $row['claimed_at'] ?? '']);
+        }
+        // Đếm free_keys còn available
+        $freeAvail = $db->prepare("SELECT COUNT(*) FROM free_keys WHERE is_active=1 AND expire_at > NOW()");
+        $freeAvail->execute();
+        $freeCount = (int)$freeAvail->fetchColumn();
+        jsonResponse(['success' => true, 'claimed' => false, 'available' => $freeCount]);
+
+    // ===== NHẬN KEY FREE MỖI NGÀY =====
+    case 'daily_free_key':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $today = date('Y-m-d');
+        $uid = $user['id'];
+        // Kiểm tra đã nhận hôm nay chưa
+        $claimed = $db->prepare("SELECT COUNT(*) FROM free_key_claims WHERE user_id=? AND DATE(claimed_at)=?");
+        $claimed->execute([$uid, $today]);
+        if ((int)$claimed->fetchColumn() > 0) {
+            jsonResponse(['error' => 'Bạn đã nhận key free hôm nay rồi! Quay lại vào ngày mai.'], 400);
+        }
+        // Tìm free_key còn available
+        $fk = $db->prepare("SELECT * FROM free_keys WHERE is_active=1 AND expire_at > NOW() ORDER BY created_at ASC LIMIT 1");
+        $fk->execute();
+        $freeKey = $fk->fetch();
+        if (!$freeKey) {
+            jsonResponse(['error' => 'Hết key free hôm nay! Vui lòng quay lại sau.'], 400);
+        }
+        // Tạo order và gán key
+        $order_code = 'FREE' . strtoupper(substr(md5($uid . $today . time()), 0, 8));
+        $db->beginTransaction();
+        try {
+            $now = date('Y-m-d H:i:s');
+            $expire = date('Y-m-d H:i:s', strtotime('+' . ((int)$freeKey['days'] ?? 1) . ' days'));
+            $key_code = $freeKey['key_code'] ?? 'FREE-' . substr(md5($order_code), 0, 12);
+            // Tạo order approved
+            $db->prepare("INSERT INTO orders (order_code,user_id,game_id,package_id,amount,status,approved_at,approved_by,created_at) VALUES (?,?,?,?,0,'approved',NOW(),'free_system',NOW())")
+               ->execute([$order_code, $uid, $freeKey['game_id'], $freeKey['package_id']]);
+            $order_id = $db->lastInsertId();
+            // Tạo key active
+            $db->prepare("INSERT INTO `keys` (key_code,game_id,package_id,order_id,user_id,status,days,start_at,expire_at) VALUES (?,?,?,?,?,?,?,?)")
+               ->execute([$key_code, $freeKey['game_id'], $freeKey['package_id'], $order_id, $uid, 'active', $freeKey['days'], $now, $expire]);
+            $key_id = $db->lastInsertId();
+            // Đánh dấu free_key đã dùng
+            $db->prepare("UPDATE free_keys SET is_active=0 WHERE id=?")->execute([$freeKey['id']]);
+            // Log claim
+            $db->prepare("INSERT INTO free_key_claims (free_key_id,user_id,key_id) VALUES (?,?,?)")->execute([$freeKey['id'], $uid, $key_id]);
+            $db->commit();
+            jsonResponse(['success' => true, 'key_code' => $key_code, 'order_code' => $order_code, 'message' => '🎉 Nhận key free thành công!']);
+        } catch (Exception $e) {
+            $db->rollBack();
+            jsonResponse(['error' => 'Lỗi hệ thống: ' . $e->getMessage()], 500);
+        }
 
     default:
         jsonResponse(['error' => 'Action không hợp lệ'], 400);

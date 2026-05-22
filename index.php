@@ -192,14 +192,15 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .vietqr-box{display:flex;justify-content:center;margin:12px 0 6px}.vietqr-img{width:min(220px,76vw);aspect-ratio:1/1;object-fit:contain;border-radius:16px;background:#fff;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
 
 /* Bottom Tab Navigation */
-.bottom-nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:rgba(10,14,26,.92);border:1px solid var(--glass-border);backdrop-filter:blur(24px);border-radius:22px;display:flex;z-index:100;padding:6px 0;box-shadow:0 -4px 32px rgba(0,0,0,.45),0 8px 32px rgba(0,0,0,.3)}
-.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;cursor:pointer;transition:all .2s var(--ease-spring);color:var(--text2);position:relative;-webkit-tap-highlight-color:transparent;border-radius:14px}
-.nav-tab:active{transform:scale(.92)}
-.nav-tab.active{color:var(--cyan2);background:rgba(34,211,238,.06)}
-.nav-tab.active::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:28px;height:3px;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:4px;box-shadow:0 0 8px rgba(34,211,238,.4)}
-.nav-tab svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.nav-tab.active svg{filter:drop-shadow(0 0 6px rgba(34,211,238,.5))}
-.nav-lbl{font-size:10px;font-weight:800;letter-spacing:.3px}
+.bottom-nav{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:460px;background:rgba(15,23,42,.88);border:1px solid rgba(79,140,255,.12);backdrop-filter:blur(30px) saturate(1.8);-webkit-backdrop-filter:blur(30px) saturate(1.8);border-radius:24px;display:flex;z-index:100;padding:5px 4px;box-shadow:0 -4px 40px rgba(0,0,0,.5),0 4px 16px rgba(79,140,255,.06),inset 0 1px 0 rgba(255,255,255,.06)}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 7px;cursor:pointer;transition:all .25s var(--ease-spring);color:rgba(148,163,184,.7);position:relative;-webkit-tap-highlight-color:transparent;border-radius:16px;justify-content:center}
+.nav-tab:active{transform:scale(.93)}
+.nav-tab.active{color:#fff;background:rgba(79,140,255,.10)}
+.nav-tab.active::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:2px;opacity:.8}
+.nav-tab svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:all .25s var(--ease-spring)}
+.nav-tab.active svg{stroke-width:2.2;filter:drop-shadow(0 0 8px rgba(79,140,255,.4))}
+.nav-lbl{font-size:9.5px;font-weight:700;letter-spacing:.2px;transition:all .2s var(--ease-spring)}
+.nav-tab.active .nav-lbl{font-weight:900}
 .tab-content{display:none}.tab-content.active{display:block;animation:floatIn .35s var(--ease-spring) both}
 /* History tab */
 .hist-order{margin:0 16px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:slideIn .38s var(--ease-spring) both}
@@ -232,6 +233,19 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .profile-stat .num.green{color:var(--green2)}
 .profile-stat .num.orange{color:var(--orange2)}
 .profile-stat .lbl{font-size:10px;color:var(--text2);margin-top:4px;font-weight:700;text-transform:uppercase}
+/* Free Key Tab */
+.free-card{margin:0 16px 14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:20px 16px;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:floatIn .5s var(--ease-spring) .1s both;text-align:center}
+.free-icon{font-size:48px;margin-bottom:10px;animation:freeBounce 2s ease-in-out infinite}
+@keyframes freeBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.free-title{font-size:18px;font-weight:900;color:var(--text);margin-bottom:6px}
+.free-sub{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.free-btn{width:100%;padding:14px;border-radius:var(--radius-md);border:none;background:linear-gradient(135deg,var(--green),var(--cyan));color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(16,185,129,.3);transition:all .2s var(--ease-spring)}
+.free-btn:active{transform:scale(.96)}
+.free-btn:disabled{opacity:.4;filter:grayscale(1);cursor:not-allowed;box-shadow:none}
+.free-timer{margin:14px 0;padding:12px;border-radius:var(--radius-md);background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);color:var(--purple2);font-size:14px;font-weight:800}
+.free-claimed{margin:14px 0;padding:16px;border-radius:var(--radius-md);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2)}
+.free-claimed-code{font-size:16px;font-weight:900;color:var(--green2);font-family:'SF Mono','JetBrains Mono',monospace;margin:8px 0;padding:10px;background:rgba(0,0,0,.2);border-radius:8px;word-break:break-all}
+.free-empty{margin:0 16px 14px;padding:40px 20px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);text-align:center;box-shadow:var(--card-shadow)}
 
 </style>
 
@@ -453,6 +467,14 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
     </footer>
     </div> <!-- end tab-buykey -->
 
+    <!-- TAB: Key Free mỗi ngày -->
+    <div id="tab-freekey" class="tab-content">
+      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900">⭐ Key miễn phí mỗi ngày</h2>
+      <div id="freeKeyWrap">
+        <div class="loading"><div class="spin"></div>Đang kiểm tra key...</div>
+      </div>
+    </div>
+
     <!-- TAB: Lịch sử đơn hàng -->
     <div id="tab-history" class="tab-content">
       <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900">📜 Lịch sử đơn hàng</h2>
@@ -530,6 +552,10 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
     <div class="nav-tab active" onclick="switchTab('buykey')" id="nav-buykey">
       <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       <span class="nav-lbl">Mua Key</span>
+    </div>
+    <div class="nav-tab" onclick="switchTab('freekey')" id="nav-freekey">
+      <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span class="nav-lbl">Key Free</span>
     </div>
     <div class="nav-tab" onclick="switchTab('history')" id="nav-history">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1123,6 +1149,7 @@ function initMotion(){
 
 // ===== Bottom Tab Navigation =====
 var currentTab = 'buykey';
+var freeKeyLoaded = false;
 
 function switchTab(tab){
   currentTab = tab;
@@ -1135,9 +1162,67 @@ function switchTab(tab){
   // Load data for tab
   if(tab==='history') loadHistory();
   if(tab==='profile') loadProfile();
+  if(tab==='freekey' && !freeKeyLoaded) loadFreeKey();
   // Scroll to top
   var sc = document.querySelector('.scroll-area');
   if(sc) sc.scrollTop = 0;
+}
+
+async function loadFreeKey(){
+  freeKeyLoaded = true;
+  var wrap = document.getElementById('freeKeyWrap');
+  wrap.innerHTML = '<div class="loading"><div class="spin"></div>Đang kiểm tra...</div>';
+  try {
+    var res = await api('free_key_status','GET',{});
+    if(res.claimed){
+      wrap.innerHTML = '<div class="free-card">'
+        +'<div class="free-icon">✅</div>'
+        +'<div class="free-title">Bạn đã nhận key free hôm nay!</div>'
+        +'<div class="free-claimed">'
+        +'<div class="free-claimed-code">'+res.key_code+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:6px">Nhận lúc '+fmtDateFull(res.claimed_at)+'</div>'
+        +'</div>'
+        +'<div class="free-timer">🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp</div>'
+        +'<button class="free-btn" style="margin-top:10px" onclick="copyText(\''+res.key_code+'\',\'Đã copy key!\')">📋 Copy Key</button>'
+        +'</div>';
+    } else if(res.available > 0){
+      wrap.innerHTML = '<div class="free-card">'
+        +'<div class="free-icon">🎁</div>'
+        +'<div class="free-title">Key miễn phí hôm nay</div>'
+        +'<div class="free-sub">Nhận ngay 1 key free mỗi ngày!<br>Còn <b style="color:var(--green2)">'+res.available+' key</b> khả dụng</div>'
+        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">🎉 Nhận Key Free Ngay</button>'
+        +'<div class="free-timer" style="margin-top:12px">⏰ Reset lúc 0h00 hàng ngày</div>'
+        +'</div>';
+    } else {
+      wrap.innerHTML = '<div class="free-card">'
+        +'<div class="free-icon">😔</div>'
+        +'<div class="free-title">Hết key free hôm nay</div>'
+        +'<div class="free-sub">Vui lòng quay lại vào ngày mai!</div>'
+        +'<div class="free-timer">🔄 Key mới sẽ có lúc 0h00 ngày mai</div>'
+        +'</div>';
+    }
+  } catch(e){
+    wrap.innerHTML = '<div class="free-empty"><div class="empty-ico">⚠️</div><div class="empty-lbl">Không thể tải thông tin key free</div></div>';
+  }
+}
+
+async function claimDailyFree(){
+  var btn = document.getElementById('claimFreeBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Đang xử lý...'; }
+  try {
+    var res = await api('daily_free_key','POST',{});
+    if(res.success){
+      toast(res.message || '🎉 Nhận key free thành công!','success');
+      freeKeyLoaded = false;
+      loadFreeKey();
+    } else {
+      toast(res.error || 'Có lỗi xảy ra!','error');
+      if(btn){ btn.disabled=false; btn.textContent='🎉 Nhận Key Free Ngay'; }
+    }
+  } catch(e){
+    toast('Lỗi kết nối, thử lại sau!','error');
+    if(btn){ btn.disabled=false; btn.textContent='🎉 Nhận Key Free Ngay'; }
+  }
 }
 
 var histLoaded = false;
