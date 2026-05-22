@@ -14,15 +14,38 @@ define('APP_ROOT', __DIR__);
 // Chặn nếu đã cài rồi.
 // SECURITY: Không cho ?force=1 bypass — bất kỳ ai biết URL cũng có thể chạy lại installer, ghi đè config + reset DB.
 // Muốn cài lại: xóa thủ công file .install_lock qua FTP/cPanel.
-$lockFile = APP_ROOT . '/.install_lock';
+//
+// Defense in depth: ngoài .install_lock, KHOÁ NGAY nếu phát hiện config đã tồn tại.
+// Tránh kịch bản attacker xoá lock qua đường khác rồi chạy lại installer.
+$lockFile     = APP_ROOT . '/.install_lock';
+$cfgLocalFile = APP_ROOT . '/config.local.php';
+$cfgFile      = APP_ROOT . '/config.php';
+
+$installLocked = false;
+$lockReason    = '';
 if (file_exists($lockFile)) {
+    $installLocked = true;
+    $lockReason    = '.install_lock';
+} elseif (file_exists($cfgLocalFile)) {
+    $installLocked = true;
+    $lockReason    = 'config.local.php';
+} elseif (file_exists($cfgFile)) {
+    // config.php có thể là template trống — chỉ khoá khi đã có DB_HOST thực sự.
+    $src = (string)@file_get_contents($cfgFile);
+    if (preg_match("/define\(\s*['\"]DB_HOST['\"]\s*,\s*['\"][^'\"\s]+['\"]\s*\)/", $src)) {
+        $installLocked = true;
+        $lockReason    = 'config.php (đã có DB_HOST)';
+    }
+}
+
+if ($installLocked) {
     http_response_code(403);
     die('<!doctype html><meta charset="utf-8"><title>Installer Locked</title>
     <div style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:30px;border:2px solid #d9534f;border-radius:8px;">
     <h2 style="color:#d9534f">🔒 Installer đã được khóa</h2>
-    <p>Hệ thống đã được cài đặt. File <code>.install_lock</code> đang tồn tại.</p>
-    <p>Nếu muốn cài lại: xóa file <code>.install_lock</code> qua FTP/cPanel (không qua URL — đã chặn để bảo mật).</p>
-    <p><strong>KHUYẾN NGHỊ</strong>: Xóa hoặc rename file <code>install.php</code> sau khi cài xong để an toàn.</p>
+    <p>Hệ thống đã được cài đặt. Phát hiện: <code>' . htmlspecialchars($lockReason) . '</code>.</p>
+    <p>Nếu muốn cài lại: xóa cả file <code>.install_lock</code> <b>và</b> <code>config.local.php</code> / <code>config.php</code> qua FTP/cPanel (không qua URL — đã chặn để bảo mật).</p>
+    <p><strong>KHUYẾN NGHỊ</strong>: Xóa hoặc rename file <code>install.php</code> sau khi cài xong để an toàn tuyệt đối.</p>
     </div>');
 }
 
