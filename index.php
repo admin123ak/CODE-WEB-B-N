@@ -755,7 +755,6 @@ function copyTelegramId(){
 
 async function api(action,method,body){
   method=method||'GET';
-  var sep=action.indexOf('?')>=0?'&':'?';
   var url=API+'?action='+action+'&_v='+encodeURIComponent(APP_VERSION);
   var opts={method:method};
   if(method==='POST'){
@@ -771,7 +770,7 @@ async function api(action,method,body){
     if(appToken) extra.push('app_token=' + encodeURIComponent(appToken));
     if(currentUser&&currentUser.telegram_id) extra.push('telegram_id=' + encodeURIComponent(currentUser.telegram_id));
     else if(tgInitData) extra.push('init_data=' + encodeURIComponent(tgInitData));
-    if(extra.length) url += sep + extra.join('&');
+    if(extra.length) url += '&' + extra.join('&');
   }
   try{ var r=await fetch(url,opts); return r.json(); }
   catch(e){ return {error:T.loiKetNoi}; }
