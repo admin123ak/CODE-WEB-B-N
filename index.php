@@ -35,7 +35,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:var(--border2)}
-#app{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;background:radial-gradient(ellipse at 20% 0%,rgba(79,140,255,.10),transparent 50%),radial-gradient(ellipse at 80% 15%,rgba(167,139,250,.08),transparent 45%),radial-gradient(ellipse at 50% 100%,rgba(34,211,238,.06),transparent 50%),var(--bg);position:relative;overflow:hidden}
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;padding-bottom:60px;background:radial-gradient(ellipse at 20% 0%,rgba(79,140,255,.10),transparent 50%),radial-gradient(ellipse at 80% 15%,rgba(167,139,250,.08),transparent 45%),radial-gradient(ellipse at 50% 100%,rgba(34,211,238,.06),transparent 50%),var(--bg);position:relative;overflow:hidden}
 #loadingScreen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s ease}
 #loadingScreen.hide{opacity:0;pointer-events:none}
 .load-logo{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:var(--glow-purple);animation:loadPop .6s cubic-bezier(.34,1.56,.64,1)}
@@ -52,7 +52,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .lang-btn{margin-left:auto;background:rgba(19,27,46,.8);border:1px solid var(--glass-border);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:900;color:var(--purple2);cursor:pointer;transition:all .2s var(--ease-spring);font-family:inherit}.lang-btn:active{transform:scale(.94);filter:brightness(1.15)}
 .bank-chip{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:7px 13px;font-size:12px;font-weight:700;color:var(--blue2);display:flex;align-items:center;gap:6px;cursor:pointer;transition:all .2s var(--ease-spring)}.bank-chip:active{transform:scale(.95);background:var(--bg4)}
 .pressable{transition:transform .18s var(--ease-spring),filter .18s,box-shadow .18s}.pressable.touching{transform:scale(.975)!important;filter:brightness(1.08)}
-.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:24px;perspective:900px}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:80px;perspective:900px}
 .profile-section{padding:28px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;animation:fadeUp .4s ease}
 .avatar-ring{position:relative;width:88px;height:88px;border-radius:50%;padding:3px;background:conic-gradient(var(--purple),var(--blue),var(--cyan),var(--green),var(--purple));animation:spinRing 4s linear infinite;box-shadow:var(--glow-purple)}
 @keyframes spinRing{to{transform:rotate(360deg)}}
@@ -191,6 +191,48 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 
 .vietqr-box{display:flex;justify-content:center;margin:12px 0 6px}.vietqr-img{width:min(220px,76vw);aspect-ratio:1/1;object-fit:contain;border-radius:16px;background:#fff;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
 
+/* Bottom Tab Navigation */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(10,14,26,.95);border-top:1px solid var(--glass-border);backdrop-filter:blur(24px);display:flex;z-index:100;padding:6px 0 env(safe-area-inset-bottom,6px);box-shadow:0 -8px 32px rgba(0,0,0,.45)}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;cursor:pointer;transition:all .2s var(--ease-spring);color:var(--text2);position:relative;-webkit-tap-highlight-color:transparent}
+.nav-tab:active{transform:scale(.92)}
+.nav-tab.active{color:var(--cyan2)}
+.nav-tab.active::after{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:3px;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:0 0 4px 4px;box-shadow:0 0 10px rgba(34,211,238,.4)}
+.nav-tab svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.nav-tab.active svg{filter:drop-shadow(0 0 6px rgba(34,211,238,.5))}
+.nav-lbl{font-size:10px;font-weight:800;letter-spacing:.3px}
+.tab-content{display:none}.tab-content.active{display:block;animation:floatIn .35s var(--ease-spring) both}
+/* History tab */
+.hist-order{margin:0 16px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:slideIn .38s var(--ease-spring) both}
+.hist-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.hist-code{font-size:14px;font-weight:900;color:var(--text)}
+.hist-badge{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.hist-badge.pending{background:rgba(245,158,11,.12);color:var(--orange2);border:1px solid rgba(245,158,11,.35)}
+.hist-badge.approved{background:rgba(52,211,153,.12);color:var(--green2);border:1px solid rgba(52,211,153,.35)}
+.hist-badge.rejected{background:rgba(248,113,113,.12);color:var(--red2);border:1px solid rgba(248,113,113,.35)}
+.hist-badge.cancelled{background:rgba(148,163,184,.12);color:#cbd5e1;border:1px solid rgba(148,163,184,.25)}
+.hist-detail{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text2)}
+.hist-detail span{display:flex;justify-content:space-between}
+.hist-detail b{color:var(--text);font-weight:800}
+.hist-amount{font-size:16px;font-weight:900;color:var(--cyan2);margin-top:6px;text-align:right}
+.hist-empty-note{text-align:center;color:var(--text2);font-size:13px;margin-top:16px}
+/* Profile tab */
+.profile-card{margin:0 16px 14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:floatIn .5s var(--ease-spring) .1s both}
+.profile-card h3{font-size:13px;font-weight:900;color:var(--blue2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.profile-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.profile-row:last-child{border:none}
+.profile-row .lbl{font-size:12px;color:var(--text2);font-weight:600}
+.profile-row .val{font-size:14px;font-weight:800;color:var(--text)}
+.profile-btn{width:100%;padding:12px;border-radius:var(--radius-md);border:1px solid var(--border);background:rgba(19,27,46,.8);color:var(--text);font-size:13px;font-weight:800;cursor:pointer;margin-top:8px;transition:all .15s var(--ease-spring);font-family:inherit;text-align:center}
+.profile-btn:active{transform:scale(.97)}
+.profile-btn.red{border-color:rgba(248,113,113,.3);color:var(--red2);background:rgba(248,113,113,.06)}
+.profile-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.profile-stat{text-align:center;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.profile-stat .num{font-size:24px;font-weight:900}
+.profile-stat .num.blue{color:var(--blue2)}
+.profile-stat .num.green{color:var(--green2)}
+.profile-stat .num.orange{color:var(--orange2)}
+.profile-stat .lbl{font-size:10px;color:var(--text2);margin-top:4px;font-weight:700;text-transform:uppercase}
+
 </style>
 
 <style>
@@ -258,6 +300,8 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
   </div>
 
   <div class="scroll-area">
+    <!-- TAB: Mua Key (mặc định) -->
+    <div id="tab-buykey" class="tab-content active">
     <div class="profile-section">
       <div class="avatar-ring">
         <div class="avatar-inner" id="avatarEl">
@@ -407,7 +451,97 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
         <div>Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
       </div>
     </footer>
-  </div>
+    </div> <!-- end tab-buykey -->
+
+    <!-- TAB: Lịch sử đơn hàng -->
+    <div id="tab-history" class="tab-content">
+      <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900">📜 Lịch sử đơn hàng</h2>
+      <div id="histWrap"></div>
+    </div>
+
+    <!-- TAB: Cá nhân -->
+    <div id="tab-profile" class="tab-content">
+      <div class="profile-section">
+        <div class="avatar-ring">
+          <div class="avatar-inner" id="avatarEl2">
+            <span id="avatarInit2" style="background:linear-gradient(135deg,var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent">?</span>
+          </div>
+        </div>
+        <div class="profile-name" id="pName2">Đang tải...</div>
+        <div class="profile-handle">
+          <span id="pHandle2">@user</span>
+          <div class="verified-icon">✓</div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <h3>📊 Tổng quan</h3>
+        <div class="profile-stats-grid">
+          <div class="profile-stat"><div class="num blue" id="pfTotalOrders">0</div><div class="lbl">Tổng đơn</div></div>
+          <div class="profile-stat"><div class="num green" id="pfApproved">0</div><div class="lbl">Đã duyệt</div></div>
+          <div class="profile-stat"><div class="num orange" id="pfPending">0</div><div class="lbl">Chờ xử lý</div></div>
+          <div class="profile-stat"><div class="num blue" id="pfKeys">0</div><div class="lbl">Key đang có</div></div>
+        </div>
+      </div>
+
+      <div class="profile-card">
+        <h3>👤 Thông tin tài khoản</h3>
+        <div class="profile-row"><span class="lbl">Telegram ID</span><span class="val" id="pfTgId">--</span></div>
+        <div class="profile-row"><span class="lbl">Username</span><span class="val" id="pfTgUser">--</span></div>
+        <div class="profile-row"><span class="lbl">Họ tên</span><span class="val" id="pfFullName">--</span></div>
+        <div class="profile-row"><span class="lbl">Ngày tham gia</span><span class="val" id="pfJoined">--</span></div>
+      </div>
+
+      <div class="profile-card">
+        <h3>🔗 Liên kết nhanh</h3>
+        <a class="profile-btn" onclick="switchTab('buykey')">🔑 Mua Key</a>
+        <a class="profile-btn" onclick="switchTab('history')">📜 Lịch sử đơn hàng</a>
+        <a class="profile-btn red" href="#" id="logoutBtn">🚪 Đăng xuất</a>
+      </div>
+
+      <footer class="hclou-footer" aria-label="HCLOU footer">
+        <div class="hclou-footer-main">
+          <h3>Liên hệ hỗ trợ</h3>
+          <div class="hf-list"><div class="hf-item"><span class="hf-icon">📱</span><a class="hf-hot" href="tel:+84865770720">0865770720</a></div></div>
+          <h4>Phương thức thanh toán</h4>
+          <div class="hf-pay-grid">
+            <span class="hf-logo blue pay-visa">VISA</span>
+            <span class="hf-logo gold pay-master">MasterCard</span>
+            <span class="hf-logo red pay-momo">MoMo</span>
+            <span class="hf-logo green pay-bank">VietQR</span>
+          </div>
+          <h4>Chứng nhận</h4>
+          <div class="hf-badge-grid">
+            <span class="hf-logo cert-text cert-iso">ISO 27001</span>
+            <span class="hf-logo cert-text">🔒 SSL</span>
+          </div>
+        </div>
+        <div class="hclou-footer-bottom">
+          <div class="hf-brand">HCLOU SERVER</div>
+          <div>Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
+        </div>
+      </footer>
+    </div>
+
+  </div> <!-- scroll-area -->
+
+  <!-- Bottom Tab Navigation -->
+  <nav class="bottom-nav">
+    <div class="nav-tab active" onclick="switchTab('buykey')" id="nav-buykey">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span class="nav-lbl">Mua Key</span>
+    </div>
+    <div class="nav-tab" onclick="switchTab('history')" id="nav-history">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="nav-lbl">Lịch sử</span>
+    </div>
+    <div class="nav-tab" onclick="switchTab('profile')" id="nav-profile">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-lbl">Cá nhân</span>
+    </div>
+  </nav>
+
+</div> <!-- app -->
   <div class="help-fab" onclick="toggleHelpBot()">💬</div>
   <div class="help-panel" id="helpPanel">
     <div class="help-head"><div><div class="help-title">HCLOU Support Bot</div><small data-i18n="helpSub">Chọn câu hỏi để xem hướng dẫn nhanh</small></div><button class="help-close" onclick="toggleHelpBot(false)">✕</button></div>
@@ -986,6 +1120,88 @@ function initMotion(){
     ['touchend','touchcancel','mouseup','mouseleave'].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove('touching');},{passive:true});});
   });
 }
+
+// ===== Bottom Tab Navigation =====
+var currentTab = 'buykey';
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(el){ el.classList.remove('active'); });
+  var tabEl = document.getElementById('tab-'+tab);
+  var navEl = document.getElementById('nav-'+tab);
+  if(tabEl) tabEl.classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  // Load data for tab
+  if(tab==='history') loadHistory();
+  if(tab==='profile') loadProfile();
+  // Scroll to top
+  var sc = document.querySelector('.scroll-area');
+  if(sc) sc.scrollTop = 0;
+}
+
+var histLoaded = false;
+async function loadHistory(){
+  if(histLoaded) return;
+  var wrap = document.getElementById('histWrap');
+  wrap.innerHTML = '<div class="loading"><div class="spin"></div>Đang tải lịch sử...</div>';
+  try {
+    var res = await api('my_orders','GET',{});
+    if(!res.orders || res.orders.length===0){
+      wrap.innerHTML = '<div class="hist-empty-note" style="padding:40px 20px"><div class="empty-ico">📭</div><div class="empty-lbl">Chưa có đơn hàng nào</div></div>';
+    } else {
+      var html = '';
+      res.orders.forEach(function(o){
+        var badgeCls = o.status==='approved'?'approved':o.status==='rejected'?'rejected':o.status==='cancelled'?'cancelled':'pending';
+        var statusText = o.status==='approved'?'Đã duyệt':o.status==='rejected'?'Đã từ chối':o.status==='cancelled'?'Đã huỷ':'Chờ xử lý';
+        html += '<div class="hist-order">'
+          +'<div class="hist-header"><span class="hist-code">#'+o.order_code+'</span>'
+          +'<span class="hist-badge '+badgeCls+'">'+statusText+'</span></div>'
+          +'<div class="hist-detail">'
+          +'<span><span>Game</span><b>'+o.game_name+'</b></span>'
+          +'<span><span>Gói</span><b>'+o.pkg_name+' ('+o.days+' ngày)</b></span>'
+          +'<span><span>Ngày tạo</span><b>'+fmtDate(o.created_at)+'</b></span>'
+          +'</div>'
+          +'<div class="hist-amount">'+fmtMoney(o.amount)+'₫</div></div>';
+      });
+      wrap.innerHTML = html;
+    }
+    histLoaded = true;
+  } catch(e){
+    wrap.innerHTML = '<div class="hist-empty-note">⚠️ Không thể tải lịch sử đơn hàng</div>';
+  }
+}
+
+var profLoaded = false;
+async function loadProfile(){
+  if(!currentUser) return;
+  if(!profLoaded){
+    // Set avatar
+    var av2 = document.getElementById('avatarEl2');
+    var init2 = document.getElementById('avatarInit2');
+    var av1 = document.getElementById('avatarEl');
+    if(av1 && av2) av2.innerHTML = av1.innerHTML;
+    if(init2) init2.textContent = (currentUser.full_name || 'U').charAt(0).toUpperCase();
+    document.getElementById('pName2').textContent = currentUser.full_name || 'User';
+    document.getElementById('pHandle2').textContent = '@'+(currentUser.telegram_username || 'unknown');
+    document.getElementById('pfTgId').textContent = currentUser.telegram_id || '--';
+    document.getElementById('pfTgUser').textContent = '@'+(currentUser.telegram_username || '--');
+    document.getElementById('pfFullName').textContent = currentUser.full_name || '--';
+    document.getElementById('pfJoined').textContent = currentUser.created_at ? fmtDate(currentUser.created_at) : '--';
+    profLoaded = true;
+  }
+  // Load stats
+  try {
+    var res = await api('profile_stats','GET',{});
+    if(res.success){
+      document.getElementById('pfTotalOrders').textContent = res.total_orders || 0;
+      document.getElementById('pfApproved').textContent = res.approved_orders || 0;
+      document.getElementById('pfPending').textContent = res.pending_orders || 0;
+      document.getElementById('pfKeys').textContent = res.active_keys || 0;
+    }
+  } catch(e){}
+}
+
 var scrollTick=false;
 document.addEventListener('DOMContentLoaded',function(){
   applyLang();

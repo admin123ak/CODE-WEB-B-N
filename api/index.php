@@ -11,6 +11,7 @@ $rateRules = [
     'create_order' => [8, 60], 'pending_orders' => [40, 60], 'order_status' => [80, 60], 'my_keys' => [80, 60],
     'get_free_link' => [10, 60], 'claim_free_key' => [10, 60],
     'reset_key' => [12, 60], 'delete_key' => [20, 60], 'search_key' => [60, 60],
+    'my_orders' => [60, 60], 'profile_stats' => [60, 60],
 ];
 if (isset($rateRules[$action])) { [$lim,$win] = $rateRules[$action]; rateLimit('api_'.$action, $lim, $win, $ip); }
 
@@ -342,6 +343,33 @@ switch ($action) {
         $stmt = $db->prepare("SELECT o.*, g.name as game_name, p.name as pkg_name FROM orders o JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.user_id=?");
         $stmt->execute([$order_code, $user['id']]);
         jsonResponse(['success' => true, 'order' => $stmt->fetch()]);
+
+    // ===== LỊCH SỬ ĐƠN HÀNG =====
+    case 'my_orders':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $stmt = $db->prepare("SELECT o.*, g.name as game_name, p.name as pkg_name, p.days FROM orders o JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100");
+        $stmt->execute([$user['id']]);
+        jsonResponse(['success' => true, 'orders' => $stmt->fetchAll()]);
+
+    // ===== THỐNG KÊ PROFILE =====
+    case 'profile_stats':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $uid = $user['id'];
+        $totalOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=?");
+        $totalOrders->execute([$uid]);
+        $approvedOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND status='approved'");
+        $approvedOrders->execute([$uid]);
+        $pendingOrders = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND status='pending'");
+        $pendingOrders->execute([$uid]);
+        $activeKeys = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE user_id=? AND status='active'");
+        $activeKeys->execute([$uid]);
+        jsonResponse([
+            'success' => true,
+            'total_orders' => $totalOrders->fetchColumn(),
+            'approved_orders' => $approvedOrders->fetchColumn(),
+            'pending_orders' => $pendingOrders->fetchColumn(),
+            'active_keys' => $activeKeys->fetchColumn(),
+        ]);
 
     default:
         jsonResponse(['error' => 'Action không hợp lệ'], 400);
