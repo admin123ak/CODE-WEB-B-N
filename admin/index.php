@@ -789,6 +789,54 @@ $_mbFresh = ($_mbS && !empty($_mbS['last_run_at']) && (time() - strtotime($_mbS[
     <small style="color:#8b949e">Gọi <span class="mono">mbbank_poll.php</span> đồng bộ qua cURL — kết quả hiển thị ngay phía trên.</small>
   </form>
 </div>
+<?php
+// Bảng trạng thái cron jobs - đọc data/cron_status_{job}.json (do cron_run.php ghi)
+$_cronJobs = [
+    'mbbank'      => ['label' => '🏦 MBBANK Auto-bank',    'sched' => '*/1m',  'fresh_sec' => 180],
+    'maintenance' => ['label' => '🧹 Maintenance',         'sched' => '*/5m',  'fresh_sec' => 600],
+    'monitor'     => ['label' => '📊 Monitor',             'sched' => '*/5m',  'fresh_sec' => 600],
+    'automation'  => ['label' => '🤖 Automation Daily',    'sched' => '8h',    'fresh_sec' => 90000],
+    'health'      => ['label' => '🏥 Health Check',        'sched' => '9h',    'fresh_sec' => 90000],
+];
+function _hclouCronAgo($iso) {
+    if (!$iso) return '—';
+    $t = strtotime($iso);
+    if (!$t) return '—';
+    $d = max(0, time() - $t);
+    if ($d < 60) return $d . 's trước';
+    if ($d < 3600) return floor($d/60) . 'p trước';
+    if ($d < 86400) return floor($d/3600) . 'h trước';
+    return floor($d/86400) . 'd trước';
+}
+?>
+<div class="form-card" style="margin-bottom:16px">
+  <h3>⏱️ Trạng thái Cron Jobs</h3>
+  <p style="color:#8b949e;font-size:13px;margin-bottom:10px">Đọc snapshot từ <span class="mono">data/cron_status_*.json</span> (do <span class="mono">cron_run.php</span> ghi sau mỗi lần chạy). Đỏ = quá hạn / lỗi, xanh = OK.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Job</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Schedule</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Lần cuối</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Thời gian</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Kết quả</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Detail</th></tr>
+  <?php foreach ($_cronJobs as $jkey => $jinfo):
+    $jfile = APP_ROOT . '/data/cron_status_' . $jkey . '.json';
+    $jdata = is_file($jfile) ? json_decode((string)@file_get_contents($jfile), true) : null;
+    $jdata = is_array($jdata) ? $jdata : null;
+    $jLast = $jdata['last_run_at'] ?? null;
+    $jAge  = $jLast ? (time() - strtotime($jLast)) : null;
+    $jStale = ($jAge === null) || ($jAge > $jinfo['fresh_sec']);
+    $jOk   = $jdata && !empty($jdata['success']) && !$jStale && empty($jdata['skipped']);
+    $jColor = $jOk ? '#3fb950' : ($jStale ? '#f85149' : '#fbbf24');
+    $jStatus = !$jdata ? 'CHƯA CHẠY' : (!empty($jdata['skipped']) ? 'SKIPPED' : (!empty($jdata['success']) ? 'OK' : 'FAIL'));
+  ?>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #1f2937"><b><?=h($jinfo['label'])?></b><br><small class="mono" style="color:#6b7f9e"><?=h($jkey)?></small></td>
+      <td style="padding:8px;border-bottom:1px solid #1f2937"><span class="mono"><?=h($jinfo['sched'])?></span></td>
+      <td style="padding:8px;border-bottom:1px solid #1f2937;color:<?=$jStale?'#f85149':'#bbf7d0'?>"><?= h(_hclouCronAgo($jLast)) ?></td>
+      <td style="padding:8px;border-bottom:1px solid #1f2937" class="mono"><?= h((string)($jdata['duration_ms'] ?? '—')) ?>ms</td>
+      <td style="padding:8px;border-bottom:1px solid #1f2937;color:<?=$jColor?>;font-weight:800"><?=h($jStatus)?> <?= !empty($jdata['http_code']) ? '<span style="color:#8b949e;font-weight:400">'.(int)$jdata['http_code'].'</span>' : '' ?></td>
+      <td style="padding:8px;border-bottom:1px solid #1f2937;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="mono" title="<?=h((string)($jdata['detail'] ?? ''))?>"><?= h(substr((string)($jdata['detail'] ?? ''), 0, 80)) ?></td>
+    </tr>
+  <?php endforeach; ?>
+  </table>
+  <p style="margin-top:10px;color:#8b949e;font-size:12px">💡 Job đỏ = không nhận tín hiệu lâu hơn ngưỡng → kiểm tra cron-job.org / cron cPanel có chạy URL không.</p>
+</div>
 <form method="POST" class="form-card">
 <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
 <h3>Thông tin site/bot</h3><div class="form-row">

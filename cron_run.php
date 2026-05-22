@@ -22,6 +22,28 @@ function hclouCronRunLog(string $job, int $status, bool $success, int $durationM
 }
 
 /**
+ * Ghi status snapshot per-job để admin panel đọc O(1).
+ * Khác với hclouCronRunLog (append-only JSONL): file này overwrite mỗi lần,
+ * chỉ giữ KẾT QUẢ MỚI NHẤT của 1 job.
+ */
+function hclouCronWriteStatus(string $job, array $extra): void {
+    $job = preg_replace('/[^a-z0-9_]/i', '_', $job);
+    if ($job === '') return;
+    $file = __DIR__ . '/data/cron_status_' . $job . '.json';
+    if (!is_dir(dirname($file))) @mkdir(dirname($file), 0755, true);
+    $payload = array_merge([
+        'job'         => $job,
+        'last_run_at' => date('c'),
+        'success'     => false,
+        'http_code'   => 0,
+        'duration_ms' => 0,
+        'skipped'     => false,
+        'detail'      => '',
+    ], $extra);
+    @file_put_contents($file, json_encode($payload, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
+/**
  * Gọi script qua HTTP - hoạt động trên mọi hosting (không cần exec).
  */
 function hclouHttpCall(string $path, array $params = [], int $timeout = 30): array {
@@ -61,7 +83,9 @@ if (!is_dir($lockDir)) @mkdir($lockDir, 0755, true);
 $lockFile = $lockDir . '/cron_' . preg_replace('/[^a-z0-9_]/i', '_', $job) . '.lock';
 $lockHandle = fopen($lockFile, 'c');
 if (!$lockHandle || !flock($lockHandle, LOCK_EX | LOCK_NB)) {
-    hclouCronRunLog($job, 200, true, (int)round((microtime(true) - $requestStarted) * 1000), 'skipped: previous_still_running');
+    $_ms = (int)round((microtime(true) - $requestStarted) * 1000);
+    hclouCronRunLog($job, 200, true, $_ms, 'skipped: previous_still_running');
+    hclouCronWriteStatus($job, ['success' => true, 'http_code' => 200, 'duration_ms' => $_ms, 'skipped' => true, 'detail' => 'previous_still_running']);
     echo json_encode(['success' => true, 'job' => $job, 'skipped' => true, 'reason' => 'previous_still_running'], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -89,7 +113,9 @@ $jobMap = [
 
 if (!isset($jobMap[$job])) {
     http_response_code(400);
-    hclouCronRunLog($job, 400, false, (int)round((microtime(true) - $requestStarted) * 1000), 'Invalid job: ' . $job);
+    $_ms = (int)round((microtime(true) - $requestStarted) * 1000);
+    hclouCronRunLog($job, 400, false, $_ms, 'Invalid job: ' . $job);
+    hclouCronWriteStatus($job ?: 'unknown', ['success' => false, 'http_code' => 400, 'duration_ms' => $_ms, 'detail' => 'Invalid job']);
     echo json_encode(['success' => false, 'error' => 'Invalid job: ' . $job], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -102,9 +128,11 @@ $json    = json_decode($res['body'] ?? '', true);
 if (!$res['ok'] || $res['code'] !== 200) {
     http_response_code(500);
     hclouCronRunLog($job, $res['code'] ?? 0, false, $ms, $res['body'] ?? '');
+    hclouCronWriteStatus($job, ['success' => false, 'http_code' => $res['code'] ?? 0, 'duration_ms' => $ms, 'detail' => substr((string)($res['body'] ?? ''), 0, 300)]);
     echo json_encode(['success' => false, 'job' => $job, 'http_code' => $res['code'] ?? 0, 'duration_ms' => $ms, 'output' => $res['body'] ?? ''], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 hclouCronRunLog($job, 200, true, $ms, is_array($json) ? json_encode($json, JSON_UNESCAPED_UNICODE) : ($res['body'] ?? ''));
+hclouCronWriteStatus($job, ['success' => true, 'http_code' => 200, 'duration_ms' => $ms, 'detail' => is_array($json) ? json_encode($json, JSON_UNESCAPED_UNICODE) : substr((string)($res['body'] ?? ''), 0, 300)]);
 echo json_encode(['success' => true, 'job' => $job, 'duration_ms' => $ms, 'result' => $json ?: ($res['body'] ?? '')], JSON_UNESCAPED_UNICODE);
