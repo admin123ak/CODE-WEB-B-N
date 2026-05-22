@@ -440,7 +440,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
   <div class="nav-section">Bán hàng</div>
   <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders">🛒 Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
   <div class="nav-sub">
-    <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx">🏦 Bank</a>
+    <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx">💰 Giao dịch</a>
     <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys">🔑 Keys</a>
   </div>
 
@@ -543,20 +543,27 @@ $orders->execute([$filter_status]); $orders = $orders->fetchAll();
 </table>
 
 <?php elseif($tab==='banktx'): ?>
-<h1>🏦 Giao dịch MBBANK</h1>
+<h1>💰 Giao dịch tự động (MBBank + USDT TRC20)</h1>
 <?php
-$tx_status = $_GET['s'] ?? '';
-$tx_q = trim($_GET['q'] ?? '');
+$tx_status = $_GET['s']   ?? '';
+$tx_source = $_GET['src'] ?? '';
+$tx_q      = trim($_GET['q'] ?? '');
 $where = [];
 $params = [];
 if ($tx_status !== '') { $where[] = 'status=?'; $params[] = $tx_status; }
+if ($tx_source !== '') { $where[] = 'source=?'; $params[] = $tx_source; }
 if ($tx_q !== '') { $where[] = '(order_code LIKE ? OR description LIKE ? OR tx_hash LIKE ?)'; $params[] = '%'.$tx_q.'%'; $params[] = '%'.$tx_q.'%'; $params[] = '%'.$tx_q.'%'; }
 $sqlWhere = $where ? ('WHERE '.implode(' AND ', $where)) : '';
-$txStmt = $db->prepare("SELECT * FROM bank_transactions $sqlWhere ORDER BY id DESC LIMIT 150");
+// Show TẤT CẢ row, không LIMIT — user yêu cầu "có ai chuyển là hiện hết".
+// Nếu sau này DB phình to gây chậm thì thêm pagination.
+$txStmt = $db->prepare("SELECT * FROM bank_transactions $sqlWhere ORDER BY id DESC");
 $txStmt->execute($params);
 $txs = $txStmt->fetchAll();
 $txStats = $db->query("SELECT status, COUNT(*) c FROM bank_transactions GROUP BY status")->fetchAll();
 $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c']; }
+// Breakdown theo source để hiện riêng MBBank vs Binance
+$txSrcStats = $db->query("SELECT source, COUNT(*) c, SUM(amount) s FROM bank_transactions GROUP BY source")->fetchAll();
+$txSrcMap=[]; foreach($txSrcStats as $r){ $txSrcMap[$r['source']??'mbbank'] = $r; }
 ?>
 <div class="stats-grid">
   <div class="stat-card"><div class="stat-val blue"><?=array_sum($txStatMap)?></div><div class="stat-label">Tổng giao dịch đã đọc</div></div>
@@ -564,9 +571,18 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
   <div class="stat-card"><div class="stat-val orange"><?=$txStatMap['ignored']??0?></div><div class="stat-label">Bị bỏ qua</div></div>
   <div class="stat-card"><div class="stat-val red"><?=$txStatMap['error']??0?></div><div class="stat-label">Lỗi xử lý</div></div>
 </div>
+<div class="stats-grid" style="margin-top:8px">
+  <div class="stat-card"><div class="stat-val blue">🏦 <?=(int)($txSrcMap['mbbank']['c']??0)?></div><div class="stat-label">MBBank: <?=number_format((float)($txSrcMap['mbbank']['s']??0))?>đ</div></div>
+  <div class="stat-card"><div class="stat-val orange">🪙 <?=(int)($txSrcMap['binance']['c']??0)?></div><div class="stat-label">Binance: <?=rtrim(rtrim(number_format((float)($txSrcMap['binance']['s']??0), 6, '.', ''), '0'), '.')?> USDT</div></div>
+</div>
 <div class="form-card">
   <form method="GET" class="filters">
     <input type="hidden" name="tab" value="banktx">
+    <select name="src">
+      <option value="">Tất cả nguồn</option>
+      <option value="mbbank"  <?=$tx_source==='mbbank' ?'selected':''?>>🏦 MBBank (VND)</option>
+      <option value="binance" <?=$tx_source==='binance'?'selected':''?>>🪙 Binance (USDT TRC20)</option>
+    </select>
     <select name="s">
       <option value="">Tất cả trạng thái</option>
       <?php foreach(['seen'=>'Seen','matched'=>'Matched','approved'=>'Approved','ignored'=>'Ignored','error'=>'Error'] as $v=>$l): ?>
@@ -577,23 +593,24 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
     <button type="submit">🔍 Lọc</button>
     <a class="btn" href="?tab=banktx">Reset</a>
   </form>
-  <div class="alert" style="background:rgba(59,130,246,.10);border-color:rgba(59,130,246,.25);color:#bfdbfe">Cron hiện tại nên chạy mỗi phút: <span class="mono">/usr/bin/php /www/wwwroot/hclou.com/mbbank_poll.php</span>. Nếu giao dịch không auto duyệt, kiểm tra cột <b>Ghi chú</b> và <b>Nội dung</b> bên dưới.</div>
+  <div class="alert" style="background:rgba(59,130,246,.10);border-color:rgba(59,130,246,.25);color:#bfdbfe">Cron poll mỗi phút: <span class="mono">mbbank_poll.php</span> + <span class="mono">crypto_poll.php</span>. Có ai chuyển khoản vào TK MBBank hoặc gửi USDT TRC20 vào ví là tự động xuất hiện ở bảng dưới. Nếu giao dịch không auto duyệt, kiểm tra cột <b>Ghi chú</b> + <b>Nội dung</b>.</div>
 </div>
 <div class="table-wrap"><table>
-<tr><th>ID</th><th>Thời gian bank</th><th>Mã đơn</th><th>Số tiền</th><th>Trạng thái</th><th>Ghi chú</th><th>Nội dung CK</th><th>Đọc lúc</th><th>Xử lý lúc</th></tr>
-<?php foreach($txs as $tx): $cls=['seen'=>'blue','matched'=>'orange','approved'=>'green','ignored'=>'gray','error'=>'red'][$tx['status']]??'gray'; ?>
+<tr><th>ID</th><th>Nguồn</th><th>Thời gian</th><th>Mã đơn</th><th>Số tiền</th><th>Trạng thái</th><th>Ghi chú</th><th>Nội dung</th><th>Đọc lúc</th><th>Xử lý lúc</th></tr>
+<?php foreach($txs as $tx): $cls=['seen'=>'blue','matched'=>'orange','approved'=>'green','ignored'=>'gray','error'=>'red'][$tx['status']]??'gray'; $src=$tx['source']??'mbbank'; ?>
 <tr>
 <td><?=$tx['id']?></td>
+<td><?php if($src==='binance'): ?><span class="badge orange">🪙 USDT</span><?php else: ?><span class="badge blue">🏦 MBB</span><?php endif; ?></td>
 <td class="mono"><?=htmlspecialchars($tx['tx_date'])?></td>
 <td><b><?=htmlspecialchars($tx['order_code'] ?: '-')?></b></td>
-<td><b><?=number_format((float)$tx['amount'])?>đ</b></td>
+<td><b><?php if($src==='binance'): ?><?=rtrim(rtrim(number_format((float)$tx['amount'], 6, '.', ''), '0'), '.')?> USDT<?php else: ?><?=number_format((float)$tx['amount'])?>đ<?php endif; ?></b></td>
 <td><span class="badge <?=$cls?>"><?=htmlspecialchars($tx['status'])?></span></td>
 <td><?=htmlspecialchars($tx['note'] ?: '-')?></td>
 <td class="desc-cell"><?=htmlspecialchars($tx['description'])?></td>
 <td class="mono"><?=htmlspecialchars($tx['created_at'])?></td>
 <td class="mono"><?=htmlspecialchars($tx['processed_at'] ?: '-')?></td>
 </tr>
-<?php endforeach; if(!$txs): ?><tr><td colspan="9"><p>Chưa có giao dịch phù hợp.</p></td></tr><?php endif; ?>
+<?php endforeach; if(!$txs): ?><tr><td colspan="10"><p>Chưa có giao dịch phù hợp.</p></td></tr><?php endif; ?>
 </table></div>
 
 <?php elseif($tab==='keys'): ?>
