@@ -4,25 +4,100 @@ $db=getDB();
 $t=$_GET['t']??'';
 $fk=null;
 if ($t) { $stmt=$db->prepare("SELECT fk.*,g.name game_name,p.name pkg_name,p.days FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id WHERE fk.claim_token=?"); $stmt->execute([$t]); $fk=$stmt->fetch(); }
-function page($title,$msg,$ok=false){ echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 10%,#1f6feb55,transparent 30%),#070b14;color:#e6edf3;font-family:-apple-system,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}.card{max-width:420px;background:#111827dd;border:1px solid #38bdf833;border-radius:28px;padding:28px;text-align:center;box-shadow:0 24px 80px #0008}.ico{font-size:42px}.btn{display:block;margin-top:18px;padding:14px;border-radius:999px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#fff;text-decoration:none;font-weight:900}</style></head><body><div class="card"><div class="ico">'.($ok?'✅':'⚠️').'</div><h2>'.$title.'</h2><p>'.$msg.'</p><a class="btn" href="'.SITE_URL.'">Mở Mini App</a></div></body></html>'; exit; }
-if(!$fk) page('Link không hợp lệ','Token claim không tồn tại.');
-if(!$fk['is_active'] || strtotime($fk['expire_at'])<time()) page('Key free đã hết hạn','Key này không còn khả dụng.');
-$tg=$_GET['telegram_id']??0;
-if(!$tg) { header('Location: '.SITE_URL.'/?claim='.urlencode($t).'&v=claim20260428'); exit; }
-$stmt=$db->prepare("SELECT * FROM users WHERE telegram_id=?"); $stmt->execute([$tg]); $user=$stmt->fetch();
-if(!$user) page('Chưa đăng nhập','Không tìm thấy tài khoản Telegram trên hệ thống.');
-$today=date('Y-m-d');
-// Kiểm tra user này đã nhận free key hôm nay chưa
-$chk=$db->prepare("SELECT k.key_code FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.user_id=? AND DATE(fkc.claimed_at)=? ORDER BY fkc.claimed_at DESC LIMIT 1"); $chk->execute([$user['id'],$today]); $old=$chk->fetch();
-if($old) page('Bạn đã nhận rồi','Key free hôm nay đã nằm trong tài khoản của bạn: '.$old['key_code'],true);
-$db->beginTransaction();
-try{
- $now=date('Y-m-d H:i:s');
- $expire=date('Y-m-d H:i:s', strtotime('+'.$fk['days'].' days'));
- $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,status,days,start_at,expire_at) VALUES (?,?,?,?, 'active', ?, ?, ?)")->execute([$fk['key_code'],$user['id'],$fk['game_id'],$fk['package_id'],$fk['days'],$now,$expire]);
- $kid=$db->lastInsertId();
- $db->prepare("INSERT INTO free_key_claims (free_key_id,user_id,key_id) VALUES (?,?,?)")->execute([$fk['id'],$user['id'],$kid]);
- // KHÔNG deactivate free_key — mọi người đều nhận được
- $db->commit();
- page('Nhận key thành công','Key '.$fk['key_code'].' đã được thêm vào tài khoản bạn.',true);
-}catch(Exception $e){$db->rollBack(); page('Không nhận được key','Có lỗi xảy ra: '.$e->getMessage());}
+
+function claimPage($title,$msg,$ok=false,$extra=''){
+    $statusColor = $ok ? '#10b981' : '#f59e0b';
+    $ico = $ok ? '✅' : '⚠️';
+    echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 10%,#1f6feb55,transparent 30%),#070b14;color:#e6edf3;font-family:-apple-system,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{max-width:420px;width:100%;background:linear-gradient(160deg,rgba(17,24,39,.95),rgba(10,14,26,.98));border:1px solid rgba(56,189,248,.15);border-radius:28px;padding:28px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.5);backdrop-filter:blur(20px)}
+.ico{font-size:52px;margin-bottom:10px;animation:bounceIn .5s ease}
+@keyframes bounceIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.title{font-size:20px;font-weight:900;margin:8px 0}
+.msg{font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:14px}
+.key-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:16px;padding:18px;margin:16px 0}
+.key-code{font-size:22px;font-weight:900;color:#34d399;font-family:"SF Mono","JetBrains Mono",monospace;letter-spacing:2px;word-break:break-all}
+.key-meta{font-size:12px;color:#64748b;margin-top:8px}
+.key-meta span{color:#94a3b8;font-weight:700}
+.btn{display:block;margin-top:14px;padding:14px;border-radius:16px;border:none;font-weight:900;font-size:14px;cursor:pointer;width:100%;transition:all .2s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;box-shadow:0 4px 20px rgba(16,185,129,.3)}
+.btn.copy{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.3)}
+.btn.outline{background:transparent;border:1px solid rgba(148,163,184,.2);color:#94a3b8}
+.desc{font-size:13px;color:#94a3b8;line-height:1.5;margin:10px 0}
+input[type=text]{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(56,189,248,.2);background:rgba(15,23,42,.8);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0}
+input[type=text]:focus{border-color:#38bdf8;box-shadow:0 0 16px rgba(56,189,248,.15)}
+</style></head><body><div class="card"><div class="ico">'.$ico.'</div><h2 class="title">'.$title.'</h2><p class="msg">'.$msg.'</p>'.$extra.'</div></body></html>'; exit;
+}
+
+if(!$fk) claimPage('Link không hợp lệ','Token claim không tồn tại.');
+if(!$fk['is_active'] || strtotime($fk['expire_at'])<time()) claimPage('Key free đã hết hạn','Key này không còn khả dụng. Vui lòng quay lại sau.');
+
+$tg = $_GET['telegram_id'] ?? 0;
+
+// ===== CASE 1: Có telegram_id (từ Mini App hoặc link cá nhân) =====
+if ($tg) {
+    $stmt = $db->prepare("SELECT * FROM users WHERE telegram_id=?");
+    $stmt->execute([$tg]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        $db->prepare("INSERT INTO users (telegram_id, telegram_username, full_name) VALUES (?,'','User".$tg."')")
+           ->execute([$tg]);
+        $stmt = $db->prepare("SELECT * FROM users WHERE telegram_id=?");
+        $stmt->execute([$tg]);
+        $user = $stmt->fetch();
+    }
+
+    $today = date('Y-m-d');
+    $chk = $db->prepare("SELECT k.key_code FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.user_id=? AND DATE(fkc.claimed_at)=? ORDER BY fkc.claimed_at DESC LIMIT 1");
+    $chk->execute([$user['id'], $today]);
+    $old = $chk->fetch();
+    if ($old) {
+        claimPage('Bạn đã nhận key hôm nay rồi! 🎉',
+            'Key của bạn: <b style="color:#34d399">'.$old['key_code'].'</b>',
+            true,
+            '<div class="key-box"><div class="key-code">'.$old['key_code'].'</div><div class="key-meta">🎮 '.$fk['game_name'].' · <span>'.$fk['days'].' ngày</span></div></div><button class="btn copy" onclick="copyKey(\''.$old['key_code'].'\')">📋 Copy Key</button><a class="btn outline" style="display:block;margin-top:10px;text-decoration:none" href="'.SITE_URL.'">🔑 Vào Mini App</a><script>function copyKey(t){navigator.clipboard.writeText(t).then(function(){alert("Đã copy!")}).catch(function(){prompt("Copy key:",t)})}</script>');
+    }
+
+    $db->beginTransaction();
+    try {
+        $now = date('Y-m-d H:i:s');
+        $expire = date('Y-m-d H:i:s', strtotime('+'.$fk['days'].' days'));
+        $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,status,days,start_at,expire_at) VALUES (?,?,?,?, 'active', ?, ?, ?)")
+           ->execute([$fk['key_code'],$user['id'],$fk['game_id'],$fk['package_id'],$fk['days'],$now,$expire]);
+        $kid = $db->lastInsertId();
+        $db->prepare("INSERT INTO free_key_claims (free_key_id,user_id,key_id) VALUES (?,?,?)")
+           ->execute([$fk['id'],$user['id'],$kid]);
+        $db->commit();
+        claimPage('Nhận key thành công! 🎉',
+            'Key đã được thêm vào tài khoản của bạn.',
+            true,
+            '<div class="key-box"><div class="key-code">'.$fk['key_code'].'</div><div class="key-meta">🎮 '.$fk['game_name'].' · <span>'.$fk['days'].' ngày</span></div></div><button class="btn copy" onclick="copyKey(\''.$fk['key_code'].'\')">📋 Copy Key</button><a class="btn outline" style="display:block;margin-top:10px;text-decoration:none" href="'.SITE_URL.'">🔑 Vào Mini App</a><script>function copyKey(t){navigator.clipboard.writeText(t).then(function(){alert("Đã copy!")}).catch(function(){prompt("Copy key:",t)})}</script>');
+    } catch(Exception $e) {
+        $db->rollBack();
+        claimPage('Không nhận được key','Có lỗi xảy ra: '.$e->getMessage());
+    }
+
+// ===== CASE 2: Không có telegram_id → hiện trang nhập ID (Chrome/browser) =====
+} else {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input_tg = $_POST['telegram_id'] ?? 0;
+        if ($input_tg && ctype_digit((string)$input_tg)) {
+            $url = strtok($_SERVER['REQUEST_URI'], '?');
+            header('Location: '.$url.'?t='.urlencode($t).'&telegram_id='.urlencode($input_tg));
+            exit;
+        }
+    }
+
+    claimPage('🎁 Nhận Key Free Hôm Nay',
+        'Nhập <b>Telegram ID</b> của bạn để nhận key. Mỗi người nhận được 1 key free mỗi ngày!',
+        false,
+        '<div class="key-box" style="background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.2)"><div class="key-code" style="font-size:16px;color:#a78bfa">'.$fk['key_code'].'</div><div class="key-meta">🎮 <span>'.$fk['game_name'].'</span> · '.$fk['days'].' ngày</div></div>
+        <form method="POST">
+            <input type="text" name="telegram_id" placeholder="Nhập Telegram ID..." required pattern="[0-9]+" inputmode="numeric">
+            <button class="btn primary" type="submit">🔓 Nhận Key Ngay</button>
+        </form>
+        <p class="desc" style="margin-top:14px;font-size:11px;color:#64748b">💡 Mở Telegram → tìm <b>@userinfobot</b> → gửi tin nhắn để lấy ID của bạn</p>
+        <a class="btn outline" style="display:block;margin-top:6px;text-decoration:none" href="'.SITE_URL.'">📱 Hoặc mở trong Mini App</a>');
+}

@@ -418,15 +418,20 @@ switch ($action) {
         if (!$freeKey) {
             jsonResponse(['error' => 'Chưa có key free hôm nay! Admin sẽ thêm vào buổi sáng.'], 400);
         }
-        // Tạo link claim riêng cho user — dùng token chung của free_key + telegram_id cá nhân
-        // Mỗi người có link riêng nhưng cùng claim 1 key pool
-        $shortUrl = SITE_URL . '/claim.php?t=' . $freeKey['claim_token'] . '&telegram_id=' . $uid;
+        // Tạo link claim riêng cho user — đi qua 2 lớp rút gọn link (Link4M → YeuMoney → claim)
+        $claimUrl = SITE_URL . '/claim.php?t=' . $freeKey['claim_token'] . '&telegram_id=' . $uid;
+        try {
+            $shortUrl = buildFreeShortlink($claimUrl, $debug);
+        } catch (Exception $e) {
+            // Nếu API rút gọn link lỗi, fallback về link trực tiếp
+            $shortUrl = $claimUrl;
+        }
         jsonResponse([
             'success' => true,
             'claim_url' => $shortUrl,
             'key_code' => $freeKey['key_code'],
             'days' => $freeKey['days'],
-            'message' => '🎉 Link claim key free đã tạo! Nhấn vào link để nhận key.'
+            'message' => '🎉 Link claim key free đã tạo! Vượt link 2 lớp để nhận key.'
         ]);
 
     default:
