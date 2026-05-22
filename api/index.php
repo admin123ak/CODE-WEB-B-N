@@ -423,8 +423,8 @@ switch ($action) {
                ->execute([$order_code, $uid, $freeKey['game_id'], $freeKey['package_id']]);
             $order_id = $db->lastInsertId();
             // Tạo key active
-            $db->prepare("INSERT INTO `keys` (key_code,game_id,package_id,order_id,user_id,status,days,start_at,expire_at) VALUES (?,?,?,?,?,?,?,?)")
-               ->execute([$key_code, $freeKey['game_id'], $freeKey['package_id'], $order_id, $uid, 'active', $freeKey['days'], $now, $expire]);
+            $db->prepare("INSERT INTO `keys` (key_code,game_id,package_id,order_id,user_id,status,days,start_at,expire_at) VALUES (?,?,?,?,?,?,?,?,?)")
+               ->execute([$key_code, $freeKey['game_id'], $freeKey['package_id'], $order_id, $uid, 'active', (int)$freeKey['days'], $now, $expire]);
             $key_id = $db->lastInsertId();
             // Đánh dấu free_key đã dùng
             $db->prepare("UPDATE free_keys SET is_active=0 WHERE id=?")->execute([$freeKey['id']]);
