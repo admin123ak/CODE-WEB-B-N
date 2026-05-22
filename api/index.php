@@ -109,7 +109,17 @@ switch ($action) {
                 'free_key_id' => (int)$free['id']
             ]);
         }
-        jsonResponse(['success' => true, 'packages' => $packages]);
+        // Nếu Binance bật → gửi kèm tỷ giá để Mini App hiện "10.000đ | ≈ 0.408 USDT".
+        // Tỷ giá lấy từ cache (5p), không gọi CoinGecko mỗi lần list package.
+        $usdtVndRate = null;
+        if (defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED
+            && defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '') {
+            try {
+                $r = cryptoGetUsdtVndRate();
+                $usdtVndRate = (float)$r['rate'];
+            } catch (Throwable $e) { /* ignore — frontend tự fallback ẩn USDT */ }
+        }
+        jsonResponse(['success' => true, 'packages' => $packages, 'usdt_vnd_rate' => $usdtVndRate]);
 
     // ===== DANH SÁCH PHƯƠNG THỨC THANH TOÁN KHẢ DỤNG =====
     // Frontend gọi endpoint này để biết nên hiện option Binance hay không.

@@ -98,6 +98,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .pkg-days{font-size:14px;font-weight:800}
 .pkg-mode{font-size:11px;color:var(--text2);margin-top:3px}
 .pkg-cost{font-size:16px;font-weight:900;color:var(--text);letter-spacing:-.3px}
+.pkg-usdt{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:0;opacity:.85}
 .pkg-row.on .pkg-cost{color:var(--cyan2)}
 .pkg-row.free{border-color:rgba(52,211,153,.35);background:linear-gradient(135deg,rgba(52,211,153,.12),rgba(34,211,238,.06))}.pkg-row.free .pkg-cost{color:var(--green2)}
 .action-bar{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
@@ -873,6 +874,7 @@ async function loadPkgs(gid){
     return;
   }
   pCache=res.packages;
+  var rate=parseFloat(res.usdt_vnd_rate||0);
   var html='';
   pCache.forEach(function(p){
     if(p.is_free){
@@ -884,10 +886,17 @@ async function loadPkgs(gid){
       return;
     }
     var sel=(selPkg&&selPkg.id==p.id)?' on':'';
+    var priceVnd=parseInt(p.price,10)||0;
+    var usdtTag='';
+    if(rate>0 && priceVnd>0){
+      var usdt=priceVnd/rate;
+      var usdtStr=usdt<0.01?usdt.toFixed(4):usdt.toFixed(3);
+      usdtTag=' <span class="pkg-usdt">| \u2248 '+usdtStr+' USDT</span>';
+    }
     html+='<div class="pkg-row'+sel+'" onclick="pickPkg('+(parseInt(p.id,10)||0)+',this)">'
       +'<div><div class="pkg-days">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+'</div>'
       +'<div class="pkg-mode">'+T.cheDoKey+escapeHtml(p.key_type)+T.keyMode+'</div></div>'
-      +'<div class="pkg-cost">'+fmtMoney(p.price)+'\u0111</div></div>';
+      +'<div class="pkg-cost">'+fmtMoney(p.price)+'\u0111'+usdtTag+'</div></div>';
   });
   document.getElementById('pkgList').innerHTML=html;
   initMotion();
