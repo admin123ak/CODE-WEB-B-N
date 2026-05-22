@@ -192,11 +192,11 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .vietqr-box{display:flex;justify-content:center;margin:12px 0 6px}.vietqr-img{width:min(220px,76vw);aspect-ratio:1/1;object-fit:contain;border-radius:16px;background:#fff;padding:10px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
 
 /* Bottom Tab Navigation */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(10,14,26,.95);border-top:1px solid var(--glass-border);backdrop-filter:blur(24px);display:flex;z-index:100;padding:6px 0 env(safe-area-inset-bottom,6px);box-shadow:0 -8px 32px rgba(0,0,0,.45)}
-.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;cursor:pointer;transition:all .2s var(--ease-spring);color:var(--text2);position:relative;-webkit-tap-highlight-color:transparent}
+.bottom-nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;background:rgba(10,14,26,.92);border:1px solid var(--glass-border);backdrop-filter:blur(24px);border-radius:22px;display:flex;z-index:100;padding:6px 0;box-shadow:0 -4px 32px rgba(0,0,0,.45),0 8px 32px rgba(0,0,0,.3)}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;cursor:pointer;transition:all .2s var(--ease-spring);color:var(--text2);position:relative;-webkit-tap-highlight-color:transparent;border-radius:14px}
 .nav-tab:active{transform:scale(.92)}
-.nav-tab.active{color:var(--cyan2)}
-.nav-tab.active::after{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:32px;height:3px;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:0 0 4px 4px;box-shadow:0 0 10px rgba(34,211,238,.4)}
+.nav-tab.active{color:var(--cyan2);background:rgba(34,211,238,.06)}
+.nav-tab.active::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:28px;height:3px;background:linear-gradient(90deg,var(--cyan),var(--blue));border-radius:4px;box-shadow:0 0 8px rgba(34,211,238,.4)}
 .nav-tab svg{width:22px;height:22px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .nav-tab.active svg{filter:drop-shadow(0 0 6px rgba(34,211,238,.5))}
 .nav-lbl{font-size:10px;font-weight:800;letter-spacing:.3px}
@@ -494,9 +494,9 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 
       <div class="profile-card">
         <h3>🔗 Liên kết nhanh</h3>
-        <a class="profile-btn" onclick="switchTab('buykey')">🔑 Mua Key</a>
-        <a class="profile-btn" onclick="switchTab('history')">📜 Lịch sử đơn hàng</a>
-        <a class="profile-btn red" href="#" id="logoutBtn">🚪 Đăng xuất</a>
+        <div class="profile-btn" onclick="switchTab('buykey')">🔑 Mua Key</div>
+        <div class="profile-btn" onclick="switchTab('history')">📜 Lịch sử đơn hàng</div>
+        <div class="profile-btn red" onclick="location.reload()">🔄 Tải lại</div>
       </div>
 
       <footer class="hclou-footer" aria-label="HCLOU footer">
