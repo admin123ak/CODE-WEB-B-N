@@ -127,6 +127,10 @@ function cryptoConvertVndToUsdt(int $amountVnd, int $orderId): array {
  * Hầu hết ví (TronLink, Trust Wallet, Binance app) parse được prefix `tron:` này.
  */
 function cryptoBuildQrUrl(string $address, float $amount): string {
-    $payload = 'tron:' . $address . '?amount=' . rtrim(rtrim(number_format($amount, 6, '.', ''), '0'), '.') . '&token=USDT-TRC20';
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=' . urlencode($payload);
+    // QR chỉ chứa địa chỉ ví trần (không URI scheme). Đây là format duy nhất
+    // mọi ví TRC20 (TronLink, Trust Wallet, Binance, OKX, SafePal...) đều quét OK.
+    // URI scheme "tron:" không phải chuẩn — nhiều ví parse fail.
+    // User đọc số USDT từ UI text rồi nhập tay vào ví.
+    // $amount giữ trong signature để tương thích call site, không dùng trong QR.
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=' . urlencode($address);
 }
