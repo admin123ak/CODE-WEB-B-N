@@ -1186,19 +1186,21 @@ async function loadFreeKey(){
         +'<button class="free-btn" style="margin-top:10px" onclick="copyText(\''+res.key_code+'\',\'Đã copy key!\')">📋 Copy Key</button>'
         +'</div>';
     } else if(res.available > 0){
+      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+res.total_claimed_today+' người</b> đã nhận hôm nay' : '';
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">🎁</div>'
         +'<div class="free-title">Key miễn phí hôm nay</div>'
-        +'<div class="free-sub">Nhận ngay 1 key free mỗi ngày!<br>Còn <b style="color:var(--green2)">'+res.available+' key</b> khả dụng</div>'
-        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">🎉 Nhận Key Free Ngay</button>'
-        +'<div class="free-timer" style="margin-top:12px">⏰ Reset lúc 0h00 hàng ngày</div>'
+        +'<div class="free-sub">Nhận ngay 1 key free mỗi ngày!<br>Admin đã thêm key sẵn, mỗi người nhận 1 link riêng</div>'
+        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">🔗 Lấy Link Claim Key</button>'
+        +'<div class="free-timer" style="margin-top:12px">⏰ Reset lúc 0h00 hàng ngày'+claimedInfo+'</div>'
+        +'<div id="claimLinkArea" style="margin-top:12px;display:none"></div>'
         +'</div>';
     } else {
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">😔</div>'
-        +'<div class="free-title">Hết key free hôm nay</div>'
-        +'<div class="free-sub">Vui lòng quay lại vào ngày mai!</div>'
-        +'<div class="free-timer">🔄 Key mới sẽ có lúc 0h00 ngày mai</div>'
+        +'<div class="free-title">Chưa có key free hôm nay</div>'
+        +'<div class="free-sub">Admin chưa thêm key. Vui lòng quay lại sau!</div>'
+        +'<div class="free-timer">🔄 Key mới sẽ có vào buổi sáng hàng ngày</div>'
         +'</div>';
     }
   } catch(e){
@@ -1208,20 +1210,39 @@ async function loadFreeKey(){
 
 async function claimDailyFree(){
   var btn = document.getElementById('claimFreeBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Đang xử lý...'; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Đang tạo link...'; }
   try {
     var res = await api('daily_free_key','POST',{});
     if(res.success){
-      toast(res.message || '🎉 Nhận key free thành công!','success');
-      freeKeyLoaded = false;
-      loadFreeKey();
+      if(res.already){
+        toast('Bạn đã nhận key free hôm nay rồi!','info');
+        freeKeyLoaded = false;
+        loadFreeKey();
+      } else if(res.claim_url){
+        // Hiện link claim riêng cho user
+        var area = document.getElementById('claimLinkArea');
+        if(area){
+          area.style.display = 'block';
+          area.innerHTML = '<div class="free-claimed">'
+            +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Link claim riêng của bạn:</div>'
+            +'<div class="free-claimed-code" style="font-size:12px;word-break:break-all">'+res.claim_url+'</div>'
+            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open(\''+res.claim_url+'\',\'_blank\')">🔓 Mở Link Claim Key</button>'
+            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText(\''+res.claim_url+'\',\'Đã copy link!\')">📋 Copy Link</button>'
+            +'</div>';
+        }
+        if(btn){ btn.textContent='✅ Đã tạo link — Mở link để nhận key'; btn.disabled=true; }
+      } else {
+        toast(res.message || '🎉 Nhận key free thành công!','success');
+        freeKeyLoaded = false;
+        loadFreeKey();
+      }
     } else {
       toast(res.error || 'Có lỗi xảy ra!','error');
-      if(btn){ btn.disabled=false; btn.textContent='🎉 Nhận Key Free Ngay'; }
+      if(btn){ btn.disabled=false; btn.textContent='🔗 Lấy Link Claim Key'; }
     }
   } catch(e){
     toast('Lỗi kết nối, thử lại sau!','error');
-    if(btn){ btn.disabled=false; btn.textContent='🎉 Nhận Key Free Ngay'; }
+    if(btn){ btn.disabled=false; btn.textContent='🔗 Lấy Link Claim Key'; }
   }
 }
 
