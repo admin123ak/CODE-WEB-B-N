@@ -109,6 +109,10 @@ $jobMap = [
     'monitor'     => function() {
         return hclouHttpCall('/cron_monitor.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
+    'backup'      => function() {
+        // DB dump có thể chậm (vài giây với DB lớn). Cho timeout dài hơn các job khác.
+        return hclouHttpCall('/db_backup.php', ['cron_token' => CRON_RUN_TOKEN], 120);
+    },
 ];
 
 if (!isset($jobMap[$job])) {

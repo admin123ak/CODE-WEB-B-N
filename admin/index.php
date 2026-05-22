@@ -127,6 +127,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
     }
 
+    if ($act === 'db_backup_now') {
+        try {
+            if (!defined('CRON_RUN_TOKEN') || CRON_RUN_TOKEN === '') {
+                throw new Exception('CRON_RUN_TOKEN chưa configured.');
+            }
+            $url = rtrim(SITE_URL, '/') . '/db_backup.php?cron_token=' . rawurlencode(CRON_RUN_TOKEN);
+            $ch  = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 120,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+            ]);
+            $body = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+            if ($body === false) throw new Exception('cURL: ' . $err);
+            $j = json_decode((string)$body, true);
+            if (!is_array($j))          throw new Exception('HTTP ' . $code . ' - response không phải JSON');
+            if (empty($j['success']))   throw new Exception($j['error'] ?? ('HTTP ' . $code));
+            header("Location: ?tab=sysconfig&ok=1&backup=" . urlencode($j['file'] ?? '')); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode('Backup: ' . $e->getMessage())); exit;
+        }
+    }
+
+    if ($act === 'db_backup_delete') {
+        $f = $_POST['file'] ?? '';
+        if (preg_match('/^db_\d{8}_\d{6}\.sql\.gz$/', $f)) {
+            $path = APP_ROOT . '/data/backups/' . $f;
+            $real    = realpath($path);
+            $dirReal = realpath(APP_ROOT . '/data/backups');
+            if ($real && $dirReal && strpos($real, $dirReal . DIRECTORY_SEPARATOR) === 0 && is_file($real)) {
+                @unlink($real);
+                logInfo('Admin deleted DB backup', ['file' => $f]);
+            }
+        }
+        header("Location: ?tab=sysconfig&ok=1"); exit;
+    }
+
     if ($act === 'mbbank_test_poll') {
         // Gọi mbbank_poll.php cùng-host qua cURL với MBBANK_POLL_SECRET.
         // Tránh require trực tiếp để giữ nguyên cơ chế lock + môi trường giống cron.
@@ -797,6 +839,7 @@ $_cronJobs = [
     'monitor'     => ['label' => '📊 Monitor',             'sched' => '*/5m',  'fresh_sec' => 600],
     'automation'  => ['label' => '🤖 Automation Daily',    'sched' => '8h',    'fresh_sec' => 90000],
     'health'      => ['label' => '🏥 Health Check',        'sched' => '9h',    'fresh_sec' => 90000],
+    'backup'      => ['label' => '💾 DB Backup',           'sched' => '3h',    'fresh_sec' => 90000],
 ];
 function _hclouCronAgo($iso) {
     if (!$iso) return '—';
@@ -837,6 +880,69 @@ function _hclouCronAgo($iso) {
   </table>
   <p style="margin-top:10px;color:#8b949e;font-size:12px">💡 Job đỏ = không nhận tín hiệu lâu hơn ngưỡng → kiểm tra cron-job.org / cron cPanel có chạy URL không.</p>
 </div>
+<?php
+// Backup DB panel
+$_bkDir   = APP_ROOT . '/data/backups';
+$_bkLast  = is_file($_bkDir . '/_last_backup.json') ? json_decode((string)@file_get_contents($_bkDir . '/_last_backup.json'), true) : null;
+$_bkFiles = is_dir($_bkDir) ? (glob($_bkDir . '/db_*.sql.gz') ?: []) : [];
+usort($_bkFiles, function ($a, $b) { return filemtime($b) <=> filemtime($a); });
+function _hclouFormatBytes($b) {
+    if ($b < 1024) return $b . ' B';
+    if ($b < 1024*1024) return round($b/1024, 1) . ' KB';
+    return round($b/1024/1024, 2) . ' MB';
+}
+?>
+<div class="form-card" style="margin-bottom:16px">
+  <h3>💾 Backup Database</h3>
+  <p style="color:#8b949e;font-size:13px;margin-bottom:10px">Daily dump SQL nén gzip. Giữ 7 backup gần nhất, tự xoá file cũ. Khuyến nghị: thêm cron URL bên dưới chạy 3h sáng hàng ngày.</p>
+  <?php if ($_bkLast && !empty($_bkLast['success'])): ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px">
+      <div><small style="color:#8b949e">Lần backup cuối</small><div style="font-weight:800;color:#bbf7d0"><?= h(_hclouCronAgo($_bkLast['last_run_at'] ?? null)) ?></div></div>
+      <div><small style="color:#8b949e">Bảng</small><div style="font-weight:800"><?= (int)($_bkLast['tables'] ?? 0) ?></div></div>
+      <div><small style="color:#8b949e">Rows</small><div style="font-weight:800"><?= number_format((int)($_bkLast['rows'] ?? 0)) ?></div></div>
+      <div><small style="color:#8b949e">Size</small><div style="font-weight:800;color:#67e8f9"><?= h(_hclouFormatBytes((int)($_bkLast['size_bytes'] ?? 0))) ?></div></div>
+      <div><small style="color:#8b949e">Đã giữ</small><div style="font-weight:800"><?= (int)($_bkLast['kept'] ?? count($_bkFiles)) ?></div></div>
+      <div><small style="color:#8b949e">Đã xoá cũ</small><div style="font-weight:800;color:#fbbf24"><?= (int)($_bkLast['deleted_old'] ?? 0) ?></div></div>
+    </div>
+  <?php elseif ($_bkLast && empty($_bkLast['success'])): ?>
+    <div class="warnbox" style="margin:0 0 12px;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.30);color:#fecaca">❌ Backup lỗi: <?= h((string)($_bkLast['error'] ?? '')) ?></div>
+  <?php else: ?>
+    <p style="color:#fde68a">Chưa có backup. Nhấn nút bên dưới hoặc đợi cron chạy lần đầu.</p>
+  <?php endif; ?>
+
+  <form method="POST" style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+    <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+    <input type="hidden" name="act" value="db_backup_now">
+    <button class="btn btn-blue" type="submit" onclick="return confirm('Tạo backup ngay? (có thể mất vài giây)')">💾 Backup ngay</button>
+    <small style="color:#8b949e">Cron URL: <span class="mono" style="word-break:break-all"><?= h(rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=backup') ?></span></small>
+  </form>
+
+  <?php if ($_bkFiles): ?>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">File</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Tạo lúc</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Size</th><th style="text-align:right;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Hành động</th></tr>
+      <?php foreach ($_bkFiles as $bf):
+        $base = basename($bf);
+        $mt   = filemtime($bf);
+      ?>
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #1f2937" class="mono"><?=h($base)?></td>
+        <td style="padding:8px;border-bottom:1px solid #1f2937"><?=h(date('Y-m-d H:i:s', $mt))?> <small style="color:#8b949e">(<?=h(_hclouCronAgo(date('c', $mt)))?>)</small></td>
+        <td style="padding:8px;border-bottom:1px solid #1f2937"><?=h(_hclouFormatBytes((int)filesize($bf)))?></td>
+        <td style="padding:8px;border-bottom:1px solid #1f2937;text-align:right">
+          <a class="btn btn-green" href="download_backup.php?f=<?=urlencode($base)?>" style="padding:6px 10px;font-size:12px">⬇ Tải</a>
+          <form method="POST" style="display:inline">
+            <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+            <input type="hidden" name="act" value="db_backup_delete">
+            <input type="hidden" name="file" value="<?=h($base)?>">
+            <button class="btn btn-red" type="submit" style="padding:6px 10px;font-size:12px" onclick="return confirm('Xoá backup <?=h($base)?>?')">🗑</button>
+          </form>
+        </td>
+      </tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
+  <p style="margin-top:10px;color:#8b949e;font-size:12px">⚠️ File backup chứa dữ liệu nhạy cảm (users, orders, key). Tải về xong nên lưu offline, không share.</p>
+</div>
 <form method="POST" class="form-card">
 <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
 <h3>Thông tin site/bot</h3><div class="form-row">
@@ -867,6 +973,7 @@ $cronJobs = [
     ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
     ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=automation'],
     ['label'=>'🏥 Health Check', 'schedule'=>'9h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=health'],
+    ['label'=>'💾 DB Backup', 'schedule'=>'3h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=backup'],
 ];
 foreach($cronJobs as $cj){
     echo '<div style="margin-bottom:8px;padding:6px 0;border-bottom:1px solid #21262d">';
