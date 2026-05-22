@@ -397,41 +397,51 @@ switch ($action) {
         $totalClaimed->execute([$today]);
         jsonResponse(['success' => true, 'claimed' => false, 'available' => $freeCount, 'total_claimed_today' => $totalClaimed->fetchColumn()]);
 
-    // ===== NHẬN LINK CLAIM KEY FREE MỖI NGÀY — mỗi người 1 link riêng =====
+    // ===== NHẬN LINK CLAIM KEY FREE — đi qua 2 lớp rút gọn (Link4M → YeuMoney → claim) =====
     case 'daily_free_key':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $today = date('Y-m-d');
+        if (!FREE_GETKEY_ENABLED) jsonResponse(['error' => 'GetKey Free đang tắt'], 403);
         $uid = $user['id'];
-        // Kiểm tra đã nhận hôm nay chưa
-        $claimed = $db->prepare("SELECT COUNT(*) FROM free_key_claims WHERE user_id=? AND DATE(claimed_at)=?");
-        $claimed->execute([$uid, $today]);
-        if ((int)$claimed->fetchColumn() > 0) {
-            $log = $db->prepare("SELECT k.key_code FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.user_id=? AND DATE(fkc.claimed_at)=? ORDER BY fkc.claimed_at DESC LIMIT 1");
-            $log->execute([$uid, $today]);
-            $row = $log->fetch();
-            jsonResponse(['success' => true, 'already' => true, 'key_code' => $row['key_code'] ?? '', 'message' => 'Bạn đã nhận key free hôm nay rồi!']);
-        }
-        // Tìm free_key available (admin chỉ cần thêm 1 key, mọi người đều nhận được)
-        $fk = $db->prepare("SELECT * FROM free_keys WHERE is_active=1 AND expire_at > NOW() ORDER BY created_at DESC LIMIT 1");
+
+        // Tìm free_key available
+        $fk = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id WHERE fk.is_active=1 AND fk.expire_at > NOW() ORDER BY fk.created_at DESC LIMIT 1");
         $fk->execute();
         $freeKey = $fk->fetch();
         if (!$freeKey) {
             jsonResponse(['error' => 'Chưa có key free hôm nay! Admin sẽ thêm vào buổi sáng.'], 400);
         }
-        // Tạo link claim riêng cho user — đi qua 2 lớp rút gọn link (Link4M → YeuMoney → claim)
-        $claimUrl = SITE_URL . '/claim.php?t=' . $freeKey['claim_token'] . '&telegram_id=' . $uid;
-        try {
-            $shortUrl = buildFreeShortlink($claimUrl, $debug);
-        } catch (Exception $e) {
-            // Nếu API rút gọn link lỗi, fallback về link trực tiếp
-            $shortUrl = $claimUrl;
+
+        // Kiểm tra đã claim key này chưa
+        $chk = $db->prepare("SELECT id FROM free_key_claims WHERE free_key_id=? AND user_id=?");
+        $chk->execute([$freeKey['id'], $uid]);
+        if ($chk->fetch()) {
+            jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key free này rồi']);
         }
+
+        // Lấy short_url có sẵn (đã tạo 2 lớp từ admin panel)
+        $shortUrl = $freeKey['short_url'] ?? null;
+        if (!$shortUrl) {
+            $claimUrl = SITE_URL . '/claim.php?t=' . urlencode($freeKey['claim_token']);
+            try {
+                $shortUrl = buildFreeShortlink($claimUrl, $debug);
+                $db->prepare("UPDATE free_keys SET short_url=? WHERE id=?")->execute([$shortUrl, $freeKey['id']]);
+            } catch (Exception $e) {
+                jsonResponse(['error' => 'Không tạo được link. Liên hệ admin: ' . $e->getMessage()], 500);
+            }
+        }
+
+        // Gắn telegram_id cá nhân để claim.php nhận diện user sau khi vượt link
+        $separator = strpos($shortUrl, '?') !== false ? '&' : '?';
+        $personalUrl = $shortUrl . $separator . 'telegram_id=' . $uid;
+
         jsonResponse([
             'success' => true,
-            'claim_url' => $shortUrl,
+            'claim_url' => $personalUrl,
             'key_code' => $freeKey['key_code'],
             'days' => $freeKey['days'],
-            'message' => '🎉 Link claim key free đã tạo! Vượt link 2 lớp để nhận key.'
+            'game_name' => $freeKey['game_name'],
+            'pkg_name' => $freeKey['pkg_name'],
+            'message' => '🎉 Mở link và vượt 2 lớp để nhận key!'
         ]);
 
     default:
