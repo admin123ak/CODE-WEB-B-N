@@ -11,15 +11,17 @@
 define('HCLOU_ALLOW_NO_CONFIG', true);
 define('APP_ROOT', __DIR__);
 
-// Chặn nếu đã cài rồi
+// Chặn nếu đã cài rồi.
+// SECURITY: Không cho ?force=1 bypass — bất kỳ ai biết URL cũng có thể chạy lại installer, ghi đè config + reset DB.
+// Muốn cài lại: xóa thủ công file .install_lock qua FTP/cPanel.
 $lockFile = APP_ROOT . '/.install_lock';
-if (file_exists($lockFile) && empty($_GET['force'])) {
+if (file_exists($lockFile)) {
     http_response_code(403);
     die('<!doctype html><meta charset="utf-8"><title>Installer Locked</title>
     <div style="font-family:sans-serif;max-width:600px;margin:50px auto;padding:30px;border:2px solid #d9534f;border-radius:8px;">
     <h2 style="color:#d9534f">🔒 Installer đã được khóa</h2>
     <p>Hệ thống đã được cài đặt. File <code>.install_lock</code> đang tồn tại.</p>
-    <p>Nếu muốn cài lại: xóa file <code>.install_lock</code> qua FTP/cPanel.</p>
+    <p>Nếu muốn cài lại: xóa file <code>.install_lock</code> qua FTP/cPanel (không qua URL — đã chặn để bảo mật).</p>
     <p><strong>KHUYẾN NGHỊ</strong>: Xóa hoặc rename file <code>install.php</code> sau khi cài xong để an toàn.</p>
     </div>');
 }

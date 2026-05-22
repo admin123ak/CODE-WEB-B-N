@@ -294,7 +294,7 @@ $stats = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Panel - <?= SITE_NAME ?></title>
+<title>Admin Panel - <?= h(SITE_NAME) ?></title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0b1020;--side:#0f172a;--side2:#111c33;--panel:#111827;--card:#182235;--card2:#151f31;--line:#26354f;--line2:#334765;--text:#edf4ff;--muted:#91a4c3;--blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--purple:#8b5cf6;--shadow:0 18px 46px rgba(0,0,0,.28)}
@@ -308,7 +308,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 <body>
 <div class="layout">
 <div class="sidebar">
-  <div class="sidebar-logo">⚡ <?= SITE_NAME ?><br><small style="color:#8b949e;font-size:11px;font-weight:500">Admin Suite <span class="version-pill">CLEAN</span></small></div>
+  <div class="sidebar-logo">⚡ <?= h(SITE_NAME) ?><br><small style="color:#8b949e;font-size:11px;font-weight:500">Admin Suite <span class="version-pill">CLEAN</span></small></div>
   <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard">📊 Tổng quan</a>
 
   <div class="nav-section">Bán hàng</div>

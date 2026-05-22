@@ -7,12 +7,18 @@
 
 require_once __DIR__ . '/config.php';
 
-// Auth: dùng session admin (giống admin/index.php)
+// Auth: dùng session admin (giống admin/index.php).
+// FIX: admin/index.php set $_SESSION['admin_auth'] + admin_last_seen — không phải admin_logged_in.
 session_start();
-if (empty($_SESSION['admin_logged_in'])) {
+$adminLoggedIn = !empty($_SESSION['admin_auth'])
+    && !empty($_SESSION['admin_last_seen'])
+    && (time() - (int)$_SESSION['admin_last_seen'] <= ADMIN_SESSION_TTL);
+if (!$adminLoggedIn) {
     http_response_code(403);
     exit('Cần đăng nhập admin để cập nhật code. Vào /admin/ trước.');
 }
+// Gia hạn session khi admin có hoạt động trên update.php.
+$_SESSION['admin_last_seen'] = time();
 
 header('Content-Type: text/html; charset=utf-8');
 

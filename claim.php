@@ -1,6 +1,37 @@
 <?php
 require_once __DIR__ . '/config.php';
 
+// =============================================
+// RATE LIMIT (IP-based, HTML response — không dùng được rateLimit() vì hàm đó trả JSON)
+// =============================================
+// Bug #11: claim.php tự tạo row user mới cho bất kỳ telegram_id POST nào (line 70-76).
+// Attacker có thể spam POST telegram_id ngẫu nhiên → spam bảng `users`. Giới hạn 20 lần / 5 phút / IP.
+(function () {
+    $ip  = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $dir = APP_ROOT . '/data/ratelimit';
+    if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    $file = $dir . '/claim_' . hash('sha256', $ip) . '.json';
+    $now  = time();
+    $win  = 300;
+    $max  = 20;
+    $data = ['start' => $now, 'count' => 0];
+    if (is_file($file)) {
+        $old = json_decode((string)@file_get_contents($file), true);
+        if (is_array($old) && !empty($old['start']) && ($now - (int)$old['start']) < $win) $data = $old;
+    }
+    if (($now - (int)$data['start']) >= $win) $data = ['start' => $now, 'count' => 0];
+    $data['count'] = (int)$data['count'] + 1;
+    @file_put_contents($file, json_encode($data), LOCK_EX);
+    if ($data['count'] > $max) {
+        http_response_code(429);
+        header('Retry-After: ' . max(1, $win - ($now - (int)$data['start'])));
+        echo '<!doctype html><meta charset="utf-8"><title>Quá nhiều yêu cầu</title>'
+           . '<body style="font-family:-apple-system,sans-serif;background:#070b14;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center">'
+           . '<div><h2>⏳ Quá nhiều yêu cầu</h2><p>Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.</p></div>';
+        exit;
+    }
+})();
+
 $db = getDB();
 $t  = $_GET['t'] ?? '';
 $fk = null;

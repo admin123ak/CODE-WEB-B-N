@@ -601,6 +601,8 @@ function safePackageName(p){
   if(!p) return '';
   return /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(p) ? p : '';
 }
+// Encode value to safe JS string literal embedded inside an HTML attribute (vd: onclick="fn("+jsAttr(x)+")").
+function jsAttr(v){ return escapeHtml(JSON.stringify(v==null?'':String(v))); }
 var ICONS={
   'com.garena.game.kgvn':'\u2694\uFE0F',
   'com.garena.game.kgth':'\uD83D\uDDE1\uFE0F',
@@ -782,14 +784,16 @@ async function openGameModal(){
 function buildGameList(){
   var html='';
   gCache.forEach(function(g){
-    var ic=g.icon_url?'<img src="'+g.icon_url+'" alt="">':(ICONS[g.package_name]||'\uD83C\uDFAE');
+    var iconUrl=safeUrl(g.icon_url);
+    var pkg=safePackageName(g.package_name);
+    var ic=iconUrl?'<img src="'+escapeHtml(iconUrl)+'" alt="">':(ICONS[pkg]||'\uD83C\uDFAE');
     var tag=g.type==='VIP'?'<span class="vip-tag">\u2B50 VIP</span>':'<span class="normal-tag">NORMAL</span>';
     var sel=(selGame&&selGame.id==g.id)?' on':'';
-    html+='<div class="mgame'+sel+'" onclick="pickGame('+g.id+')">'
+    html+='<div class="mgame'+sel+'" onclick="pickGame('+(parseInt(g.id,10)||0)+')">'
       +'<div class="game-emoji">'+ic+'</div>'
-      +'<div style="flex:1"><div class="game-title">'+g.name+tag+'</div>'
-      +'<div class="game-pkgname">'+g.package_name+'</div>'
-      +'<div class="game-roottype">'+g.root_type+'</div></div>'
+      +'<div style="flex:1"><div class="game-title">'+escapeHtml(g.name)+tag+'</div>'
+      +'<div class="game-pkgname">'+escapeHtml(pkg)+'</div>'
+      +'<div class="game-roottype">'+escapeHtml(g.root_type)+'</div></div>'
       +'<div class="chev">&#x203A;</div></div>';
   });
   document.getElementById('gameList').innerHTML=html||'<div class="loading">'+T.dangTaiGame+'</div>';
@@ -800,7 +804,7 @@ function pickGame(gid){
   if(!selGame)return;
   selPkg=null;
   closeModal('gameModal');
-  if(selGame.icon_url){ document.getElementById('gIcon').innerHTML='<img src="'+selGame.icon_url+'" alt="">'; }
+  if(selGame.icon_url){ var iu=safeUrl(selGame.icon_url); document.getElementById('gIcon').innerHTML=iu?'<img src="'+escapeHtml(iu)+'" alt="">':''; }
   else { document.getElementById('gIcon').textContent=ICONS[selGame.package_name]||'\uD83C\uDFAE'; }
   document.getElementById('gName').textContent=selGame.name;
   document.getElementById('gPkg').textContent=selGame.package_name;
@@ -822,15 +826,15 @@ async function loadPkgs(gid){
     if(p.is_free){
       var sel=(selPkg&&selPkg.id==='free')?' on':'';
       html+='<div class="pkg-row free'+sel+'" onclick="pickPkg(\'free\',this)">'
-        +'<div><div class="pkg-days">🎁 '+p.name+'</div>'
-        +'<div class="pkg-mode">'+T.goiNgay+p.days+T.ngay+' · '+T.vuotLinkNhan+'</div></div>'
+        +'<div><div class="pkg-days">🎁 '+escapeHtml(p.name)+'</div>'
+        +'<div class="pkg-mode">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+' · '+T.vuotLinkNhan+'</div></div>'
         +'<div class="pkg-cost">'+T.mienPhi+'</div></div>';
       return;
     }
     var sel=(selPkg&&selPkg.id==p.id)?' on':'';
-    html+='<div class="pkg-row'+sel+'" onclick="pickPkg('+p.id+',this)">'
-      +'<div><div class="pkg-days">'+T.goiNgay+p.days+T.ngay+'</div>'
-      +'<div class="pkg-mode">'+T.cheDoKey+p.key_type+T.keyMode+'</div></div>'
+    html+='<div class="pkg-row'+sel+'" onclick="pickPkg('+(parseInt(p.id,10)||0)+',this)">'
+      +'<div><div class="pkg-days">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+'</div>'
+      +'<div class="pkg-mode">'+T.cheDoKey+escapeHtml(p.key_type)+T.keyMode+'</div></div>'
       +'<div class="pkg-cost">'+fmtMoney(p.price)+'\u0111</div></div>';
   });
   document.getElementById('pkgList').innerHTML=html;
@@ -879,7 +883,7 @@ function showOrderConfirm(){
   document.querySelector('#confirmModal .confirm-btn.ok').textContent=T.dongY;
   var pkgName=(selGame&&selGame.package_name)||'';
   var level=(selPkg&&selPkg.key_type)||'';
-  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+pkgName+'"</b> '+T.capDo+' <b>"'+level+'"</b>, '+T.keyMotGame;
+  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame;
   document.getElementById('confirmModal').classList.add('show');
 }
 function cancelOrderConfirm(){ closeModal('confirmModal'); }
@@ -930,18 +934,19 @@ function showPay(d){
   currentPayOrder=d.order_code||'';
   paySecondsLeft=secondsLeftFromOrder(d);
   if(paySecondsLeft<=0){ toast(T.hetGioTT||'Hết thời gian chờ','error'); loadPendingPayments(); return; }
-  var qr=d.vietqr_url?'<div class="vietqr-box"><img class="vietqr-img" src="'+d.vietqr_url+'" alt="VietQR"></div>':'';
+  var qrUrl=safeUrl(d.vietqr_url);
+  var qr=qrUrl?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(qrUrl)+'" alt="VietQR"></div>':'';
   document.getElementById('payContent').innerHTML=
     '<div class="pay-amount">'+fmtMoney(d.amount)+'\u0111</div>'
     +qr
     +'<div class="pay-timer" id="payTimer">05:00</div>'
     +'<div class="pay-small-note">'+(T.giuManHinh||'Không thoát Mini App trong lúc thanh toán.')+'</div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.nganHang+'</span><span class="pay-val">'+d.bank_name+'</span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.soTK+'</span><span class="pay-val">'+d.bank_account
-    +' <button class="cpbtn" onclick="copyText(\''+d.bank_account+'\',T.copyTK)">\uD83D\uDCCB</button></span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">Chủ tài khoản</span><span class="pay-val">'+(d.bank_owner||'')+'</span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.noiDungCK+'</span><span class="pay-val"><b>'+d.order_code
-    +'</b> <button class="cpbtn" onclick="copyText(\''+d.order_code+'\',T.copyDon)">\uD83D\uDCCB</button></span></div>'
+    +'<div class="pay-row"><span class="pay-lbl">'+T.nganHang+'</span><span class="pay-val">'+escapeHtml(d.bank_name)+'</span></div>'
+    +'<div class="pay-row"><span class="pay-lbl">'+T.soTK+'</span><span class="pay-val">'+escapeHtml(d.bank_account)
+    +' <button class="cpbtn" onclick="copyText('+jsAttr(d.bank_account)+',T.copyTK)">\uD83D\uDCCB</button></span></div>'
+    +'<div class="pay-row"><span class="pay-lbl">Chủ tài khoản</span><span class="pay-val">'+escapeHtml(d.bank_owner||'')+'</span></div>'
+    +'<div class="pay-row"><span class="pay-lbl">'+T.noiDungCK+'</span><span class="pay-val"><b>'+escapeHtml(d.order_code)
+    +'</b> <button class="cpbtn" onclick="copyText('+jsAttr(d.order_code)+',T.copyDon)">\uD83D\uDCCB</button></span></div>'
     +'<div class="pay-note">'+T.luuY+'</div>'
     +'<button class="pay-refresh-btn" onclick="donePay()">'+T.daCK+'</button>';
   document.getElementById('payModal').classList.add('show');
@@ -1002,7 +1007,7 @@ function renderPendingPayments(){
   var box=document.createElement('div'); box.id='pendingPayBox'; box.className='pending-pay-box';
   if(left<=0)return;
   var mm=String(Math.floor(left/60)).padStart(2,'0'), ss=String(left%60).padStart(2,'0');
-  box.innerHTML='<div class="pending-pay-title">⚠️ '+T.pendingPayTitle+'</div><div class="pending-pay-sub">'+T.pendingPaySub+'<br><b>'+o.order_code+'</b> · '+fmtMoney(o.amount)+'đ · '+(o.pkg_name||'')+' · còn '+mm+':'+ss+'</div><button class="pending-pay-btn" onclick="resumePay(0)">💳 '+T.resumePay+'</button>';
+  box.innerHTML='<div class="pending-pay-title">⚠️ '+T.pendingPayTitle+'</div><div class="pending-pay-sub">'+T.pendingPaySub+'<br><b>'+escapeHtml(o.order_code)+'</b> · '+fmtMoney(o.amount)+'đ · '+escapeHtml(o.pkg_name||'')+' · còn '+mm+':'+ss+'</div><button class="pending-pay-btn" onclick="resumePay(0)">💳 '+T.resumePay+'</button>';
   var keyHead=document.querySelector('.key-head');
   if(keyHead&&keyHead.parentNode) keyHead.parentNode.insertBefore(box,keyHead);
 }
@@ -1057,29 +1062,29 @@ function renderKeys(keys){
     var start=k.start_at?fmtDate(k.start_at):'--';
     var exp=k.expire_at?fmtDateFull(k.expire_at):'--';
     var typeTag=k.key_type==='VIP'?'<span class="vip-tag">VIP</span>':'<span class="normal-tag">Normal</span>';
-    html+='<div class="kcard is-'+k.status+'" id="kc-'+k.id+'" style="animation-delay:'+i*.05+'s">'
+    html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
-      +'<div class="kcode">'+k.key_code+'</div>'
+      +'<div class="kcode">'+escapeHtml(k.key_code)+'</div>'
       +'<div class="kbadge '+cls+'">'+lbl+'</div></div>'
-      +'<div class="kgame">'+k.package_name+typeTag+'</div></div>'
+      +'<div class="kgame">'+escapeHtml(k.package_name)+typeTag+'</div></div>'
       +'<div class="kgrid">'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.soNgay+'</div><div class="kbox-val">'+k.days+T.ngay+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.conLai+'</div><div class="kbox-val" id="rem-'+k.id+'">'+calcRem(k)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.batDau+'</div><div class="kbox-val">'+start+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.ketThuc+'</div><div class="kbox-val">'+exp+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">'+T.soNgay+'</div><div class="kbox-val">'+(parseInt(k.days,10)||0)+T.ngay+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">'+T.conLai+'</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">'+calcRem(k)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">'+T.batDau+'</div><div class="kbox-val">'+escapeHtml(start)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">'+T.ketThuc+'</div><div class="kbox-val">'+escapeHtml(exp)+'</div></div>'
       +'</div>';
     if(k.status==='active'){
-      html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+k.id+'" style="width:100%"></div></div>'
-        +'<div class="cdtxt" id="ctxt-'+k.id+'">'+T.dangTinh+'</div></div>';
+      html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
+        +'<div class="cdtxt" id="ctxt-'+(parseInt(k.id,10)||0)+'">'+T.dangTinh+'</div></div>';
     }
     if(k.status==='expired'){
-      html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+fmtDateFull(k.delete_at):'')+'</div>';
+      html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
     }
     html+='<div class="kactions">';
-    if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+k.id+')">\uD83D\uDD04 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
-    html+='<button class="ksm" onclick="copyText(\''+k.key_code+'\',T.copyKey)">\uD83D\uDCCB Copy</button>';
+    if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">\uD83D\uDD04 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
+    html+='<button class="ksm" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">\uD83D\uDCCB Copy</button>';
     if(k.status==='active') html+='<button class="ksm green" onclick="toast(T.giaHanMsg,\'info\')">\u23F0 '+T.giaHan+'</button>';
-    if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+k.id+')">\uD83D\uDDD1 '+T.xoa+'</button>';
+    if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+(parseInt(k.id,10)||0)+')">\uD83D\uDDD1 '+T.xoa+'</button>';
     html+='</div></div>';
   });
   document.getElementById('keyWrap').innerHTML=html;
@@ -1201,14 +1206,14 @@ async function loadFreeKey(){
         +'<div class="free-icon">✅</div>'
         +'<div class="free-title">Bạn đã nhận key free hôm nay!</div>'
         +'<div class="free-claimed">'
-        +'<div class="free-claimed-code">'+res.key_code+'</div>'
-        +'<div style="font-size:11px;color:var(--text2);margin-top:6px">Nhận lúc '+fmtDateFull(res.claimed_at)+'</div>'
+        +'<div class="free-claimed-code">'+escapeHtml(res.key_code)+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:6px">Nhận lúc '+escapeHtml(fmtDateFull(res.claimed_at))+'</div>'
         +'</div>'
         +'<div class="free-timer">🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp</div>'
-        +'<button class="free-btn" style="margin-top:10px" onclick="copyText(\''+res.key_code+'\',\'Đã copy key!\')">📋 Copy Key</button>'
+        +'<button class="free-btn" style="margin-top:10px" onclick="copyText('+jsAttr(res.key_code)+',\'Đã copy key!\')">📋 Copy Key</button>'
         +'</div>';
     } else if(res.available > 0){
-      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+res.total_claimed_today+' người</b> đã nhận hôm nay' : '';
+      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+(parseInt(res.total_claimed_today,10)||0)+' người</b> đã nhận hôm nay' : '';
       wrap.innerHTML = '<div class="free-card">'
         +'<div class="free-icon">🎁</div>'
         +'<div class="free-title">Key miễn phí hôm nay</div>'
@@ -1245,11 +1250,12 @@ async function claimDailyFree(){
         var area = document.getElementById('claimLinkArea');
         if(area){
           area.style.display = 'block';
+          var claimUrl = safeUrl(res.claim_url);
           area.innerHTML = '<div class="free-claimed">'
             +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Link claim riêng của bạn:</div>'
-            +'<div class="free-claimed-code" style="font-size:12px;word-break:break-all">'+res.claim_url+'</div>'
-            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open(\''+res.claim_url+'\',\'_blank\')">🔓 Mở Link Claim Key</button>'
-            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText(\''+res.claim_url+'\',\'Đã copy link!\')">📋 Copy Link</button>'
+            +'<div class="free-claimed-code" style="font-size:12px;word-break:break-all">'+escapeHtml(claimUrl)+'</div>'
+            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">🔓 Mở Link Claim Key</button>'
+            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText('+jsAttr(claimUrl)+',\'Đã copy link!\')">📋 Copy Link</button>'
             +'</div>';
         }
         if(btn){ btn.textContent='✅ Đã tạo link — Mở link để nhận key'; btn.disabled=true; }
@@ -1283,12 +1289,12 @@ async function loadHistory(){
         var badgeCls = o.status==='approved'?'approved':o.status==='rejected'?'rejected':o.status==='cancelled'?'cancelled':'pending';
         var statusText = o.status==='approved'?'Đã duyệt':o.status==='rejected'?'Đã từ chối':o.status==='cancelled'?'Đã huỷ':'Chờ xử lý';
         html += '<div class="hist-order">'
-          +'<div class="hist-header"><span class="hist-code">#'+o.order_code+'</span>'
+          +'<div class="hist-header"><span class="hist-code">#'+escapeHtml(o.order_code)+'</span>'
           +'<span class="hist-badge '+badgeCls+'">'+statusText+'</span></div>'
           +'<div class="hist-detail">'
-          +'<span><span>Game</span><b>'+o.game_name+'</b></span>'
-          +'<span><span>Gói</span><b>'+o.pkg_name+' ('+o.days+' ngày)</b></span>'
-          +'<span><span>Ngày tạo</span><b>'+fmtDate(o.created_at)+'</b></span>'
+          +'<span><span>Game</span><b>'+escapeHtml(o.game_name)+'</b></span>'
+          +'<span><span>Gói</span><b>'+escapeHtml(o.pkg_name)+' ('+(parseInt(o.days,10)||0)+' ngày)</b></span>'
+          +'<span><span>Ngày tạo</span><b>'+escapeHtml(fmtDate(o.created_at))+'</b></span>'
           +'</div>'
           +'<div class="hist-amount">'+fmtMoney(o.amount)+'₫</div></div>';
       });

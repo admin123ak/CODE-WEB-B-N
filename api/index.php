@@ -22,7 +22,9 @@ $initData = $_POST['init_data'] ?? $_GET['init_data'] ?? '';
 if ($initData) $tgVerifiedUser = telegramUserFromInitData($initData);
 
 function makeAppToken($telegramId) {
-    return base64_encode($telegramId . '|' . time() . '|' . hash_hmac('sha256', $telegramId . '|' . time(), BOT_TOKEN));
+    $ts = time();
+    $payload = $telegramId . '|' . $ts;
+    return base64_encode($payload . '|' . hash_hmac('sha256', $payload, BOT_TOKEN));
 }
 function verifyAppToken($token) {
     if (!$token) return 0;
@@ -39,10 +41,9 @@ function verifyAppToken($token) {
 
 $user = null;
 $tokenTelegramId = verifyAppToken($_POST['app_token'] ?? $_GET['app_token'] ?? '');
-// Fallback tạm thời: nếu Telegram WebApp không gửi initData ổn định thì dùng telegram_id từ frontend.
-// Web thường vẫn bị chặn ở index.php bằng màn hình Telegram-only.
-$fallbackTelegramId = $_POST['telegram_id'] ?? $_GET['telegram_id'] ?? 0;
-$lookupTelegramId = $tgVerifiedUser['id'] ?? ($tokenTelegramId ?: $fallbackTelegramId);
+// SECURITY: chỉ tin tưởng telegram_id đã xác thực qua initData (HMAC Telegram) hoặc app_token (HMAC server).
+// KHÔNG dùng raw telegram_id từ POST/GET vì spoof được — gây IDOR truy cập user khác.
+$lookupTelegramId = $tgVerifiedUser['id'] ?? $tokenTelegramId;
 if ($lookupTelegramId) {
     $stmt = $db->prepare("SELECT * FROM users WHERE telegram_id = ?");
     $stmt->execute([$lookupTelegramId]);
@@ -53,11 +54,14 @@ switch ($action) {
 
     // ===== ĐĂNG NHẬP / TẠO USER =====
     case 'auth':
-        $tg_id = $tgVerifiedUser['id'] ?? ($_POST['telegram_id'] ?? 0);
-        if (!$tg_id) jsonResponse(['error' => 'Thiếu Telegram ID'], 401);
-        $username = $tgVerifiedUser['username'] ?? ($_POST['username'] ?? '');
-        $fullname = $tgVerifiedUser ? trim(($tgVerifiedUser['first_name'] ?? '') . ' ' . ($tgVerifiedUser['last_name'] ?? '')) : ($_POST['full_name'] ?? '');
-        $avatar = $tgVerifiedUser['photo_url'] ?? ($_POST['avatar_url'] ?? '');
+        // SECURITY: bắt buộc initData verified — không cho fallback từ POST raw.
+        if (!$tgVerifiedUser || empty($tgVerifiedUser['id'])) {
+            jsonResponse(['error' => 'Cần mở qua Telegram Mini App (init_data không hợp lệ)'], 401);
+        }
+        $tg_id = (int)$tgVerifiedUser['id'];
+        $username = $tgVerifiedUser['username'] ?? '';
+        $fullname = trim(($tgVerifiedUser['first_name'] ?? '') . ' ' . ($tgVerifiedUser['last_name'] ?? ''));
+        $avatar = $tgVerifiedUser['photo_url'] ?? '';
         
         $stmt = $db->prepare("SELECT * FROM users WHERE telegram_id = ?");
         $stmt->execute([$tg_id]);
@@ -333,16 +337,29 @@ switch ($action) {
     // ===== RESET KEY =====
     case 'reset_key':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $key_id = $_POST['key_id'] ?? 0;
-        $stmt = $db->prepare("SELECT * FROM `keys` WHERE id=? AND user_id=?");
-        $stmt->execute([$key_id, $user['id']]);
-        $key = $stmt->fetch();
-        if (!$key) jsonResponse(['error' => 'Key không tồn tại'], 404);
-        if ($key['reset_count'] >= $key['max_reset']) jsonResponse(['error' => 'Đã hết lượt reset!'], 400);
-        if ($key['status'] !== 'active') jsonResponse(['error' => 'Key không active!'], 400);
-        
-        $db->prepare("UPDATE `keys` SET reset_count=reset_count+1 WHERE id=?")->execute([$key_id]);
-        jsonResponse(['success' => true, 'remaining_resets' => $key['max_reset'] - $key['reset_count'] - 1]);
+        $key_id = (int)($_POST['key_id'] ?? 0);
+        if ($key_id <= 0) jsonResponse(['error' => 'key_id không hợp lệ'], 400);
+
+        // ATOMIC: UPDATE có điều kiện reset_count < max_reset + status='active' + owner check.
+        // Không đọc rồi update riêng -> tránh race khi user spam click.
+        $upd = $db->prepare("UPDATE `keys`
+            SET reset_count = reset_count + 1
+            WHERE id = ? AND user_id = ? AND status = 'active' AND reset_count < max_reset");
+        $upd->execute([$key_id, $user['id']]);
+        if ($upd->rowCount() === 0) {
+            // Tìm key để báo lỗi cụ thể (không tồn tại / hết lượt / không active).
+            $chk = $db->prepare("SELECT status, reset_count, max_reset FROM `keys` WHERE id=? AND user_id=?");
+            $chk->execute([$key_id, $user['id']]);
+            $row = $chk->fetch();
+            if (!$row) jsonResponse(['error' => 'Key không tồn tại'], 404);
+            if ($row['status'] !== 'active') jsonResponse(['error' => 'Key không active!'], 400);
+            jsonResponse(['error' => 'Đã hết lượt reset!'], 400);
+        }
+        // Lấy giá trị mới để báo về client.
+        $sel = $db->prepare("SELECT reset_count, max_reset FROM `keys` WHERE id=?");
+        $sel->execute([$key_id]);
+        $now = $sel->fetch();
+        jsonResponse(['success' => true, 'remaining_resets' => max(0, (int)$now['max_reset'] - (int)$now['reset_count'])]);
 
     // ===== XOÁ KEY =====
     case 'delete_key':
@@ -444,9 +461,10 @@ switch ($action) {
             }
         }
 
-        // Gắn telegram_id cá nhân để claim.php nhận diện user sau khi vượt link
+        // Gắn telegram_id cá nhân để claim.php nhận diện user sau khi vượt link.
+        // FIX: dùng telegram_id thật (số Telegram), KHÔNG dùng $uid (= users.id nội bộ).
         $separator = strpos($shortUrl, '?') !== false ? '&' : '?';
-        $personalUrl = $shortUrl . $separator . 'telegram_id=' . $uid;
+        $personalUrl = $shortUrl . $separator . 'telegram_id=' . (int)$user['telegram_id'];
 
         jsonResponse([
             'success' => true,
