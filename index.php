@@ -20,6 +20,9 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
   --green:#34d399;--green2:#6ee7b7;
   --orange:#fb923c;--orange2:#fdba74;
   --red:#f87171;--red2:#fca5a5;
+  --brand:#dc2626;--brand2:#ef4444;--brand3:#f97316;
+  --brand-soft:rgba(239,68,68,.14);--brand-border:rgba(239,68,68,.35);
+  --glow-brand:0 0 28px rgba(239,68,68,.32);
   --glow-blue:0 0 24px rgba(79,140,255,.25);
   --glow-purple:0 0 24px rgba(167,139,250,.25);
   --glow-green:0 0 24px rgba(52,211,153,.25);
@@ -68,9 +71,9 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .stat-num.blue{color:var(--blue2)}.stat-num.green{color:var(--green2)}.stat-num.orange{color:var(--orange2)}
 .stat-label{font-size:11px;color:var(--text2);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 .sec-head{padding:8px 16px 12px;display:flex;align-items:center;gap:10px;animation:fadeUp .4s ease .15s both}
-.sec-icon,.key-head-icon{width:32px;height:32px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(79,140,255,.12),rgba(167,139,250,.08));border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--blue2);box-shadow:var(--glow-blue)}
+.sec-icon,.key-head-icon{width:34px;height:34px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(249,115,22,.08));border:1px solid var(--brand-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brand2);box-shadow:var(--glow-brand)}
 .sec-icon svg,.key-head-icon svg,.label-ico svg{width:20px;height:20px;display:block;stroke:currentColor}
-.sec-title{font-size:16px;font-weight:900;letter-spacing:-.3px}
+.sec-title{font-size:17px;font-weight:900;letter-spacing:-.3px;background:linear-gradient(135deg,#fff 0%,#fca5a5 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .sec-sub{font-size:12px;color:var(--text2);font-weight:500;margin-top:1px}
 .card{margin:0 16px 14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:floatIn .58s var(--ease-spring) .18s both;will-change:transform}
 .card-inner-label{padding:12px 16px 6px;font-size:12px;font-weight:700;color:var(--blue2);display:flex;align-items:center;gap:7px}.label-ico{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:currentColor}
@@ -101,7 +104,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .ic-btn.disabled{opacity:.45;filter:grayscale(1);cursor:not-allowed}
 .ic-btn:active{transform:scale(.92)}
 .buy-btn{flex:1;height:48px;border-radius:24px;border:none;background:var(--bg4);color:var(--text2);font-size:14px;font-weight:800;cursor:not-allowed;display:flex;align-items:center;justify-content:center;flex-direction:column;transition:all .25s var(--ease-spring);font-family:inherit;letter-spacing:-.2px}
-.buy-btn.go{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#fff;cursor:pointer;box-shadow:0 10px 28px rgba(34,211,238,.3);position:relative;overflow:hidden}.buy-btn.go:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent,rgba(255,255,255,.18),transparent);transform:translateX(-120%);animation:shine 2.8s ease-in-out infinite}@keyframes shine{55%,100%{transform:translateX(120%)}}
+.buy-btn.go{background:linear-gradient(135deg,var(--brand),var(--brand2) 55%,var(--brand3));color:#fff;cursor:pointer;box-shadow:0 12px 34px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18);position:relative;overflow:hidden;letter-spacing:.2px}.buy-btn.go:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-120%);animation:shine 2.8s ease-in-out infinite}@keyframes shine{55%,100%{transform:translateX(120%)}}
 .buy-btn.go:active{transform:scale(.97)}
 .buy-sub{font-size:10px;font-weight:600;opacity:.85;margin-top:2px}
 .note-txt{margin:0 16px 14px;font-size:11px;color:var(--text2);text-align:center;line-height:1.6;padding:12px;background:rgba(255,255,255,.02);border-radius:var(--radius-sm);border:1px solid var(--border)}
@@ -113,7 +116,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .ftab{padding:9px 16px;border-radius:24px;border:1px solid var(--glass-border);background:rgba(19,27,46,.78);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .2s var(--ease-spring)}
 .ftab.on{background:linear-gradient(135deg,var(--purple),var(--blue));border-color:transparent;color:#fff;box-shadow:0 2px 14px rgba(167,139,250,.35)}
 .srch{margin:0 16px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:8px;transition:border-color .2s,box-shadow .2s}
-.srch:focus-within{border-color:var(--blue);box-shadow:var(--glow-blue)}
+.srch:focus-within{border-color:var(--brand2);box-shadow:var(--glow-brand)}
 .srch input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:13px;font-family:inherit}
 .srch input::placeholder{color:var(--text2)}
 .kcard{margin:0 16px 12px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:slideIn .38s var(--ease-spring) both;will-change:transform,opacity}
@@ -182,7 +185,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .pay-done-btn{width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--green),var(--cyan));color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-top:14px;font-family:inherit;box-shadow:0 4px 20px rgba(16,185,129,.3);transition:transform .15s}
 .pay-done-btn:active{transform:scale(.97)}
 
-.confirm-box{padding-bottom:18px}.confirm-content{padding:8px 20px 18px;color:var(--text);font-size:14px;line-height:1.6;text-align:center}.confirm-content b{color:var(--cyan2)}.confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}.confirm-btn{height:46px;border-radius:16px;border:none;font-size:14px;font-weight:900;cursor:pointer}.confirm-btn.cancel{background:rgba(148,163,184,.16);color:var(--text);border:1px solid rgba(148,163,184,.22)}.confirm-btn.ok{background:linear-gradient(135deg,var(--blue),var(--cyan));color:white;box-shadow:0 10px 28px rgba(6,182,212,.22)}
+.confirm-box{padding-bottom:18px}.confirm-content{padding:8px 20px 18px;color:var(--text);font-size:14px;line-height:1.6;text-align:center}.confirm-content b{color:var(--brand2)}.confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}.confirm-btn{height:46px;border-radius:16px;border:none;font-size:14px;font-weight:900;cursor:pointer;transition:transform .18s var(--ease-spring),filter .18s}.confirm-btn:active{transform:scale(.97)}.confirm-btn.cancel{background:rgba(148,163,184,.16);color:var(--text);border:1px solid rgba(148,163,184,.22)}.confirm-btn.ok{background:linear-gradient(135deg,var(--brand),var(--brand2) 55%,var(--brand3));color:white;box-shadow:0 12px 30px rgba(220,38,38,.4),inset 0 1px 0 rgba(255,255,255,.18)}
 .web-only{position:fixed;inset:0;z-index:9000;background:radial-gradient(circle at 18% 10%,rgba(59,130,246,.28),transparent 30%),radial-gradient(circle at 86% 12%,rgba(139,92,246,.24),transparent 32%),#070b14;display:none;align-items:center;justify-content:center;padding:22px;color:var(--text);overflow:hidden}.web-only.show{display:flex}.web-card{width:100%;max-width:420px;background:linear-gradient(160deg,rgba(17,24,39,.86),rgba(26,34,52,.76));border:1px solid rgba(96,165,250,.2);border-radius:30px;padding:28px 24px;text-align:center;box-shadow:0 24px 90px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(18px);animation:floatIn .55s var(--ease-spring) both}.web-logo{width:76px;height:76px;margin:0 auto 16px;border-radius:24px;background:linear-gradient(135deg,var(--purple),var(--blue));display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 0 34px rgba(96,165,250,.35);animation:loadPop .55s cubic-bezier(.34,1.56,.64,1)}.web-title{font-size:22px;font-weight:950;letter-spacing:-.02em;margin-bottom:8px}.web-sub{font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:18px}.web-btn{height:48px;border-radius:999px;background:linear-gradient(135deg,#1d9bf0,#38bdf8);color:#fff;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:9px;font-size:15px;font-weight:900;box-shadow:0 12px 34px rgba(29,155,240,.28);transition:transform .18s var(--ease-spring),filter .18s}.web-btn:active{transform:scale(.97);filter:brightness(1.08)}.web-hint{font-size:11px;color:var(--text2);margin-top:13px;line-height:1.5}.web-dots{display:flex;justify-content:center;gap:6px;margin:18px 0}.web-dots span{width:7px;height:7px;border-radius:50%;background:var(--blue2);opacity:.45;animation:dotPulse 1.2s ease-in-out infinite}.web-dots span:nth-child(2){animation-delay:.15s}.web-dots span:nth-child(3){animation-delay:.3s}@keyframes dotPulse{50%{transform:translateY(-5px);opacity:1}}
 
 .pay-timer{margin:10px 0;padding:12px;border-radius:16px;background:rgba(255,184,77,.12);border:1px solid rgba(255,184,77,.35);text-align:center;font-weight:800;color:#ffcf7a;font-size:18px}
@@ -218,7 +221,9 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .hist-empty-note{text-align:center;color:var(--text2);font-size:13px;margin-top:16px}
 /* Profile tab */
 .profile-card{margin:0 16px 14px;background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:floatIn .5s var(--ease-spring) .1s both}
-.profile-card h3{font-size:13px;font-weight:900;color:var(--blue2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.profile-card h3{font-size:13px;font-weight:900;color:var(--brand2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:10px}
+.pc-ico{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(249,115,22,.08));border:1px solid var(--brand-border);display:flex;align-items:center;justify-content:center;color:var(--brand2);box-shadow:var(--glow-brand);flex-shrink:0}
+.pc-ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 .profile-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
 .profile-row:last-child{border:none}
 .profile-row .lbl{font-size:12px;color:var(--text2);font-weight:600}
@@ -497,7 +502,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
       </div>
 
       <div class="profile-card">
-        <h3>📊 Tổng quan</h3>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>Tổng quan</h3>
         <div class="profile-stats-grid">
           <div class="profile-stat"><div class="num blue" id="pfTotalOrders">0</div><div class="lbl">Tổng đơn</div></div>
           <div class="profile-stat"><div class="num green" id="pfApproved">0</div><div class="lbl">Đã duyệt</div></div>
@@ -507,7 +512,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
       </div>
 
       <div class="profile-card">
-        <h3>👤 Thông tin tài khoản</h3>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></span>Thông tin tài khoản</h3>
         <div class="profile-row"><span class="lbl">Telegram ID</span><span class="val" id="pfTgId">--</span></div>
         <div class="profile-row"><span class="lbl">Username</span><span class="val" id="pfTgUser">--</span></div>
         <div class="profile-row"><span class="lbl">Họ tên</span><span class="val" id="pfFullName">--</span></div>
@@ -515,7 +520,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
       </div>
 
       <div class="profile-card">
-        <h3>🔗 Liên kết nhanh</h3>
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>Liên kết nhanh</h3>
         <div class="profile-btn" onclick="switchTab('buykey')">🔑 Mua Key</div>
         <div class="profile-btn" onclick="switchTab('history')">📜 Lịch sử đơn hàng</div>
         <div class="profile-btn red" onclick="location.reload()">🔄 Tải lại</div>

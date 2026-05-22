@@ -50,24 +50,25 @@ function claimPage($title, $msg, $ok = false, $extra = '') {
     $ico = $ok ? '✅' : '⚠️';
     // $title, $msg đã được escape bởi caller; $extra là HTML khối được build kiểm soát
     echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
-body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 10%,#1f6feb55,transparent 30%),#070b14;color:#e6edf3;font-family:-apple-system,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
-.card{max-width:420px;width:100%;background:linear-gradient(160deg,rgba(17,24,39,.95),rgba(10,14,26,.98));border:1px solid rgba(56,189,248,.15);border-radius:28px;padding:28px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.5);backdrop-filter:blur(20px)}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 10%,rgba(239,68,68,.18),transparent 35%),radial-gradient(circle at 80% 90%,rgba(249,115,22,.10),transparent 40%),#070b14;color:#e6edf3;font-family:-apple-system,"SF Pro Display",Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{max-width:420px;width:100%;background:linear-gradient(160deg,rgba(17,24,39,.95),rgba(10,14,26,.98));border:1px solid rgba(239,68,68,.22);border-radius:28px;padding:28px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.55),0 0 0 1px rgba(239,68,68,.05) inset;backdrop-filter:blur(20px)}
 .ico{font-size:52px;margin-bottom:10px;animation:bounceIn .5s ease}
 @keyframes bounceIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
-.title{font-size:20px;font-weight:900;margin:8px 0}
+.title{font-size:22px;font-weight:900;margin:8px 0;background:linear-gradient(135deg,#fff 0%,#fca5a5 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
 .msg{font-size:14px;color:#94a3b8;line-height:1.6;margin-bottom:14px}
 .key-box{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:16px;padding:18px;margin:16px 0}
 .key-code{font-size:22px;font-weight:900;color:#34d399;font-family:"SF Mono","JetBrains Mono",monospace;letter-spacing:2px;word-break:break-all}
 .key-meta{font-size:12px;color:#64748b;margin-top:8px}
 .key-meta span{color:#94a3b8;font-weight:700}
-.btn{display:block;margin-top:14px;padding:14px;border-radius:16px;border:none;font-weight:900;font-size:14px;cursor:pointer;width:100%;transition:all .2s;text-decoration:none}
+.btn{display:block;margin-top:14px;padding:14px;border-radius:16px;border:none;font-weight:900;font-size:14px;cursor:pointer;width:100%;transition:all .2s;text-decoration:none;letter-spacing:.2px}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;box-shadow:0 4px 20px rgba(16,185,129,.3)}
-.btn.copy{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.3)}
-.btn.outline{background:transparent;border:1px solid rgba(148,163,184,.2);color:#94a3b8}
+.btn.primary{background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);color:#fff;box-shadow:0 12px 32px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn.copy{background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;box-shadow:0 10px 28px rgba(239,68,68,.35)}
+.btn.outline{background:transparent;border:1px solid rgba(239,68,68,.25);color:#fca5a5}
+.btn.outline:active{background:rgba(239,68,68,.08)}
 .desc{font-size:13px;color:#94a3b8;line-height:1.5;margin:10px 0}
-input[type=text]{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(56,189,248,.2);background:rgba(15,23,42,.8);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0}
-input[type=text]:focus{border-color:#38bdf8;box-shadow:0 0 16px rgba(56,189,248,.15)}
+input[type=text]{width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(239,68,68,.22);background:rgba(15,23,42,.85);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0;font-family:inherit;font-weight:700;letter-spacing:.5px;transition:border-color .2s,box-shadow .2s}
+input[type=text]:focus{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.15)}
 </style></head><body><div class="card"><div class="ico">' . $ico . '</div><h2 class="title">' . $title . '</h2><p class="msg">' . $msg . '</p>' . $extra . '</div></body></html>';
     exit;
 }
@@ -198,8 +199,8 @@ if ($tg) {
         '🎁 Nhận Key Free Hôm Nay',
         'Nhập <b>Telegram ID</b> của bạn để nhận key. Mỗi người nhận được 1 key free mỗi ngày!',
         false,
-        '<div class="key-box" style="background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.2)">'
-        . '<div class="key-code" style="font-size:16px;color:#a78bfa">' . h($fk['key_code']) . '</div>'
+        '<div class="key-box" style="background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.22)">'
+        . '<div class="key-code" style="font-size:16px;color:#fca5a5">' . h($fk['key_code']) . '</div>'
         . '<div class="key-meta">🎮 <span>' . h($fk['game_name']) . '</span> · ' . (int)$fk['days'] . ' ngày</div></div>'
         . '<form method="POST">'
         . '<input type="text" name="telegram_id" placeholder="Nhập Telegram ID..." required pattern="[0-9]+" inputmode="numeric">'
