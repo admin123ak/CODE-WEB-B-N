@@ -924,9 +924,46 @@ function updBuyBtn(){
 var payCheckTimer=null, payCountdownTimer=null, currentPayOrder='';
 var paySecondsLeft=0;
 var buying=false;
-function doOrder(){
+var paymentOptions=null;     // {mbbank:bool, binance:bool} — cache sau khi gọi lần đầu
+var selectedPaymentMethod='mbbank';
+async function fetchPaymentOptions(){
+  if(paymentOptions) return paymentOptions;
+  try{
+    var res=await api('payment_options');
+    if(res&&res.success&&res.options) paymentOptions=res.options;
+    else paymentOptions={mbbank:true, binance:false};
+  }catch(e){ paymentOptions={mbbank:true, binance:false}; }
+  return paymentOptions;
+}
+async function doOrder(){
   if(!selGame||!selPkg||buying)return;
   if(selPkg.is_free){ getFreeKey(); return; }
+  await fetchPaymentOptions();
+  // Nếu chỉ MBBank bật → đi thẳng. Nếu cả 2 bật → cho user chọn.
+  if(paymentOptions.binance && paymentOptions.mbbank){
+    showPaymentMethodPicker();
+  } else if (paymentOptions.binance && !paymentOptions.mbbank){
+    selectedPaymentMethod='binance';
+    showOrderConfirm();
+  } else {
+    selectedPaymentMethod='mbbank';
+    showOrderConfirm();
+  }
+}
+function showPaymentMethodPicker(){
+  document.querySelector('#confirmModal .mtitle').textContent='💳 Chọn phương thức thanh toán';
+  document.getElementById('confirmContent').innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:10px;margin:8px 0">'
+    +'<button class="confirm-btn ok" onclick="pickPayment(\'mbbank\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px"><span style="font-size:22px">🏦</span><span><b>MBBank (VND)</b><div style="font-size:11px;opacity:.8;font-weight:400">Chuyển khoản VietQR · Tự duyệt 1 phút</div></span></button>'
+    +'<button class="confirm-btn ok" onclick="pickPayment(\'binance\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px;background:linear-gradient(135deg,#f0b90b,#f3ba2f)"><span style="font-size:22px">🪙</span><span><b>Binance USDT (TRC20)</b><div style="font-size:11px;opacity:.8;font-weight:400">Crypto · Auto detect on-chain</div></span></button>'
+    +'</div>';
+  // Ẩn nút OK mặc định, chỉ dùng nút Huỷ
+  document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='none';
+  document.getElementById('confirmModal').classList.add('show');
+}
+function pickPayment(method){
+  selectedPaymentMethod=(method==='binance')?'binance':'mbbank';
+  document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
   showOrderConfirm();
 }
 function showOrderConfirm(){
@@ -935,10 +972,17 @@ function showOrderConfirm(){
   document.querySelector('#confirmModal .confirm-btn.ok').textContent=T.dongY;
   var pkgName=(selGame&&selGame.package_name)||'';
   var level=(selPkg&&selPkg.key_type)||'';
-  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame;
+  var payTag = selectedPaymentMethod==='binance'
+    ? '<div style="margin-top:8px;font-size:12px;color:#fbbf24">💳 Thanh toán bằng <b>Binance USDT TRC20</b></div>'
+    : '<div style="margin-top:8px;font-size:12px;color:#67e8f9">💳 Thanh toán bằng <b>MBBank VietQR</b></div>';
+  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame + payTag;
   document.getElementById('confirmModal').classList.add('show');
 }
-function cancelOrderConfirm(){ closeModal('confirmModal'); }
+function cancelOrderConfirm(){
+  // Restore OK button visibility (có thể bị ẩn bởi picker)
+  document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
+  closeModal('confirmModal');
+}
 async function confirmCreateOrder(){
   if(!selGame||!selPkg||buying)return;
   closeModal('confirmModal');
@@ -946,7 +990,7 @@ async function confirmCreateOrder(){
   var btn=document.getElementById('buyBtn');
   btn.innerHTML='<div class="spin" style="width:20px;height:20px;border-width:2px;margin:0"></div>';
   btn.classList.remove('go');
-  var res=await api('create_order','POST',{game_id:selGame.id,package_id:selPkg.id});
+  var res=await api('create_order','POST',{game_id:selGame.id,package_id:selPkg.id,payment_method:selectedPaymentMethod});
   buying=false;
   btn.classList.add('go');
   btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+fmtMoney(selPkg.price)+'đ</span>';
@@ -986,21 +1030,46 @@ function showPay(d){
   currentPayOrder=d.order_code||'';
   paySecondsLeft=secondsLeftFromOrder(d);
   if(paySecondsLeft<=0){ toast(T.hetGioTT||'Hết thời gian chờ','error'); loadPendingPayments(); return; }
-  var qrUrl=safeUrl(d.vietqr_url);
-  var qr=qrUrl?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(qrUrl)+'" alt="VietQR"></div>':'';
-  document.getElementById('payContent').innerHTML=
-    '<div class="pay-amount">'+fmtMoney(d.amount)+'\u0111</div>'
-    +qr
-    +'<div class="pay-timer" id="payTimer">05:00</div>'
-    +'<div class="pay-small-note">'+(T.giuManHinh||'Không thoát Mini App trong lúc thanh toán.')+'</div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.nganHang+'</span><span class="pay-val">'+escapeHtml(d.bank_name)+'</span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.soTK+'</span><span class="pay-val">'+escapeHtml(d.bank_account)
-    +' <button class="cpbtn" onclick="copyText('+jsAttr(d.bank_account)+',T.copyTK)">\uD83D\uDCCB</button></span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">Chủ tài khoản</span><span class="pay-val">'+escapeHtml(d.bank_owner||'')+'</span></div>'
-    +'<div class="pay-row"><span class="pay-lbl">'+T.noiDungCK+'</span><span class="pay-val"><b>'+escapeHtml(d.order_code)
-    +'</b> <button class="cpbtn" onclick="copyText('+jsAttr(d.order_code)+',T.copyDon)">\uD83D\uDCCB</button></span></div>'
-    +'<div class="pay-note">'+T.luuY+'</div>'
-    +'<button class="pay-refresh-btn" onclick="donePay()">'+T.daCK+'</button>';
+  var isBinance=(d.payment_method==='binance');
+  var html='';
+  if(isBinance){
+    var usdtAmount=(d.crypto_amount!==undefined&&d.crypto_amount!==null)?String(d.crypto_amount):'';
+    var cryptoAddr=d.crypto_address||'';
+    var rateLine=(d.usdt_vnd_rate)?('<div class="pay-small-note">1 USDT \u2248 '+fmtMoney(d.usdt_vnd_rate)+'\u0111 ('+fmtMoney(d.amount)+'\u0111)</div>'):'';
+    var qrUrl=safeUrl(d.crypto_qr_url);
+    var qr=qrUrl?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(qrUrl)+'" alt="USDT TRC20 QR"></div>':'';
+    html=
+      '<div class="pay-amount">'+escapeHtml(usdtAmount)+' USDT</div>'
+      +rateLine
+      +qr
+      +'<div class="pay-timer" id="payTimer">15:00</div>'
+      +'<div class="pay-small-note">'+(T.giuManHinh||'Không thoát Mini App trong lúc thanh toán.')+'</div>'
+      +'<div class="pay-row"><span class="pay-lbl">Mạng</span><span class="pay-val"><b>TRC20 (TRON)</b></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Địa chỉ ví</span><span class="pay-val" style="word-break:break-all;font-family:monospace;font-size:12px">'+escapeHtml(cryptoAddr)
+      +' <button class="cpbtn" onclick="copyText('+jsAttr(cryptoAddr)+',T.copyTK||\'Đã copy\')">\uD83D\uDCCB</button></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Số USDT</span><span class="pay-val"><b>'+escapeHtml(usdtAmount)+'</b>'
+      +' <button class="cpbtn" onclick="copyText('+jsAttr(usdtAmount)+',T.copyTK||\'Đã copy\')">\uD83D\uDCCB</button></span></div>'
+      +'<div class="pay-note" style="color:#d32f2f;font-weight:600">\u26A0\uFE0F CHỈ gửi USDT mạng TRC20 (TRON). Gửi sai mạng (BEP20/ERC20) sẽ MẤT TIỀN không hoàn lại!</div>'
+      +'<div class="pay-note">Gửi đúng số <b>'+escapeHtml(usdtAmount)+' USDT</b> để hệ thống tự nhận. Sai số sẽ không tự duyệt.</div>'
+      +'<button class="pay-refresh-btn" onclick="donePay()">'+T.daCK+'</button>';
+  } else {
+    var qrUrl=safeUrl(d.vietqr_url);
+    var qr=qrUrl?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(qrUrl)+'" alt="VietQR"></div>':'';
+    html=
+      '<div class="pay-amount">'+fmtMoney(d.amount)+'\u0111</div>'
+      +qr
+      +'<div class="pay-timer" id="payTimer">05:00</div>'
+      +'<div class="pay-small-note">'+(T.giuManHinh||'Không thoát Mini App trong lúc thanh toán.')+'</div>'
+      +'<div class="pay-row"><span class="pay-lbl">'+T.nganHang+'</span><span class="pay-val">'+escapeHtml(d.bank_name)+'</span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">'+T.soTK+'</span><span class="pay-val">'+escapeHtml(d.bank_account)
+      +' <button class="cpbtn" onclick="copyText('+jsAttr(d.bank_account)+',T.copyTK)">\uD83D\uDCCB</button></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Chủ tài khoản</span><span class="pay-val">'+escapeHtml(d.bank_owner||'')+'</span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">'+T.noiDungCK+'</span><span class="pay-val"><b>'+escapeHtml(d.order_code)
+      +'</b> <button class="cpbtn" onclick="copyText('+jsAttr(d.order_code)+',T.copyDon)">\uD83D\uDCCB</button></span></div>'
+      +'<div class="pay-note">'+T.luuY+'</div>'
+      +'<button class="pay-refresh-btn" onclick="donePay()">'+T.daCK+'</button>';
+  }
+  document.getElementById('payContent').innerHTML=html;
   document.getElementById('payModal').classList.add('show');
   startPayAutoCheck();
 }
@@ -1065,7 +1134,7 @@ function renderPendingPayments(){
 }
 function resumePay(i){
   var o=pendingPayOrders[i||0]; if(!o)return;
-  showPay({order_code:o.order_code,amount:o.amount,bank_account:o.bank_account,bank_name:o.bank_name,bank_owner:o.bank_owner,transfer_content:o.transfer_content,vietqr_url:o.vietqr_url});
+  showPay({order_code:o.order_code,amount:o.amount,bank_account:o.bank_account,bank_name:o.bank_name,bank_owner:o.bank_owner,transfer_content:o.transfer_content,vietqr_url:o.vietqr_url,payment_method:o.payment_method,crypto_amount:o.crypto_amount,crypto_address:o.crypto_address,crypto_qr_url:o.crypto_qr_url,usdt_vnd_rate:o.usdt_vnd_rate,pay_seconds_left:o.pay_seconds_left,pay_expires_at:o.pay_expires_at});
 }
 
 async function loadKeys(filter){

@@ -97,6 +97,12 @@ $jobMap = [
     'mbbank'      => function() {
         return hclouHttpCall('/mbbank_poll.php', ['secret' => MBBANK_POLL_SECRET]);
     },
+    'crypto'      => function() {
+        if (!defined('CRYPTO_POLL_SECRET')) {
+            return ['ok' => true, 'code' => 200, 'body' => json_encode(['success' => true, 'skipped' => true, 'reason' => 'crypto_not_configured'])];
+        }
+        return hclouHttpCall('/crypto_poll.php', ['secret' => CRYPTO_POLL_SECRET]);
+    },
     'maintenance' => function() {
         return hclouHttpCall('/maintenance.php', ['cron_token' => CRON_RUN_TOKEN]);
     },

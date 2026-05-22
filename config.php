@@ -42,12 +42,26 @@ if (!defined('FREE_GETKEY_ENABLED'))        define('FREE_GETKEY_ENABLED', true);
 if (!defined('ADMIN_SESSION_TTL'))          define('ADMIN_SESSION_TTL', 3600);
 if (!defined('VIETQR_BANK_ID'))             define('VIETQR_BANK_ID', '970422');
 
+// --- Crypto (Binance USDT TRC20) defaults ---
+// Bật ON khi đã cấu hình USDT_TRC20_ADDRESS + TRONGRID_API_KEY trong config.local.php.
+// Nếu chưa cấu hình → option thanh toán Binance bị ẩn ở checkout (xem api/index.php).
+if (!defined('CRYPTO_AUTO_APPROVE_ENABLED')) define('CRYPTO_AUTO_APPROVE_ENABLED', false);
+if (!defined('USDT_TRC20_ADDRESS'))          define('USDT_TRC20_ADDRESS', '');
+if (!defined('TRONGRID_API_KEY'))            define('TRONGRID_API_KEY', '');
+// Contract address chính thức của USDT trên TRON mainnet (cố định, không cần đổi).
+if (!defined('USDT_TRC20_CONTRACT'))         define('USDT_TRC20_CONTRACT', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+
 // --- Derived constants ---
 if (defined('MBBANK_HISTORY_API_KEY') && !defined('MBBANK_HISTORY_API_URL')) {
     define('MBBANK_HISTORY_API_URL', 'https://queenvps.com/api/historymb/' . MBBANK_HISTORY_API_KEY);
 }
 if (defined('MBBANK_HISTORY_API_KEY') && defined('BOT_TOKEN') && !defined('MBBANK_POLL_SECRET')) {
     define('MBBANK_POLL_SECRET', hash_hmac('sha256', MBBANK_HISTORY_API_KEY, BOT_TOKEN));
+}
+// Crypto poll secret: HMAC từ địa chỉ ví + BOT_TOKEN.
+// Dùng địa chỉ ví thay vì API key vì TronGrid key có thể trống (free tier).
+if (defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '' && defined('BOT_TOKEN') && !defined('CRYPTO_POLL_SECRET')) {
+    define('CRYPTO_POLL_SECRET', hash_hmac('sha256', USDT_TRC20_ADDRESS, BOT_TOKEN));
 }
 
 // --- Timezone ---
@@ -293,6 +307,10 @@ function hclouConfigEditableKeys() {
         'MBBANK_HISTORY_API_KEY'      => 'string',
         'LINK4M_API_TOKEN'            => 'string',
         'YEUMONEY_API_TOKEN'          => 'string',
+        // --- Binance USDT TRC20 ---
+        'CRYPTO_AUTO_APPROVE_ENABLED' => 'bool',
+        'USDT_TRC20_ADDRESS'          => 'string',
+        'TRONGRID_API_KEY'            => 'string',
     ];
 }
 

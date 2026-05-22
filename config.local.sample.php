@@ -44,6 +44,13 @@ define('LINK4M_API_TOKEN', 'your_link4m_token');
 define('YEUMONEY_API_TOKEN', 'your_yeumoney_token');
 define('FREE_GETKEY_ENABLED', true);
 
+// --- Binance USDT TRC20 (auto-thanh-toán crypto) ---
+// Để TRỐNG ban đầu — admin nhập sau qua web. Khi cả 2 field này có giá trị
+// và CRYPTO_AUTO_APPROVE_ENABLED=true thì option Binance hiện ở checkout.
+define('USDT_TRC20_ADDRESS', '');
+define('TRONGRID_API_KEY', '');
+define('CRYPTO_AUTO_APPROVE_ENABLED', false);
+
 // --- Secure tokens (random) - installer sẽ tự generate ---
 define('CRON_RUN_TOKEN', 'CHANGE_ME_random_64_chars');
 define('AUTOMATION_RUN_TOKEN', 'CHANGE_ME_random_32_chars');

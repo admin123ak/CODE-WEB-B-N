@@ -199,6 +199,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($act === 'crypto_test_poll') {
+        // Gọi crypto_poll.php cùng-host qua cURL với CRYPTO_POLL_SECRET.
+        try {
+            if (!defined('CRYPTO_POLL_SECRET') || CRYPTO_POLL_SECRET === '') {
+                throw new Exception('CRYPTO_POLL_SECRET chưa khả dụng (cần nhập USDT_TRC20_ADDRESS + BOT_TOKEN).');
+            }
+            $url = rtrim(SITE_URL, '/') . '/crypto_poll.php?src=admin&secret=' . rawurlencode(CRYPTO_POLL_SECRET);
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 25,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+            ]);
+            $body = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+            if ($body === false) throw new Exception('cURL: ' . $err);
+            $j = json_decode((string)$body, true);
+            if (!is_array($j)) throw new Exception('HTTP ' . $code . ' - response không phải JSON: ' . substr((string)$body, 0, 200));
+            if (empty($j['success'])) throw new Exception($j['error'] ?? ('HTTP ' . $code));
+            header("Location: ?tab=sysconfig&ok=1&crtest=" . urlencode(json_encode($j, JSON_UNESCAPED_UNICODE))); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode('Crypto test: ' . $e->getMessage())); exit;
+        }
+    }
+
+    if ($act === 'toggle_payment') {
+        // 1-click bật/tắt 1 phương thức thanh toán (MBBank hoặc Binance).
+        // Không đổi gì khác — chỉ flip bool tương ứng và ghi log qua hclouWriteConfigValues.
+        try {
+            $method = $_POST['method'] ?? '';
+            if ($method === 'mbbank') {
+                $cur = defined('MBBANK_AUTO_APPROVE_ENABLED') ? (bool)MBBANK_AUTO_APPROVE_ENABLED : false;
+                hclouWriteConfigValues(['MBBANK_AUTO_APPROVE_ENABLED' => $cur ? '0' : '1'], $_SESSION['admin_name'] ?? 'web_admin');
+            } elseif ($method === 'binance') {
+                $cur = defined('CRYPTO_AUTO_APPROVE_ENABLED') ? (bool)CRYPTO_AUTO_APPROVE_ENABLED : false;
+                if (!$cur) {
+                    if (!defined('USDT_TRC20_ADDRESS') || USDT_TRC20_ADDRESS === '') {
+                        throw new Exception('Chưa nhập USDT_TRC20_ADDRESS. Vào panel "Binance USDT" bên dưới điền địa chỉ ví trước.');
+                    }
+                }
+                hclouWriteConfigValues(['CRYPTO_AUTO_APPROVE_ENABLED' => $cur ? '0' : '1'], $_SESSION['admin_name'] ?? 'web_admin');
+            } else {
+                throw new Exception('Method không hợp lệ');
+            }
+            header("Location: ?tab=sysconfig&ok=1"); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit;
+        }
+    }
+
     if ($act === 'add_free_key') {
         $game_id=(int)$_POST['game_id']; $package_id=(int)$_POST['package_id']; $key_code=trim($_POST['key_code']);
         $pkg=$db->prepare("SELECT * FROM packages WHERE id=? AND game_id=?"); $pkg->execute([$package_id,$game_id]); $p=$pkg->fetch();
@@ -787,6 +841,81 @@ function updateFreeKeyPkgOptions(gameId) {
 <?php ensureAdminConfigLogTable($db); $cfgKeys = hclouConfigEditableKeys(); $logs = $db->query("SELECT * FROM admin_config_logs ORDER BY id DESC LIMIT 30")->fetchAll(); ?>
 <div class="warnbox">⚠️ Chỉ sửa các mục thật sự cần. Token/API key không được public. Khi lưu, hệ thống tự tạo backup <span class="mono">config.php.bk_admincfg_*</span> rồi ghi log vào SQL.</div>
 <?php
+// =============================================
+// PANEL "💳 Phương thức thanh toán" — 2 toggle button MBBank / Binance
+// Đặt TRÊN CÙNG để admin thấy ngay khi mở tab Config.
+// =============================================
+$_mbOn       = defined('MBBANK_AUTO_APPROVE_ENABLED') && MBBANK_AUTO_APPROVE_ENABLED;
+$_mbCfgOk    = defined('MBBANK_HISTORY_API_KEY') && MBBANK_HISTORY_API_KEY !== '' && defined('BANK_ACCOUNT') && BANK_ACCOUNT !== '';
+$_crOn       = defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED;
+$_crCfgOk    = defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '';
+?>
+<div class="form-card" style="margin-bottom:16px;border:2px solid rgba(99,102,241,.35);background:linear-gradient(180deg,rgba(99,102,241,.06),transparent)">
+  <h3 style="margin-bottom:6px">💳 Phương thức thanh toán</h3>
+  <p style="color:#8b949e;font-size:13px;margin-bottom:14px">Bật/tắt từng phương thức bằng 1 click. Khách hàng chỉ thấy option đang BẬT ở màn checkout.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+    <!-- MBBank card -->
+    <div style="border:1px solid <?= $_mbOn ? 'rgba(34,197,94,.5)' : 'rgba(107,114,128,.4)' ?>;border-radius:10px;padding:14px;background:<?= $_mbOn ? 'rgba(34,197,94,.06)' : 'rgba(31,41,55,.5)' ?>">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:18px;font-weight:800">🏦 MBBank (VND)</div>
+        <?php if ($_mbOn): ?>
+          <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800">BẬT</span>
+        <?php else: ?>
+          <span style="background:#374151;color:#9ca3af;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800">TẮT</span>
+        <?php endif; ?>
+      </div>
+      <p style="color:#8b949e;font-size:12px;margin-bottom:10px">Auto duyệt qua API Queenvps → MBBank. Đối tượng: khách VN, thanh toán bằng VietQR.</p>
+      <div style="margin-bottom:10px;font-size:12px">
+        <?php if ($_mbCfgOk): ?>
+          <span style="color:#86efac">✅ Đã cấu hình API + STK</span>
+        <?php else: ?>
+          <span style="color:#fde68a">⚠️ Thiếu <span class="mono">MBBANK_HISTORY_API_KEY</span> hoặc <span class="mono">BANK_ACCOUNT</span></span>
+        <?php endif; ?>
+      </div>
+      <form method="POST" style="margin:0">
+        <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+        <input type="hidden" name="act" value="toggle_payment">
+        <input type="hidden" name="method" value="mbbank">
+        <?php if ($_mbOn): ?>
+          <button class="btn btn-red" type="submit" onclick="return confirm('Tắt MBBank? Khách sẽ không thấy option này nữa.')" style="width:100%">⛔ Tắt MBBank</button>
+        <?php else: ?>
+          <button class="btn btn-green" type="submit" style="width:100%" <?= !$_mbCfgOk ? 'disabled title="Thiếu config — không bật được"' : '' ?>>✅ Bật MBBank</button>
+        <?php endif; ?>
+      </form>
+    </div>
+
+    <!-- Binance card -->
+    <div style="border:1px solid <?= $_crOn ? 'rgba(34,197,94,.5)' : 'rgba(107,114,128,.4)' ?>;border-radius:10px;padding:14px;background:<?= $_crOn ? 'rgba(34,197,94,.06)' : 'rgba(31,41,55,.5)' ?>">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:18px;font-weight:800">🪙 Binance USDT (TRC20)</div>
+        <?php if ($_crOn): ?>
+          <span style="background:#16a34a;color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800">BẬT</span>
+        <?php else: ?>
+          <span style="background:#374151;color:#9ca3af;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800">TẮT</span>
+        <?php endif; ?>
+      </div>
+      <p style="color:#8b949e;font-size:12px;margin-bottom:10px">Auto duyệt qua TronGrid blockchain. Đối tượng: khách quốc tế, không cần bank VN.</p>
+      <div style="margin-bottom:10px;font-size:12px">
+        <?php if ($_crCfgOk): ?>
+          <span style="color:#86efac">✅ Đã nhập địa chỉ ví TRC20</span>
+        <?php else: ?>
+          <span style="color:#fde68a">⚠️ Chưa nhập <span class="mono">USDT_TRC20_ADDRESS</span> — kéo xuống panel "Binance USDT" bên dưới</span>
+        <?php endif; ?>
+      </div>
+      <form method="POST" style="margin:0">
+        <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+        <input type="hidden" name="act" value="toggle_payment">
+        <input type="hidden" name="method" value="binance">
+        <?php if ($_crOn): ?>
+          <button class="btn btn-red" type="submit" onclick="return confirm('Tắt Binance? Khách sẽ không thấy option này nữa.')" style="width:100%">⛔ Tắt Binance</button>
+        <?php else: ?>
+          <button class="btn btn-green" type="submit" style="width:100%" <?= !$_crCfgOk ? 'disabled title="Thiếu địa chỉ ví — kéo xuống nhập trước"' : '' ?>>✅ Bật Binance</button>
+        <?php endif; ?>
+      </form>
+    </div>
+  </div>
+</div>
+<?php
 // Panel observability MBBank poll — đọc data/mbbank_poll_status.json
 $_mbStatusFile = APP_ROOT . '/data/mbbank_poll_status.json';
 $_mbS = is_file($_mbStatusFile) ? json_decode((string)@file_get_contents($_mbStatusFile), true) : null;
@@ -832,9 +961,57 @@ $_mbFresh = ($_mbS && !empty($_mbS['last_run_at']) && (time() - strtotime($_mbS[
   </form>
 </div>
 <?php
+// =============================================
+// Panel observability Crypto poll — mirror MBBank, đọc data/crypto_poll_status.json
+// =============================================
+$_crStatusFile = APP_ROOT . '/data/crypto_poll_status.json';
+$_crS = is_file($_crStatusFile) ? json_decode((string)@file_get_contents($_crStatusFile), true) : null;
+if (!is_array($_crS)) $_crS = null;
+$_crAgo = '—';
+if ($_crS && !empty($_crS['last_run_at'])) {
+    $_t = strtotime($_crS['last_run_at']);
+    if ($_t) {
+        $d = max(0, time() - $_t);
+        if ($d < 60) $_crAgo = $d . 's trước';
+        elseif ($d < 3600) $_crAgo = floor($d/60) . ' phút trước';
+        elseif ($d < 86400) $_crAgo = floor($d/3600) . ' giờ trước';
+        else $_crAgo = floor($d/86400) . ' ngày trước';
+    }
+}
+$_crFresh = ($_crS && !empty($_crS['last_run_at']) && (time() - strtotime($_crS['last_run_at'])) < 180);
+?>
+<div class="form-card" style="margin-bottom:16px;border:1px solid <?= $_crFresh ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.35)' ?>">
+  <h3>🪙 Crypto Poll (Binance USDT TRC20) — Quan sát</h3>
+  <?php if (!$_crS): ?>
+    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhập <span class="mono">USDT_TRC20_ADDRESS</span> ở panel bên dưới rồi bấm <b>Test Poll Ngay</b>, hoặc đợi cron chạy crypto_poll.php.</p>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
+      <div><small style="color:#8b949e">Lần chạy cuối</small><div style="font-weight:800;color:<?= $_crFresh ? '#bbf7d0' : '#fde68a' ?>"><?= h($_crAgo) ?></div><div class="mono" style="font-size:11px;color:#6b7f9e"><?= h($_crS['last_run_at']) ?></div></div>
+      <div><small style="color:#8b949e">Nguồn</small><div style="font-weight:800"><?= h($_crS['source'] ?? '—') ?></div></div>
+      <div><small style="color:#8b949e">Thời gian xử lý</small><div style="font-weight:800"><?= h((string)($_crS['duration_ms'] ?? '—')) ?> ms</div></div>
+      <div><small style="color:#8b949e">TX mới (seen)</small><div style="font-weight:800;color:#67e8f9"><?= (int)($_crS['seen_new'] ?? 0) ?></div></div>
+      <div><small style="color:#8b949e">Match đơn</small><div style="font-weight:800;color:#67e8f9"><?= (int)($_crS['matched'] ?? 0) ?></div></div>
+      <div><small style="color:#8b949e">Đã duyệt</small><div style="font-weight:800;color:#bbf7d0"><?= (int)($_crS['approved'] ?? 0) ?></div></div>
+    </div>
+    <?php if (!empty($_crS['skipped'])): ?>
+      <div class="warnbox" style="margin:0 0 10px">⏭️ Lần chạy này bị bỏ qua: <?= h((string)($_crS['error'] ?? 'skipped')) ?></div>
+    <?php elseif (!empty($_crS['error'])): ?>
+      <div class="warnbox" style="margin:0 0 10px;background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.30);color:#fecaca">❌ Lỗi: <?= h((string)$_crS['error']) ?></div>
+    <?php endif; ?>
+  <?php endif; ?>
+  <?php if(isset($_GET['crtest'])): ?><div class="codebox" style="margin:0 0 10px">📊 <?= htmlspecialchars((string)$_GET['crtest']) ?></div><?php endif; ?>
+  <form method="POST" style="display:flex;gap:10px;align-items:center">
+    <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+    <input type="hidden" name="act" value="crypto_test_poll">
+    <button class="btn btn-blue" type="submit">▶️ Test Poll Ngay</button>
+    <small style="color:#8b949e">Gọi <span class="mono">crypto_poll.php</span> đồng bộ — fetch lịch sử giao dịch TRC20 mới nhất.</small>
+  </form>
+</div>
+<?php
 // Bảng trạng thái cron jobs - đọc data/cron_status_{job}.json (do cron_run.php ghi)
 $_cronJobs = [
     'mbbank'      => ['label' => '🏦 MBBANK Auto-bank',    'sched' => '*/1m',  'fresh_sec' => 180],
+    'crypto'      => ['label' => '🪙 Crypto Auto-USDT',     'sched' => '*/1m',  'fresh_sec' => 180],
     'maintenance' => ['label' => '🧹 Maintenance',         'sched' => '*/5m',  'fresh_sec' => 600],
     'monitor'     => ['label' => '📊 Monitor',             'sched' => '*/5m',  'fresh_sec' => 600],
     'automation'  => ['label' => '🤖 Automation Daily',    'sched' => '8h',    'fresh_sec' => 90000],
@@ -960,6 +1137,33 @@ function _hclouFormatBytes($b) {
 <div style="flex:1;min-width:260px"><label>Link4M token</label><input style="width:100%" name="cfg[LINK4M_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LINK4M_API_TOKEN'))?>"></div>
 <div style="flex:1;min-width:260px"><label>YeuMoney token</label><input style="width:100%" name="cfg[YEUMONEY_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('YEUMONEY_API_TOKEN'))?>"></div>
 </div>
+
+<h3 style="margin-top:20px">🪙 Binance USDT TRC20</h3>
+<div class="form-row">
+<div style="flex:1;min-width:300px"><label>Địa chỉ ví USDT TRC20</label><input style="width:100%;font-family:monospace" name="cfg[USDT_TRC20_ADDRESS]" value="<?=htmlspecialchars((string)hclouConfigValue('USDT_TRC20_ADDRESS'))?>" placeholder="Tdxxxxxxxxxxxxxxxxxxxxxx (bắt đầu bằng T)"></div>
+<div style="flex:1;min-width:260px"><label>TronGrid API Key <span style="color:#8b949e;font-weight:400">(tuỳ chọn)</span></label><input style="width:100%;font-family:monospace" name="cfg[TRONGRID_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('TRONGRID_API_KEY'))?>" placeholder="Để trống vẫn dùng được, có key thì rate limit cao hơn"></div>
+<div><label>Auto-crypto</label><select name="cfg[CRYPTO_AUTO_APPROVE_ENABLED]"><option value="1" <?=(defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>>Bật</option><option value="0" <?=(!defined('CRYPTO_AUTO_APPROVE_ENABLED') || !CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>>Tắt</option></select></div>
+</div>
+<div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:12px;margin-top:8px;font-size:13px;line-height:1.7">
+  <b style="color:#a5b4fc">📘 Cách lấy 2 thông số trên:</b><br>
+  <br>
+  <b style="color:#bbf7d0">1️⃣ USDT_TRC20_ADDRESS (địa chỉ ví nhận USDT)</b><br>
+  • <b>Cách A — Sàn Binance:</b> Mở app Binance → Wallet → Spot Wallet → Deposit → chọn coin <span class="mono">USDT</span> → chọn network <b style="color:#fbbf24">Tron (TRC20)</b> → Copy địa chỉ (bắt đầu bằng chữ <span class="mono">T</span>).<br>
+  • <b>Cách B — Sàn khác:</b> OKX / Bybit / MEXC đều có flow tương tự (Deposit → USDT → TRC20).<br>
+  • <b>Cách C — Ví tự quản (không cần KYC, không cần đủ 18 tuổi):</b> Tải <b>TronLink</b> (https://tronlink.org) hoặc <b>Trust Wallet</b> → tạo ví mới → copy địa chỉ TRON.<br>
+  ⚠️ <b style="color:#fca5a5">Bắt buộc là TRC20</b>, KHÔNG phải BEP20/ERC20. Sai mạng = mất tiền.<br>
+  <br>
+  <b style="color:#bbf7d0">2️⃣ TRONGRID_API_KEY (tuỳ chọn — để trống vẫn chạy được)</b><br>
+  • Vào <a href="https://www.trongrid.io/" target="_blank" style="color:#67e8f9">https://www.trongrid.io/</a> → Sign Up bằng email (chỉ xác thực email, KHÔNG cần KYC).<br>
+  • Login → Dashboard → <b>Create an App</b> → đặt tên gì cũng được (vd <span class="mono">HCLOU</span>).<br>
+  • Copy <b>API Key</b> hiện ra → paste vào ô trên.<br>
+  • Free tier: 100.000 request/ngày — quá đủ cho cron 1 phút/lần.<br>
+  <br>
+  <b style="color:#fde68a">💡 Lưu ý kỹ thuật:</b><br>
+  • Khách thanh toán bằng Binance USDT: hệ thống tự convert VND → USDT theo tỉ giá CoinGecko realtime (cache 5 phút).<br>
+  • Mỗi đơn được cộng thêm số lẻ thập phân duy nhất (vd <span class="mono">2.001234 USDT</span> cho đơn #1234) để hệ thống phân biệt đơn khi nhiều khách chuyển cùng số tròn.<br>
+  • Khi cả 2 ô trên đã điền + bật <b>Auto-crypto</b>, option Binance mới hiện ở Mini App của khách.
+</div>
 <h3 style="margin-top:20px">Cron Tokens</h3><div class="form-row">
 <div style="flex:1;min-width:260px"><label>CRON_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[CRON_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('CRON_RUN_TOKEN'))?>"></div>
 <div style="flex:1;min-width:260px"><label>AUTOMATION_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[AUTOMATION_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('AUTOMATION_RUN_TOKEN'))?>"></div>
@@ -969,6 +1173,7 @@ function _hclouFormatBytes($b) {
 <div class="codebox"><?php
 $cronJobs = [
     ['label'=>'🏦 MBBANK Auto-bank', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=mbbank'],
+    ['label'=>'🪙 Crypto Auto-USDT', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=crypto'],
     ['label'=>'🧹 Maintenance', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=maintenance'],
     ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
     ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=automation'],

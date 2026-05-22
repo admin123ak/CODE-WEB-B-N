@@ -113,6 +113,9 @@ CREATE TABLE `orders` (
   `game_id` INT(11) NOT NULL,
   `package_id` INT(11) NOT NULL,
   `amount` DECIMAL(12,0) NOT NULL,
+  `payment_method` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank',
+  `crypto_amount` DECIMAL(18,6) DEFAULT NULL,
+  `usdt_vnd_rate` DECIMAL(12,2) DEFAULT NULL,
   `status` ENUM('pending','approved','rejected','cancelled') DEFAULT 'pending',
   `payment_proof` TEXT DEFAULT NULL,
   `admin_note` TEXT DEFAULT NULL,
@@ -125,6 +128,8 @@ CREATE TABLE `orders` (
   KEY `idx_orders_status_created` (`status`, `created_at`),
   KEY `idx_orders_game` (`game_id`),
   KEY `idx_orders_package` (`package_id`),
+  KEY `idx_orders_crypto_amount` (`crypto_amount`),
+  KEY `idx_orders_payment_method` (`payment_method`, `status`),
   CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_orders_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`),
   CONSTRAINT `fk_orders_package` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`)
@@ -171,7 +176,8 @@ CREATE TABLE `bank_transactions` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `tx_hash` CHAR(64) NOT NULL,
   `tx_date` DATETIME NOT NULL,
-  `amount` DECIMAL(12,0) NOT NULL,
+  `amount` DECIMAL(18,6) NOT NULL,
+  `source` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank',
   `description` TEXT NOT NULL,
   `order_code` VARCHAR(50) DEFAULT NULL,
   `status` ENUM('seen','matched','approved','ignored','error') DEFAULT 'seen',
@@ -183,7 +189,8 @@ CREATE TABLE `bank_transactions` (
   KEY `idx_tx_order_code` (`order_code`),
   KEY `idx_tx_status` (`status`),
   KEY `idx_tx_created` (`created_at`),
-  KEY `idx_tx_date` (`tx_date`)
+  KEY `idx_tx_date` (`tx_date`),
+  KEY `idx_tx_source` (`source`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================

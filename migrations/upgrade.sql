@@ -77,6 +77,29 @@ ALTER TABLE `users`     ADD INDEX IF NOT EXISTS `idx_users_username`   (`telegra
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =============================================
+-- 8) BINANCE USDT TRC20 SUPPORT (added 2026-05-22)
+--    - orders: thêm payment_method, crypto_amount, usdt_vnd_rate
+--    - bank_transactions: thêm source ('mbbank' | 'binance'), nới amount 18,6
+-- =============================================
+ALTER TABLE `orders`
+  ADD COLUMN IF NOT EXISTS `payment_method` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank' AFTER `amount`,
+  ADD COLUMN IF NOT EXISTS `crypto_amount`  DECIMAL(18,6) DEFAULT NULL AFTER `payment_method`,
+  ADD COLUMN IF NOT EXISTS `usdt_vnd_rate`  DECIMAL(12,2) DEFAULT NULL AFTER `crypto_amount`;
+
+ALTER TABLE `orders`
+  ADD INDEX IF NOT EXISTS `idx_orders_crypto_amount`   (`crypto_amount`),
+  ADD INDEX IF NOT EXISTS `idx_orders_payment_method`  (`payment_method`, `status`);
+
+ALTER TABLE `bank_transactions`
+  ADD COLUMN IF NOT EXISTS `source` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank' AFTER `amount`;
+
+ALTER TABLE `bank_transactions`
+  MODIFY `amount` DECIMAL(18,6) NOT NULL;
+
+ALTER TABLE `bank_transactions`
+  ADD INDEX IF NOT EXISTS `idx_tx_source` (`source`);
+
+-- =============================================
 -- VERIFY
 -- =============================================
 SHOW INDEX FROM `keys`;

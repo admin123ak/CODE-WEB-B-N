@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/lib/order_approval.php';
 
 // =============================================
 // SCRIPT LOCK - tránh chạy chồng cron jobs
@@ -172,71 +173,7 @@ function normalizeDateForDb($raw) {
     return $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
 }
 
-/**
- * Approve order với atomic check.
- * - UPDATE orders WHERE status='pending' kiểm tra rowCount = 1
- * - Nếu 0 row affected → có race condition, rollback và return ignored
- */
-function approvePaidOrder(PDO $db, string $orderCode, float $amount, string $txHash) {
-    $stmt = $db->prepare("SELECT o.*, p.days, p.key_type, p.price, g.name AS game_name, g.package_name, u.telegram_id
-        FROM orders o
-        JOIN packages p ON o.package_id = p.id
-        JOIN games g    ON o.game_id    = g.id
-        JOIN users u    ON o.user_id    = u.id
-        WHERE o.order_code = ? AND o.status = 'pending'
-        LIMIT 1");
-    $stmt->execute([$orderCode]);
-    $order = $stmt->fetch();
-    if (!$order) return ['status' => 'ignored', 'note' => 'Không tìm thấy đơn pending'];
-    if ((float)$order['amount'] > $amount) return ['status' => 'ignored', 'note' => 'Số tiền nhận nhỏ hơn đơn'];
-
-    $db->beginTransaction();
-    try {
-        // 1) Lock key pending của đơn này
-        $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE order_id = ? AND status = 'pending' LIMIT 1 FOR UPDATE");
-        $keyStmt->execute([$order['id']]);
-        $key = $keyStmt->fetch();
-        if (!$key) throw new Exception('Không tìm thấy key pending');
-
-        // 2) Update key active (atomic - dùng cả status='pending' để chắc chắn)
-        $start  = date('Y-m-d H:i:s');
-        $expire = date('Y-m-d H:i:s', strtotime('+' . ((int)$order['days']) . ' days'));
-        $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
-        $upKey->execute([$start, $expire, $key['id']]);
-        if ($upKey->rowCount() !== 1) throw new Exception('Key đã bị thay đổi trạng thái (race condition)');
-
-        // 3) Update order - atomic check status pending
-        $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=? AND status='pending'");
-        $upOrder->execute(['mbbank_api', $order['id']]);
-        if ($upOrder->rowCount() !== 1) throw new Exception('Order đã được xử lý bởi process khác');
-
-        // 4) Cập nhật tx
-        $db->prepare("UPDATE bank_transactions SET status='approved', processed_at=NOW(), note=? WHERE tx_hash=?")
-           ->execute(['Auto approved ' . $orderCode, $txHash]);
-
-        $db->commit();
-
-        // Send Telegram AFTER commit
-        $shortOrder  = preg_replace('/^ORD/i', '', $orderCode);
-        $packageName = $order['package_name'] ?: $order['game_name'];
-        $type        = strtoupper($order['key_type'] ?: 'Normal') === 'VIP' ? 'VIP' : 'Normal';
-        $userMsg = "✅ <b>Key Purchase Successful!</b>\n\n" .
-            "• Order code : <code>{$shortOrder}</code>\n" .
-            "• License : <code>{$key['key_code']}</code>\n" .
-            "• Package : <code>{$packageName}</code>\n" .
-            "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ\n\n" .
-            "Duration will start when license login.\n\n" .
-            "<b>Lưu ý:</b> để sử dụng an toàn, không dùng song song mod khác hoặc ứng dụng lạ.";
-        sendTelegram($order['telegram_id'], $userMsg);
-        sendTelegram(ADMIN_CHAT_ID,
-            "🤖 <b>AUTO MBBANK DUYỆT ĐƠN</b>\n#{$orderCode}\n💰 Nhận: " . number_format($amount, 0, ',', '.') . "đ\n🔑 <code>{$key['key_code']}</code>");
-
-        return ['status' => 'approved', 'note' => 'OK'];
-    } catch (Exception $e) {
-        $db->rollBack();
-        return ['status' => 'error', 'note' => $e->getMessage()];
-    }
-}
+// approvePaidOrder() đã chuyển sang lib/order_approval.php để chia sẻ với crypto_poll.php
 
 try {
     if (!defined('MBBANK_AUTO_APPROVE_ENABLED') || !MBBANK_AUTO_APPROVE_ENABLED) {
