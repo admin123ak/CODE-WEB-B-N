@@ -361,6 +361,105 @@ function ensureAdminConfigLogTable(PDO $db) {
 // =============================================
 // RATE LIMITER (file-based, fallback nếu chưa có Redis)
 // =============================================
+// =============================================
+// CSRF PROTECTION
+// =============================================
+function csrfToken() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrfField() {
+    return '<input type="hidden" name="csrf_token" value="' . h(csrfToken()) . '">';
+}
+
+function csrfVerify($token = null) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $token = $token ?? ($_POST['csrf_token'] ?? '');
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+    if (!$sessionToken || !$token) return false;
+    return hash_equals($sessionToken, $token);
+}
+
+function csrfRequire() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+    // Origin check (defense-in-depth)
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
+    $siteHost = parse_url(SITE_URL, PHP_URL_HOST);
+    if ($origin && $siteHost) {
+        $originHost = parse_url($origin, PHP_URL_HOST);
+        if ($originHost && $originHost !== $siteHost) {
+            http_response_code(403);
+            exit('CSRF: Origin không hợp lệ');
+        }
+    }
+    if (!csrfVerify()) {
+        http_response_code(403);
+        exit('CSRF: Token không hợp lệ. Vui lòng tải lại trang.');
+    }
+}
+
+// =============================================
+// LOGIN RATE LIMITER (chống brute force)
+// =============================================
+function loginAttemptCheck($scope = 'admin_login', $maxAttempts = 5, $windowSeconds = 900) {
+    $ip   = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $dir  = APP_ROOT . '/data/login_attempts';
+    if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    $file = $dir . '/' . preg_replace('/[^a-z0-9_]/i', '_', $scope . '_' . hash('sha256', $ip)) . '.json';
+    $now  = time();
+    $data = ['start' => $now, 'count' => 0];
+    if (is_file($file)) {
+        $old = json_decode((string)@file_get_contents($file), true);
+        if (is_array($old) && !empty($old['start']) && ($now - (int)$old['start']) < $windowSeconds) {
+            $data = $old;
+        }
+    }
+    if (($now - (int)$data['start']) >= $windowSeconds) $data = ['start' => $now, 'count' => 0];
+    return ['data' => $data, 'file' => $file, 'blocked' => (int)$data['count'] >= $maxAttempts, 'remaining' => max(0, $maxAttempts - (int)$data['count']), 'unblock_at' => (int)$data['start'] + $windowSeconds];
+}
+
+function loginAttemptIncrement($scope = 'admin_login', $windowSeconds = 900) {
+    $info = loginAttemptCheck($scope);
+    $info['data']['count'] = (int)$info['data']['count'] + 1;
+    @file_put_contents($info['file'], json_encode($info['data']), LOCK_EX);
+}
+
+function loginAttemptReset($scope = 'admin_login') {
+    $ip   = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $dir  = APP_ROOT . '/data/login_attempts';
+    $file = $dir . '/' . preg_replace('/[^a-z0-9_]/i', '_', $scope . '_' . hash('sha256', $ip)) . '.json';
+    @unlink($file);
+}
+
+// =============================================
+// STRUCTURED LOGGING
+// =============================================
+function hclouLog($level, $message, array $context = []) {
+    $logFile = APP_ROOT . '/data/app.log';
+    $dir = dirname($logFile);
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    $entry = [
+        'ts'      => date('c'),
+        'level'   => strtoupper($level),
+        'ip'      => $_SERVER['REMOTE_ADDR'] ?? '',
+        'message' => $message,
+        'context' => $context,
+    ];
+    @file_put_contents($logFile, json_encode($entry, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+// Convenience wrappers
+function logInfo($msg, $ctx = [])  { hclouLog('info',  $msg, $ctx); }
+function logWarn($msg, $ctx = [])  { hclouLog('warn',  $msg, $ctx); }
+function logError($msg, $ctx = []) { hclouLog('error', $msg, $ctx); }
+
+// =============================================
+// RATE LIMITER
+// =============================================
 function rateLimit($scope, $limit, $windowSeconds, $identity = null) {
     $identity = $identity ?: ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
     $dir      = APP_ROOT . '/data/ratelimit';

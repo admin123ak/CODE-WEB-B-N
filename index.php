@@ -579,6 +579,28 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 var API='./api/index.php',currentUser=null,selGame=null,selPkg=null,tgInitData='',appToken='';
 var PLAY_BASE='https://play.google.com/store/apps/details?id=';
 var allKeys=[],curFilter='all',cdTimers={},gCache=[],pCache=[],pendingPayOrders=[];
+
+// =============================================
+// XSS-SAFE HELPERS
+// =============================================
+function escapeHtml(s){
+  if(s==null) return '';
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+// Sanitize URL: chỉ accept http/https/data:image, reject javascript: vbscript:
+function safeUrl(u){
+  if(!u) return '';
+  var s = String(u).trim();
+  if(/^javascript:|^vbscript:|^data:(?!image\/)/i.test(s)) return '';
+  return s;
+}
+// Validate Android package name (vd: com.example.app)
+function safePackageName(p){
+  if(!p) return '';
+  return /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$/.test(p) ? p : '';
+}
 var ICONS={
   'com.garena.game.kgvn':'\u2694\uFE0F',
   'com.garena.game.kgth':'\uD83D\uDDE1\uFE0F',
@@ -678,7 +700,7 @@ async function startApp(tg){
     document.getElementById('telegramIdText').textContent=currentUser.telegram_id;
     var init=n.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
     if(currentUser.avatar_url){
-      document.getElementById('avatarEl').innerHTML='<img src="'+currentUser.avatar_url+'" alt="">';
+      document.getElementById('avatarEl').innerHTML='<img src="'+escapeHtml(safeUrl(currentUser.avatar_url))+'" alt="">';
     } else {
       document.getElementById('avatarInit').textContent=init;
     }

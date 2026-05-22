@@ -12,7 +12,16 @@ config.local.php
 data/*.json
 data/*.log
 data/*.lock
+data/locks/
+data/ratelimit/
+data/login_attempts/
 !data/.gitkeep
+
+# Uploads (admin upload images) - giữ thư mục nhưng không push file
+uploads/games/*
+!uploads/games/.gitkeep
+!uploads/.htaccess
+!uploads/.gitkeep
 
 # Database dumps có data thật của khách hàng
 hcloucom_bankey.sql

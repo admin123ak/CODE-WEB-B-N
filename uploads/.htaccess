@@ -1,0 +1,12 @@
+# Block PHP execution in uploads
+<FilesMatch "\.(php|phtml|phar|html|htm|js|cgi|pl|py|sh|bash)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+# Allow only image types
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+Options -Indexes -ExecCGI
+php_flag engine off

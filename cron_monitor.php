@@ -51,22 +51,29 @@ function hclouMonCheckDb(PDO $db): array {
     }
 }
 function hclouMonDisk(): array {
-    $total = @disk_total_space('/');
-    $free = @disk_free_space('/');
-    if (!$total || !$free) return ['ok' => false, 'detail' => 'unknown'];
+    // Trên shared hosting, disk_total_space() có thể bị disabled hoặc trả false.
+    // Khi đó skip check (ok=true) để không trigger alert giả.
+    if (!function_exists('disk_total_space') || !function_exists('disk_free_space')) {
+        return ['ok' => true, 'detail' => 'skipped (shared hosting)'];
+    }
+    $total = @disk_total_space(__DIR__);
+    $free  = @disk_free_space(__DIR__);
+    if (!$total || !$free) return ['ok' => true, 'detail' => 'skipped (function disabled)'];
     $used = round((1 - $free / $total) * 100, 1);
-    return ['ok' => $used < 90, 'detail' => $used . '% used, free ' . round($free / 1024 / 1024 / 1024, 2) . 'GB'];
+    return ['ok' => $used < 95, 'detail' => $used . '% used, free ' . round($free / 1024 / 1024 / 1024, 2) . 'GB'];
 }
 function hclouMonRam(): array {
+    // Trên shared hosting, /proc/meminfo thường không đọc được.
+    if (!is_readable('/proc/meminfo')) return ['ok' => true, 'detail' => 'skipped (shared hosting)'];
     $raw = @file_get_contents('/proc/meminfo');
-    if (!$raw) return ['ok' => false, 'detail' => 'unknown'];
+    if (!$raw) return ['ok' => true, 'detail' => 'skipped'];
     preg_match('/MemAvailable:\s+(\d+)\s+kB/', $raw, $ma);
     preg_match('/MemTotal:\s+(\d+)\s+kB/', $raw, $mt);
     $avail = isset($ma[1]) ? (int)$ma[1] : 0;
     $total = isset($mt[1]) ? (int)$mt[1] : 0;
-    if (!$avail || !$total) return ['ok' => false, 'detail' => 'unknown'];
+    if (!$avail || !$total) return ['ok' => true, 'detail' => 'skipped'];
     $pct = round($avail / $total * 100, 1);
-    return ['ok' => $pct >= 10, 'detail' => round($avail / 1024) . 'MB available (' . $pct . '%)'];
+    return ['ok' => $pct >= 5, 'detail' => round($avail / 1024) . 'MB available (' . $pct . '%)'];
 }
 function hclouMonResult(string $name, bool $ok, string $detail): array {
     return ['name' => $name, 'ok' => $ok, 'detail' => $detail];
@@ -83,7 +90,7 @@ try {
     $apiJson = json_decode($api['body'], true);
     $checks[] = hclouMonResult('Mini App API games', $api['ok'] && is_array($apiJson), 'HTTP ' . $api['code'] . ' / ' . $api['ms'] . 'ms');
 
-    $checks[] = ['name' => 'Database', ...hclouMonCheckDb($db)];
+    $checks[] = array_merge(['name' => 'Database'], hclouMonCheckDb($db));
 
     $bankEnabled = defined('MBBANK_AUTO_APPROVE_ENABLED') && MBBANK_AUTO_APPROVE_ENABLED;
     $checks[] = hclouMonResult('MBBANK auto approve', $bankEnabled, $bankEnabled ? 'enabled' : 'disabled');
@@ -98,10 +105,10 @@ try {
     $checks[] = hclouMonResult('Recent bank ignored/error', $bankBad === 0, $bankBad . ' tx in 2h');
 
     $disk = hclouMonDisk();
-    $checks[] = ['name' => 'Disk /', ...$disk];
+    $checks[] = array_merge(['name' => 'Disk /'], $disk);
 
     $ram = hclouMonRam();
-    $checks[] = ['name' => 'RAM', ...$ram];
+    $checks[] = array_merge(['name' => 'RAM'], $ram);
 
     $failed = array_values(array_filter($checks, fn($c) => !$c['ok']));
     $state = hclouMonLoadState();

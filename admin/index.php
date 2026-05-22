@@ -26,16 +26,27 @@ $loggedIn = !empty($_SESSION['admin_auth']) && !empty($_SESSION['admin_last_seen
 if (!$loggedIn) {
     unset($_SESSION['admin_auth'], $_SESSION['admin_last_seen']);
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Rate limit: max 5 attempts / 15 min per IP
+        $attempt = loginAttemptCheck('admin_login', 5, 900);
+        if ($attempt['blocked']) {
+            $remain = max(0, $attempt['unblock_at'] - time());
+            admin_login_page('Quá nhiều lần thử sai. Vui lòng đợi ' . ceil($remain / 60) . ' phút.');
+            exit;
+        }
         $csrfOk = hash_equals($_SESSION['admin_csrf'] ?? '', $_POST['csrf'] ?? '');
         if (!$csrfOk) { admin_login_page('Phiên đăng nhập không hợp lệ, thử lại.'); exit; }
         if (password_verify($_POST['pw'] ?? '', ADMIN_PASSWORD_HASH)) {
+            loginAttemptReset('admin_login');
             session_regenerate_id(true);
             $_SESSION['admin_auth'] = true;
             $_SESSION['admin_last_seen'] = time();
             $_SESSION['admin_csrf'] = bin2hex(random_bytes(16));
+            logInfo('Admin login OK', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
             header('Location: ?tab=dashboard'); exit;
         }
-        admin_login_page('Sai mật khẩu admin.'); exit;
+        loginAttemptIncrement('admin_login', 900);
+        logWarn('Admin login failed', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '', 'remaining' => $attempt['remaining'] - 1]);
+        admin_login_page('Sai mật khẩu admin. Còn ' . max(0, $attempt['remaining'] - 1) . ' lượt thử.'); exit;
     }
     admin_login_page(); exit;
 }
@@ -45,6 +56,32 @@ if (empty($_SESSION['admin_csrf'])) $_SESSION['admin_csrf'] = bin2hex(random_byt
 $db = getDB();
 $tab = $_GET['tab'] ?? 'dashboard';
 
+/**
+ * Xử lý upload icon game.
+ * Trả về URL tương đối nếu upload OK, '' nếu không có file hoặc fail.
+ */
+function handleGameIconUpload() {
+    if (empty($_FILES['icon']) || $_FILES['icon']['error'] === UPLOAD_ERR_NO_FILE) return '';
+    if ($_FILES['icon']['error'] !== UPLOAD_ERR_OK) return '';
+    $file = $_FILES['icon'];
+    if ($file['size'] > 2 * 1024 * 1024) return ''; // max 2MB
+
+    // Verify MIME type
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/svg+xml' => 'svg', 'image/gif' => 'gif'];
+    if (!isset($allowed[$mime])) return '';
+
+    $ext = $allowed[$mime];
+    $uploadDir = APP_ROOT . '/uploads/games';
+    if (!is_dir($uploadDir)) @mkdir($uploadDir, 0755, true);
+    $filename = 'game_' . bin2hex(random_bytes(8)) . '.' . $ext;
+    $target = $uploadDir . '/' . $filename;
+    if (!move_uploaded_file($file['tmp_name'], $target)) return '';
+    return rtrim(SITE_URL, '/') . '/uploads/games/' . $filename;
+}
+
 function hclouMaskSecret($value, $left = 8, $right = 4) {
     $value = (string)$value;
     $len = strlen($value);
@@ -53,16 +90,10 @@ function hclouMaskSecret($value, $left = 8, $right = 4) {
     return substr($value, 0, $left) . '…' . substr($value, -$right);
 }
 function hclouCronRunToken() {
-    $file = __DIR__ . '/../cron_run.php';
-    if (!is_file($file)) return '';
-    $src = file_get_contents($file);
-    return preg_match("/const\s+CRON_RUN_TOKEN\s*=\s*'([^']+)'/", $src, $m) ? $m[1] : '';
+    return defined('CRON_RUN_TOKEN') ? (string)CRON_RUN_TOKEN : '';
 }
 function hclouAutomationRunToken() {
-    $file = __DIR__ . '/../automation_run.php';
-    if (!is_file($file)) return '';
-    $src = file_get_contents($file);
-    return preg_match("/const\s+AUTOMATION_RUN_TOKEN\s*=\s*'([^']+)'/", $src, $m) ? $m[1] : '';
+    return defined('AUTOMATION_RUN_TOKEN') ? (string)AUTOMATION_RUN_TOKEN : '';
 }
 function hclouCronRunUrl($job, $masked = false) {
     $token = hclouCronRunToken();
@@ -72,7 +103,8 @@ function hclouCronRunUrl($job, $masked = false) {
 function hclouAutomationRunUrl($masked = false) {
     $token = hclouAutomationRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
-    return rtrim(SITE_URL, '/') . '/automation_run.php?token=' . $show;
+    // automation_run.php đã bỏ; chuyển sang cron_run.php?job=automation
+    return rtrim(SITE_URL, '/') . '/cron_run.php?token=' . $show . '&job=automation';
 }
 
 // Xử lý action POST
@@ -117,8 +149,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($act === 'add_game') {
-        $db->prepare("INSERT INTO games (name,package_name,type,root_type,sort_order) VALUES (?,?,?,?,?)")
-           ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$_POST['root'],$_POST['sort']??0]);
+        $iconUrl = handleGameIconUpload();
+        $db->prepare("INSERT INTO games (name,package_name,icon_url,type,root_type,sort_order) VALUES (?,?,?,?,?,?)")
+           ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0]);
         header("Location: ?tab=games&ok=1"); exit;
     }
     if ($act === 'toggle_game') {
@@ -126,8 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=games&ok=1"); exit;
     }
     if ($act === 'edit_game') {
-        $db->prepare("UPDATE games SET name=?, package_name=?, type=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-           ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+        $iconUrl = handleGameIconUpload();
+        if ($iconUrl) {
+            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, type=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+        } else {
+            $db->prepare("UPDATE games SET name=?, package_name=?, type=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+        }
         header("Location: ?tab=games&ok=1"); exit;
     }
     if ($act === 'del_game') {
@@ -154,7 +193,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=packages"); exit;
     }
     if ($act === 'approve_order') {
-        $order_code = $_POST['order_code'];
+        $order_code = $_POST['order_code'] ?? '';
+        if (!$order_code) { header("Location: ?tab=orders&err=".urlencode('Thiếu order_code')); exit; }
         $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
         $stmt->execute([$order_code]);
         $order = $stmt->fetch();
@@ -163,29 +203,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $now = date('Y-m-d H:i:s');
             $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
+            // Atomic: chỉ approve nếu vẫn pending - kiểm tra rowCount
+            $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=? AND status='pending'");
+            $upOrder->execute([$order_code]);
+            if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
             $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
                ->execute([$now, $expire, $order['id']]);
-            $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=?")
-               ->execute([$order_code]);
             $db->commit();
-            if ($order) sendTelegram($order['telegram_id'], "✅ <b>Đơn #{$order_code} đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: {$order['days']} ngày.");
-        } catch (Exception $e) { $db->rollBack(); header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit; }
+            logInfo('Admin approved order', ['order' => $order_code]);
+            if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
+        } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            logError('Admin approve fail', ['order' => $order_code, 'err' => $e->getMessage()]);
+            header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit;
+        }
         header("Location: ?tab=orders&ok=1"); exit;
     }
 
     if ($act === 'reject_order') {
-        $order_code = $_POST['order_code'];
+        $order_code = $_POST['order_code'] ?? '';
+        if (!$order_code) { header("Location: ?tab=orders&err=".urlencode('Thiếu order_code')); exit; }
         $stmt = $db->prepare("SELECT o.id, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
         $stmt->execute([$order_code]);
         $order = $stmt->fetch();
         if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
         $db->beginTransaction();
         try {
-            // Trả key về pool available
+            $upOrder = $db->prepare("UPDATE orders SET status='rejected', approved_by='web_admin' WHERE order_code=? AND status='pending'");
+            $upOrder->execute([$order_code]);
+            if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
             $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
                ->execute([$order['id']]);
-            $db->prepare("UPDATE orders SET status='rejected', approved_by='web_admin' WHERE order_code=?")->execute([$order_code]);
             $db->commit();
+            logInfo('Admin rejected order', ['order' => $order_code]);
             if ($order) sendTelegram($order['telegram_id'], "❌ <b>Đơn #{$order_code} bị từ chối.</b>\nVui lòng liên hệ admin để được hỗ trợ.");
         } catch (Exception $e) { $db->rollBack(); header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit; }
         header("Location: ?tab=orders"); exit;
@@ -318,15 +368,15 @@ if($pending): ?>
 <tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Thời gian</th><th>Thao tác</th></tr>
 <?php foreach($pending as $o): ?>
 <tr>
-  <td><b><?=$o['order_code']?></b></td>
-  <td>@<?=$o['telegram_username']?><br><small style="color:#8b949e"><?=$o['full_name']?></small></td>
-  <td><?=$o['game_name']?><br><small style="color:#8b949e"><?=$o['pkg_name']?> (<?=$o['days']?> ngày)</small></td>
+  <td><b><?=h($o['order_code'])?></b></td>
+  <td>@<?=h($o['telegram_username'])?><br><small style="color:#8b949e"><?=h($o['full_name'])?></small></td>
+  <td><?=h($o['game_name'])?><br><small style="color:#8b949e"><?=h($o['pkg_name'])?> (<?=$o['days']?> ngày)</small></td>
   <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? 'Chưa có')?></td>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m H:i',strtotime($o['created_at']))?></td>
   <td>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=h($o['order_code'])?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=h($o['order_code'])?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
   </td>
 </tr>
 <?php endforeach ?>
@@ -349,17 +399,17 @@ $orders->execute([$filter_status]); $orders = $orders->fetchAll();
 <tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Trạng thái</th><th>Thời gian</th><?php if($filter_status==='pending'):?><th>Thao tác</th><?php endif?></tr>
 <?php foreach($orders as $o): $cls=['pending'=>'orange','approved'=>'green','rejected'=>'red','cancelled'=>'gray'][$o['status']]??'gray'; ?>
 <tr>
-  <td><b><?=$o['order_code']?></b></td>
-  <td>@<?=$o['telegram_username']?></td>
-  <td><?=$o['game_name']?><br><small style="color:#8b949e"><?=$o['pkg_name']?></small></td>
+  <td><b><?=h($o['order_code'])?></b></td>
+  <td>@<?=h($o['telegram_username'])?></td>
+  <td><?=h($o['game_name'])?><br><small style="color:#8b949e"><?=h($o['pkg_name'])?></small></td>
   <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? '--')?><br><small style="color:#8b949e"><?=htmlspecialchars($o['key_status'] ?? '')?></small></td>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
-  <td><span class="badge <?=$cls?>"><?=$o['status']?></span></td>
+  <td><span class="badge <?=$cls?>"><?=h($o['status'])?></span></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m/Y H:i',strtotime($o['created_at']))?></td>
   <?php if($filter_status==='pending'):?>
   <td>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=$o['order_code']?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="approve_order"><input type="hidden" name="order_code" value="<?=h($o['order_code'])?>"><button class="btn btn-green" onclick="return confirm('Duyệt đơn này?')">✅</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="reject_order"><input type="hidden" name="order_code" value="<?=h($o['order_code'])?>"><button class="btn btn-red" onclick="return confirm('Từ chối?')">❌</button></form>
   </td>
   <?php endif?>
 </tr>
@@ -424,12 +474,12 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
 <h1>🔑 Quản lý Keys</h1>
 
 <?php if(isset($_GET['ok'])): ?><div class="alert alert-green">✅ Thành công!<?php if(isset($_GET['added'])):?> Đã thêm <?=(int)$_GET['added']?> key vào pool.<?php endif?></div><?php endif ?>
-<?php if(isset($_GET['err'])): ?><div class="warnbox">⚠️ <?=$_GET['err']?></div><?php endif ?>
+<?php if(isset($_GET['err'])): ?><div class="warnbox">⚠️ <?=h($_GET['err'])?></div><?php endif ?>
 
 <!-- Form thêm key vào pool -->
 <div class="form-card">
 <h3>➕ Thêm key vào pool</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_keys_to_pool">
 <div class="form-row">
   <div><label>Game</label>
@@ -437,7 +487,7 @@ $txStatMap=[]; foreach($txStats as $r){ $txStatMap[$r['status']] = (int)$r['c'];
       <option value="">-- Chọn game --</option>
       <?php $allGames = $db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll();
             foreach($allGames as $g): ?>
-      <option value="<?=$g['id']?>"><?=$g['name']?></option>
+      <option value="<?=$g['id']?>"><?=h($g["name"])?></option>
       <?php endforeach ?>
     </select>
   </div>
@@ -483,12 +533,12 @@ $poolCount = $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")-
 <tr><th>Key</th><th>Game</th><th>Gói</th><th>Ngày</th><th>Thao tác</th></tr>
 <?php foreach($poolKeys as $k): ?>
 <tr>
-  <td style="font-family:monospace;font-size:12px"><?=$k['key_code']?></td>
-  <td><?=$k['game_name']?></td>
-  <td style="font-size:12px"><?=$k['pkg_name']?></td>
-  <td><?=$k['days']?> ngày</td>
+  <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
+  <td><?=h($k['game_name'])?></td>
+  <td style="font-size:12px"><?=h($k['pkg_name'])?></td>
+  <td><?=h($k['days'])?> ngày</td>
   <td>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=$k['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá key này khỏi pool?')">🗑</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=h($k['id'])?>"><button class="btn btn-red" onclick="return confirm('Xoá key này khỏi pool?')">🗑</button></form>
   </td>
 </tr>
 <?php endforeach ?>
@@ -507,19 +557,19 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <tr><th>Key</th><th>User</th><th>Game / Gói</th><th>Ngày</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr>
 <?php foreach($usedKeys as $k): $cls=['active'=>'green','expired'=>'orange','locked'=>'red','pending'=>'blue'][$k['status']]??'gray'; ?>
 <tr>
-  <td style="font-family:monospace;font-size:12px"><?=$k['key_code']?></td>
-  <td>@<?=$k['telegram_username']?></td>
-  <td style="font-size:12px"><b><?=$k['game_name']?></b><br><small style="color:#8b949e"><?=$k['pkg_name']?> · <?=$k['key_type']?><?php if($k['order_code']!=='--'): ?> · <?=$k['order_code']?><?php endif ?></small></td>
-  <td><?=$k['days']?> ngày</td>
-  <td><span class="badge <?=$cls?>"><?=$k['status']?></span><?php if($k['status']==='expired' && !empty($k['expire_at'])):?><br><small style="color:#fbbf24">Tự xoá sau 3 ngày nếu không gia hạn</small><?php endif?></td>
+  <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
+  <td>@<?=h($k['telegram_username'])?></td>
+  <td style="font-size:12px"><b><?=h($k['game_name'])?></b><br><small style="color:#8b949e"><?=h($k['pkg_name'])?> · <?=h($k['key_type'])?><?php if($k['order_code']!=='--'): ?> · <?=h($k['order_code'])?><?php endif ?></small></td>
+  <td><?=h($k['days'])?> ngày</td>
+  <td><span class="badge <?=$cls?>"><?=h($k['status'])?></span><?php if($k['status']==='expired' && !empty($k['expire_at'])):?><br><small style="color:#fbbf24">Tự xoá sau 3 ngày nếu không gia hạn</small><?php endif?></td>
   <td style="font-size:12px;color:#8b949e"><?=$k['expire_at']?date('d/m/Y H:i',strtotime($k['expire_at'])):'--'?></td>
   <td>
     <?php if($k['status']==='active'): ?>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="lock_key"><input type="hidden" name="key_id" value="<?=$k['id']?>"><button class="btn btn-red" onclick="return confirm('Khoá key?')">🔒</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="lock_key"><input type="hidden" name="key_id" value="<?=h($k['id'])?>"><button class="btn btn-red" onclick="return confirm('Khoá key?')">🔒</button></form>
     <?php elseif($k['status']==='locked'): ?>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="unlock_key"><input type="hidden" name="key_id" value="<?=$k['id']?>"><button class="btn btn-green">🔓</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="unlock_key"><input type="hidden" name="key_id" value="<?=h($k['id'])?>"><button class="btn btn-green">🔓</button></form>
     <?php endif ?>
-    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=$k['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá vĩnh viễn key này?')">🗑</button></form>
+    <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=h($k['id'])?>"><button class="btn btn-red" onclick="return confirm('Xoá vĩnh viễn key này?')">🗑</button></form>
   </td>
 </tr>
 <?php endforeach ?>
@@ -532,7 +582,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <h1>🎮 Quản lý Games</h1>
 <div class="form-card">
 <h3>➕ Thêm game mới</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_game">
 <div class="form-row">
   <div><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
@@ -540,28 +590,31 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
   <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
   <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
 </div>
 </form>
 </div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
 <table>
-<tr><th>#</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Thao tác</th></tr>
+<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
 <?php foreach($games as $g): ?>
 <tr>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
   <input type="hidden" name="act" value="edit_game"><input type="hidden" name="id" value="<?=$g['id']?>">
   <td><?=$g['id']?></td>
-  <td><input name="name" value="<?=htmlspecialchars($g['name'])?>" required style="width:150px"></td>
-  <td><input name="pkg" value="<?=htmlspecialchars($g['package_name'])?>" required style="width:220px"></td>
+  <td><?php if(!empty($g['icon_url'])): ?><img src="<?=h($g['icon_url'])?>" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;background:#0d1117"><?php else: ?><span style="color:#8b949e;font-size:11px">-</span><?php endif ?></td>
+  <td><input name="name" value="<?=h($g['name'])?>" required style="width:150px"></td>
+  <td><input name="pkg" value="<?=h($g['package_name'])?>" required style="width:220px"></td>
   <td><select name="type"><option <?=$g['type']==='NORMAL'?'selected':''?>>NORMAL</option><option <?=$g['type']==='VIP'?'selected':''?>>VIP</option></select></td>
   <td><select name="root"><option <?=$g['root_type']==='Only Root'?'selected':''?>>Only Root</option><option <?=$g['root_type']==='Root & NoRoot'?'selected':''?>>Root & NoRoot</option><option <?=$g['root_type']==='NoRoot'?'selected':''?>>NoRoot</option></select></td>
   <td><input name="sort" type="number" value="<?=$g['sort_order']?>" style="width:70px"></td>
   <td><select name="is_active"><option value="1" <?=$g['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$g['is_active']?'selected':''?>>Tắt</option></select></td>
+  <td><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="width:130px;font-size:11px"></td>
   <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
 </form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-gray" type="submit"><?=$g['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá game này? Các gói/order/key liên quan có thể bị ảnh hưởng.')">🗑 Xoá</button></form></td>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-gray" type="submit"><?=$g['is_active']?'Tắt':'Bật'?></button></form>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá game này? Các gói/order/key liên quan có thể bị ảnh hưởng.')">🗑 Xoá</button></form></td>
 </tr>
 <?php endforeach ?>
 </table>
@@ -571,10 +624,10 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <?php $games = $db->query("SELECT * FROM games ORDER BY is_active DESC, sort_order")->fetchAll(); ?>
 <div class="form-card">
 <h3>➕ Thêm gói mới</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_pkg">
 <div class="form-row">
-  <div><label>Game</label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=$g['name']?></option><?php endforeach?></select></div>
+  <div><label>Game</label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
   <div><label>Số ngày</label><input name="days" type="number" required placeholder="7" style="width:80px"></div>
   <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
   <div><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
@@ -587,9 +640,9 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <tr><th>Game</th><th>Tên gói</th><th>Số ngày</th><th>Giá</th><th>Loại</th><th>Active</th><th>Thao tác</th></tr>
 <?php foreach($pkgs as $p): ?>
 <tr>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>">
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
   <input type="hidden" name="act" value="edit_pkg"><input type="hidden" name="id" value="<?=$p['id']?>">
-  <td><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>" <?=$p['game_id']==$g['id']?'selected':''?>><?=$g['name']?></option><?php endforeach?></select></td>
+  <td><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>" <?=$p['game_id']==$g['id']?'selected':''?>><?=h($g["name"])?></option><?php endforeach?></select></td>
   <td><input name="name" value="<?=htmlspecialchars($p['name'])?>" required style="width:120px"></td>
   <td><input name="days" type="number" value="<?=$p['days']?>" required style="width:80px"></td>
   <td><input name="price" type="number" value="<?=$p['price']?>" required style="width:110px"></td>
@@ -597,8 +650,8 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><select name="is_active"><option value="1" <?=$p['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$p['is_active']?'selected':''?>>Tắt</option></select></td>
   <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
 </form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray" type="submit"><?=$p['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá gói này?')">🗑</button></form></td>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray" type="submit"><?=$p['is_active']?'Tắt':'Bật'?></button></form>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá gói này?')">🗑</button></form></td>
 </tr>
 <?php endforeach ?>
 </table>
@@ -608,14 +661,14 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <h1>🎁 GetKey Free</h1>
 <?php $gamesAll=$db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll(); $packagesAll=$db->query("SELECT p.*,g.name game_name FROM packages p JOIN games g ON p.game_id=g.id WHERE p.is_active=1 ORDER BY g.sort_order,p.days")->fetchAll(); ?>
 <div class="form-card"><h3>➕ Thêm key free mới</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_free_key">
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_free_key">
 <div class="form-row">
 <div><label>Key code</label><input name="key_code" required placeholder="abcd..." style="width:220px"></div>
 <div><label>Game</label>
   <select name="game_id" id="freeKeyGameSelect" required onchange="updateFreeKeyPkgOptions(this.value)">
     <option value="">-- Chọn game --</option>
     <?php foreach($gamesAll as $g): ?>
-    <option value="<?=$g['id']?>"><?=$g['name']?></option>
+    <option value="<?=$g['id']?>"><?=h($g["name"])?></option>
     <?php endforeach ?>
   </select>
 </div>
@@ -647,12 +700,12 @@ function updateFreeKeyPkgOptions(gameId) {
 <?php $fks=$db->query("SELECT fk.*,g.name game_name,p.name pkg_name,(SELECT COUNT(*) FROM free_key_claims c WHERE c.free_key_id=fk.id) claims FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id ORDER BY fk.created_at DESC LIMIT 100")->fetchAll(); ?>
 <table><tr><th>Key</th><th>Game/Gói</th><th>Thời gian</th><th>Link</th><th>Claim</th><th>TT</th><th>Action</th></tr>
 <?php foreach($fks as $fk): ?><tr>
-<td style="font-family:monospace"><?=htmlspecialchars($fk['key_code'])?></td><td><?=$fk['game_name']?><br><small style="color:#8b949e"><?=$fk['pkg_name']?> · <?=$fk['key_type']?></small></td>
+<td style="font-family:monospace"><?=htmlspecialchars($fk['key_code'])?></td><td><?=h($fk['game_name'])?><br><small style="color:#8b949e"><?=h($fk['pkg_name'])?> · <?=h($fk['key_type'])?></small></td>
 <td><small><?=date('d/m H:i',strtotime($fk['start_at']))?> → <?=date('d/m H:i',strtotime($fk['expire_at']))?></small></td>
 <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis"><a href="<?=htmlspecialchars($fk['short_url']?:SITE_URL.'/claim.php?t='.$fk['claim_token'])?>" target="_blank">Mở link</a><br><small style="color:#8b949e"><?=htmlspecialchars($fk['short_url']?:'Chưa có link')?></small></td>
-<td><?=$fk['claims']?></td><td><span class="badge <?=$fk['is_active']?'green':'gray'?>"><?=$fk['is_active']?'Bật':'Tắt'?></span></td>
-<td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_free_key"><input type="hidden" name="id" value="<?=$fk['id']?>"><button class="btn btn-gray"><?=$fk['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="regen_free_link"><input type="hidden" name="id" value="<?=$fk['id']?>"><button class="btn btn-blue">Tạo lại link</button></form></td>
+<td><?=h($fk['claims'])?></td><td><span class="badge <?=$fk['is_active']?'green':'gray'?>"><?=$fk['is_active']?'Bật':'Tắt'?></span></td>
+<td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_free_key"><input type="hidden" name="id" value="<?=h($fk['id'])?>"><button class="btn btn-gray"><?=$fk['is_active']?'Tắt':'Bật'?></button></form>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="regen_free_link"><input type="hidden" name="id" value="<?=h($fk['id'])?>"><button class="btn btn-blue">Tạo lại link</button></form></td>
 </tr><?php endforeach ?>
 <?php if(!$fks): ?><tr><td colspan="7" style="text-align:center;color:#8b949e;padding:24px">Chưa có key free nào</td></tr><?php endif ?>
 </table>
@@ -662,7 +715,7 @@ function updateFreeKeyPkgOptions(gameId) {
 <?php ensureAdminConfigLogTable($db); $cfgKeys = hclouConfigEditableKeys(); $logs = $db->query("SELECT * FROM admin_config_logs ORDER BY id DESC LIMIT 30")->fetchAll(); ?>
 <div class="warnbox">⚠️ Chỉ sửa các mục thật sự cần. Token/API key không được public. Khi lưu, hệ thống tự tạo backup <span class="mono">config.php.bk_admincfg_*</span> rồi ghi log vào SQL.</div>
 <form method="POST" class="form-card">
-<input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
+<input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
 <h3>Thông tin site/bot</h3><div class="form-row">
 <?php foreach(['SITE_URL'=>'Site URL','SITE_NAME'=>'Site name','ADMIN_CHAT_ID'=>'Admin chat ID','BOT_USERNAME'=>'Bot username'] as $k=>$label): ?>
 <div><label><?=$label?></label><input name="cfg[<?=$k?>]" value="<?=htmlspecialchars((string)hclouConfigValue($k))?>"></div>
@@ -702,7 +755,7 @@ foreach($cronJobs as $cj){
 <div class="warnbox">⚠️ Quan trọng nhất: <b>MBBANK Auto-bank</b> (mỗi 1 phút) — nếu không chạy, đơn thanh toán sẽ không tự duyệt. Setup xong, kiểm tra tại <a href="../setup_cron.php" target="_blank" style="color:#58a6ff">setup_cron.php</a>.</div>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
-<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=htmlspecialchars($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
+<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
 <div class="form-card"><h3>🧾 Log thay đổi cấu hình</h3><table><tr><th>ID</th><th>Admin</th><th>Key</th><th>Old</th><th>New</th><th>Time</th></tr><?php foreach($logs as $l): ?><tr><td><?=$l['id']?></td><td><?=htmlspecialchars($l['admin'])?></td><td class="mono"><?=htmlspecialchars($l['config_key'])?></td><td><?=htmlspecialchars($l['old_value'] ?? '')?></td><td><?=htmlspecialchars($l['new_value'] ?? '')?></td><td class="mono"><?=htmlspecialchars($l['created_at'])?></td></tr><?php endforeach; if(!$logs): ?><tr><td colspan="6"><p>Chưa có log.</p></td></tr><?php endif; ?></table></div>
 
 <?php elseif($tab==='setup'): ?>
@@ -807,8 +860,8 @@ curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div>
 <?php foreach($users as $u): ?>
 <tr>
   <td style="font-size:12px;font-family:monospace"><?=$u['telegram_id']?></td>
-  <td>@<?=$u['telegram_username']?></td>
-  <td><?=$u['full_name']?></td>
+  <td>@<?=h($u["telegram_username"])?></td>
+  <td><?=h($u["full_name"])?></td>
   <td><?=$u['total_keys']?></td>
   <td><?=$u['total_orders']?></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m/Y',strtotime($u['created_at']))?></td>

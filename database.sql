@@ -149,7 +149,9 @@ CREATE TABLE `keys` (
   `expire_at` TIMESTAMP NULL DEFAULT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_keys_code` (`key_code`),
+  -- UNIQUE (key_code, user_id) cho phép multi-claim free key:
+  -- nhiều user có thể có cùng key_code (mỗi user 1 row).
+  UNIQUE KEY `uniq_keys_code_user` (`key_code`, `user_id`),
   KEY `idx_keys_pool` (`status`, `game_id`, `package_id`, `id`),
   KEY `idx_keys_user` (`user_id`),
   KEY `idx_keys_order` (`order_id`),
