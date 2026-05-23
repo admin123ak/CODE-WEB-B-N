@@ -121,7 +121,19 @@ function setTelegramWebhook($token, $url, $secret) {
             'url' => $url,
             'secret_token' => $secret,
             'allowed_updates' => json_encode(['message', 'callback_query']),
+            'drop_pending_updates' => 'true',
         ]),
+    ]);
+    $res = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($res, true);
+}
+
+function getTelegramWebhookInfo($token) {
+    $ch = curl_init("https://api.telegram.org/bot{$token}/getWebhookInfo");
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
     ]);
     $res = curl_exec($ch);
     curl_close($ch);
@@ -144,8 +156,24 @@ function writeConfigLocal($data) {
 // =============================================
 // CONFIG LOCAL - DO INSTALLER TẠO
 // =============================================
-// File này CHỨA SECRET, KHÔNG được push lên git.
-// Đã có trong .gitignore.
+//
+// ⚠️  KHÔNG XOÁ FILE NÀY KHI UP CODE LẠI! ⚠️
+//
+// File này chứa:
+//   - DB credentials (mất → mất kết nối database)
+//   - BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET (mất → bot chết câm, phải re-install)
+//   - Tokens MBBank / Binance / doithe.vn (mất → không thu được tiền)
+//
+// Khi up code mới qua FTP/cPanel, CHỈ ghi đè file mã nguồn (*.php, lib/, assets/).
+// GIỮ NGUYÊN 3 thứ trên hosting:
+//   1. config.local.php  (file này)
+//   2. .install_lock     (chặn installer chạy lại)
+//   3. data/             (state poll, locks, logs)
+//
+// Nếu lỡ xoá: chạy install.php → xong vào /setup_webhook.php?token=<TELEGRAM_WEBHOOK_SECRET>&action=info
+// để verify webhook OK trước khi cho khách dùng.
+//
+// File này CHỨA SECRET, KHÔNG được push lên git (đã có trong .gitignore).
 // =============================================
 
 // --- Database ---
@@ -319,6 +347,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $webhookUrl = rtrim($i['site_url'], '/') . '/webhook.php';
                 $webhookRes = setTelegramWebhook($i['bot_token'], $webhookUrl, $i['webhook_secret']);
                 $_SESSION['installer']['webhook_result'] = $webhookRes;
+
+                // Verify: Telegram phải nhận đúng URL + không có last_error_message.
+                // Đây là cách duy nhất phát hiện secret desync (setWebhook trả ok nhưng
+                // Telegram vẫn giữ secret cũ → request bot bị webhook.php trả 403).
+                $webhookInfo = getTelegramWebhookInfo($i['bot_token']);
+                $_SESSION['installer']['webhook_info'] = $webhookInfo;
 
                 // Tạo admin record trong DB
                 try {
@@ -545,12 +579,46 @@ foreach ($summary as $k => $v) {
 <?php elseif ($step === 8): // DONE ?>
 <h2>🎉 Cài đặt hoàn tất!</h2>
 
-<?php $wh = $_SESSION['installer']['webhook_result'] ?? null; ?>
-<?php if ($wh && !empty($wh['ok'])): ?>
-<div class="alert alert-success">✅ Webhook Telegram đã set thành công.</div>
+<?php
+$wh        = $_SESSION['installer']['webhook_result'] ?? null;
+$whInfo    = $_SESSION['installer']['webhook_info']   ?? null;
+$whSecret  = $_SESSION['installer']['webhook_secret'] ?? '';
+$whUrlSet  = rtrim($_SESSION['installer']['site_url'] ?? '', '/') . '/webhook.php';
+$infoRes   = $whInfo['result'] ?? null;
+$lastErr   = $infoRes['last_error_message'] ?? '';
+$tgUrl     = $infoRes['url'] ?? '';
+$urlMatch  = ($tgUrl !== '' && $tgUrl === $whUrlSet);
+$setOk     = $wh && !empty($wh['ok']);
+$infoOk    = $infoRes && $urlMatch && $lastErr === '';
+$fixLink   = 'setup_webhook.php?token=' . rawurlencode($whSecret) . '&action=set';
+?>
+
+<?php if ($setOk && $infoOk): ?>
+<div class="alert alert-success">
+✅ Webhook Telegram đã set & verify OK.<br>
+<small>URL Telegram nhớ: <code><?= htmlspecialchars($tgUrl) ?></code></small>
+</div>
+<?php elseif ($setOk && !$infoOk): ?>
+<div class="alert alert-error">
+⚠️ <strong>Webhook set xong nhưng verify FAIL</strong> — bot sẽ không nhận tin nhắn.
+<?php if ($lastErr !== ''): ?>
+<br>Telegram báo lỗi: <code><?= htmlspecialchars($lastErr) ?></code>
+<?php endif; ?>
+<?php if ($tgUrl !== '' && !$urlMatch): ?>
+<br>URL Telegram đang giữ: <code><?= htmlspecialchars($tgUrl) ?></code><br>
+URL bạn vừa set:&nbsp;&nbsp;<code><?= htmlspecialchars($whUrlSet) ?></code>
+<?php endif; ?>
+<br><br>
+<strong>Cách fix:</strong> bấm
+<a class="btn" href="<?= htmlspecialchars($fixLink) ?>" target="_blank" style="background:#1f6feb;color:#fff;padding:6px 12px">🔄 Set lại Webhook</a>
+(tool standalone /setup_webhook.php — vẫn chạy được kể cả khi admin lỗi).
+</div>
 <?php else: ?>
-<div class="alert alert-error">⚠️ Webhook Telegram set thất bại: <?= htmlspecialchars(json_encode($wh, JSON_UNESCAPED_UNICODE)) ?>
-<br>Bạn có thể set lại thủ công sau.</div>
+<div class="alert alert-error">
+❌ Webhook Telegram set thất bại:
+<pre><?= htmlspecialchars(json_encode($wh, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) ?></pre>
+Bấm <a href="<?= htmlspecialchars($fixLink) ?>" target="_blank">🔄 Set lại</a> hoặc kiểm tra BOT_TOKEN / SITE_URL.
+</div>
 <?php endif; ?>
 
 <h3>📋 SETUP CRON JOBS (BẮT BUỘC)</h3>

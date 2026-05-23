@@ -257,10 +257,18 @@ switch ($action) {
                    ->execute([$api['raw'], $r['id']]);
 
                 $pStatus = (int)$api['status'];
-                if ($pStatus === 3) {
-                    // doithe.vn nói thẻ sai/đã dùng — hard reject
-                    topupReject($db, $r['id'], 'doithe.vn: ' . $api['message'], $api['raw']);
-                    jsonResponse(['error' => 'doithe.vn từ chối thẻ: ' . ($api['message'] ?: 'thẻ sai/đã sử dụng')], 400);
+                // Hard-reject các status doithe trả về chắc chắn fail, callback sẽ KHÔNG về:
+                //   3   = card invalid / used
+                //   100-199 = lỗi merchant/auth/config (vd 102 MERCHANT_NOT_EXISTED_OR_OFF)
+                // Nếu giữ pending các case này → topup card stuck mãi vì không có callback.
+                $hardFailStatuses = [3];
+                $isMerchantErr = ($pStatus >= 100 && $pStatus <= 199);
+                if (in_array($pStatus, $hardFailStatuses, true) || $isMerchantErr) {
+                    topupReject($db, $r['id'], 'doithe.vn status=' . $pStatus . ': ' . $api['message'], $api['raw']);
+                    $userMsg = $isMerchantErr
+                        ? 'Hệ thống nạp thẻ tạm gặp sự cố cấu hình. Vui lòng báo admin.'
+                        : ('doithe.vn từ chối thẻ: ' . ($api['message'] ?: 'thẻ sai/đã sử dụng'));
+                    jsonResponse(['error' => $userMsg], 400);
                 }
                 if (!$api['ok'] && $pStatus !== 99) {
                     // Network/parse error hoặc provider lỗi tạm thời — giữ pending, đợi callback
