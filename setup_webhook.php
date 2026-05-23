@@ -22,20 +22,23 @@ if (!defined('ADMIN_CHAT_ID') || ADMIN_CHAT_ID === '') {
     exit('ADMIN_CHAT_ID chưa cấu hình trong config.local.php');
 }
 
-$setupToken = substr(hash('sha256', BOT_TOKEN . '|' . ADMIN_CHAT_ID), 0, 16);
-$inToken    = $_GET['token'] ?? '';
-if (!hash_equals($setupToken, $inToken)) {
+// Auth: chấp nhận TELEGRAM_WEBHOOK_SECRET làm token trực tiếp (copy 1 dòng từ
+// config.local.php) — đơn giản hơn SHA. Vẫn an toàn vì secret chỉ ai có FTP mới đọc.
+$inToken = $_GET['token'] ?? '';
+$valid   = false;
+if (defined('TELEGRAM_WEBHOOK_SECRET') && TELEGRAM_WEBHOOK_SECRET !== '' && hash_equals(TELEGRAM_WEBHOOK_SECRET, $inToken)) {
+    $valid = true;
+}
+if (!$valid) {
     http_response_code(403);
     echo "<!doctype html><meta charset='utf-8'><title>403</title>";
     echo "<pre style='font-family:monospace;padding:30px;color:#c00'>403 Forbidden\n\n";
     echo "Thiếu / sai setup token.\n\n";
-    echo "Cách lấy token (chỉ cần làm 1 lần):\n";
-    echo "  - Mở config.local.php, copy BOT_TOKEN và ADMIN_CHAT_ID.\n";
-    echo "  - Chạy lệnh trong bất kỳ trình tính toán hash SHA-256 nào:\n";
-    echo "      sha256(BOT_TOKEN + '|' + ADMIN_CHAT_ID) → lấy 16 ký tự đầu.\n\n";
-    echo "  - Hoặc dùng PHP CLI / online tool:\n";
-    echo "      echo substr(hash('sha256','{BOT_TOKEN}|{ADMIN_CHAT_ID}'),0,16);\n\n";
-    echo "Token rồi gọi: setup_webhook.php?token=XXXXXXXXXXXXXXXX</pre>";
+    echo "Cách lấy token:\n";
+    echo "  1. Mở config.local.php qua FTP/cPanel.\n";
+    echo "  2. Tìm dòng: define('TELEGRAM_WEBHOOK_SECRET', '............');\n";
+    echo "  3. Copy nguyên chuỗi giữa 2 dấu nháy (32 ký tự hex).\n";
+    echo "  4. Gọi lại: setup_webhook.php?token=<chuỗi đó>\n</pre>";
     exit;
 }
 
@@ -93,7 +96,7 @@ if ($action === 'set') {
     echo "<p class='err'>Unknown action: " . htmlspecialchars($action) . "</p>";
 }
 
-$base = '?token=' . rawurlencode($setupToken);
+$base = '?token=' . rawurlencode($inToken);
 echo "<p style='margin-top:20px'>";
 echo "<a href='{$base}&action=set'>🔄 Set lại</a>";
 echo "<a href='{$base}&action=info'>🔍 Xem info</a>";
