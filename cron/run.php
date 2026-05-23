@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 defined('CRON_RUN_TOKEN') || define('CRON_RUN_TOKEN', '');
-const CRON_RUN_LOG = __DIR__ . '/data/cron_run.log';
+const CRON_RUN_LOG = __DIR__ . '/../data/cron_run.log';
 
 function hclouCronRunLog(string $job, int $status, bool $success, int $durationMs, string $detail = ''): void {
     $dir = dirname(CRON_RUN_LOG);
@@ -29,7 +29,7 @@ function hclouCronRunLog(string $job, int $status, bool $success, int $durationM
 function hclouCronWriteStatus(string $job, array $extra): void {
     $job = preg_replace('/[^a-z0-9_]/i', '_', $job);
     if ($job === '') return;
-    $file = __DIR__ . '/data/cron_status_' . $job . '.json';
+    $file = __DIR__ . '/../data/cron_status_' . $job . '.json';
     if (!is_dir(dirname($file))) @mkdir(dirname($file), 0755, true);
     $payload = array_merge([
         'job'         => $job,
@@ -78,7 +78,7 @@ if (!hash_equals(CRON_RUN_TOKEN, $token)) {
 // =============================================
 // LOCK: tránh chạy chồng cùng job
 // =============================================
-$lockDir = __DIR__ . '/data/locks';
+$lockDir = __DIR__ . '/../data/locks';
 if (!is_dir($lockDir)) @mkdir($lockDir, 0755, true);
 $lockFile = $lockDir . '/cron_' . preg_replace('/[^a-z0-9_]/i', '_', $job) . '.lock';
 $lockHandle = fopen($lockFile, 'c');

@@ -12,7 +12,7 @@ if ($isHttpCall) {
     }
 }
 
-const HCLOU_MONITOR_STATE = __DIR__ . '/data/cron_monitor_state.json';
+const HCLOU_MONITOR_STATE = __DIR__ . '/../data/cron_monitor_state.json';
 
 function hclouMonHttp(string $url, int $timeout = 15): array {
     $ch = curl_init($url);
