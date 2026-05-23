@@ -51,17 +51,18 @@ define('USDT_TRC20_ADDRESS', '');
 define('TRONGRID_API_KEY', '');
 define('CRYPTO_AUTO_APPROVE_ENABLED', false);
 
-// --- Ví user (balance) ---
-// Bật khi đã có UI nạp ví trên Mini App. Tắt = ẩn card "Số dư ví" trong profile.
-define('BALANCE_ENABLED', false);
+// --- Ví user (balance) — luôn bật ---
+define('BALANCE_ENABLED', true);
 
 // --- Nạp card qua doithe.vn (auto API) ---
 // API URL hardcode trong config.php (https://doithe.vn/chargingws/v2) — admin không cần sửa.
 // Partner ID + Partner Key lấy từ trang merchant doithe.vn sau khi đăng ký.
-// CARD_BALANCE_MULTIPLIER = hệ số markup, vd 1.5 = thẻ 30k chia 1.5 → ví nhận 20k.
+// Rate per-telco = % chiết khấu doithe.vn áp cho từng nhà mạng (xem dashboard merchant).
+// Tiền vào ví = face_value × (1 - rate%). Vd Viettel 28%: thẻ 100k → ví 72k.
 // Callback URL paste vào doithe.vn: {SITE_URL}/card_callback.php (POST).
-define('CARD_AUTO_APPROVE_ENABLED', false);
-define('CARD_BALANCE_MULTIPLIER', '1.5');
+define('CARD_RATE_VIETTEL', '28');
+define('CARD_RATE_MOBIFONE', '30');
+define('CARD_RATE_VINAPHONE', '30');
 define('DOITHE_PARTNER_ID', '');
 define('DOITHE_PARTNER_KEY', '');
 
