@@ -51,6 +51,20 @@ define('USDT_TRC20_ADDRESS', '');
 define('TRONGRID_API_KEY', '');
 define('CRYPTO_AUTO_APPROVE_ENABLED', false);
 
+// --- Ví user (balance) ---
+// Bật khi đã có UI nạp ví trên Mini App. Tắt = ẩn card "Số dư ví" trong profile.
+define('BALANCE_ENABLED', false);
+
+// --- Nạp card qua doithe.vn (auto API) ---
+// API URL hardcode trong config.php (https://doithe.vn/chargingws/v2) — admin không cần sửa.
+// Partner ID + Partner Key lấy từ trang merchant doithe.vn sau khi đăng ký.
+// CARD_BALANCE_MULTIPLIER = hệ số markup, vd 1.5 = thẻ 30k chia 1.5 → ví nhận 20k.
+// Callback URL paste vào doithe.vn: {SITE_URL}/card_callback.php (POST).
+define('CARD_AUTO_APPROVE_ENABLED', false);
+define('CARD_BALANCE_MULTIPLIER', '1.5');
+define('DOITHE_PARTNER_ID', '');
+define('DOITHE_PARTNER_KEY', '');
+
 // --- Secure tokens (random) - installer sẽ tự generate ---
 define('CRON_RUN_TOKEN', 'CHANGE_ME_random_64_chars');
 define('AUTOMATION_RUN_TOKEN', 'CHANGE_ME_random_32_chars');
