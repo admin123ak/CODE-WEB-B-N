@@ -93,19 +93,22 @@ Cho tính năng GetKey Free:
 
 ## ⏰ BƯỚC 7: SETUP CRON JOBS
 
-Wizard sẽ in ra **5 URL cron**. Vào **cPanel → Cron Jobs**:
+Wizard sẽ in ra **7 URL cron**. Vào **cPanel → Cron Jobs**:
 
-| Tên | Schedule | Mô tả |
-|-----|----------|-------|
-| MBBANK | `*/1 * * * *` | Duyệt thanh toán tự động (mỗi 1 phút) |
-| Maintenance | `*/5 * * * *` | Xóa key hết hạn, hủy đơn quá 15p |
-| Monitor | `*/5 * * * *` | Cảnh báo lỗi qua Telegram |
-| Automation | `0 8 * * *` | Báo cáo hàng ngày 8h sáng |
-| Health Check | `0 9 * * *` | Kiểm tra hệ thống 9h sáng |
+| Tên | Schedule | job= | Mô tả |
+|-----|----------|------|-------|
+| MBBANK | `*/1 * * * *` | `mbbank` | Auto duyệt MBBANK |
+| Crypto USDT | `*/1 * * * *` | `crypto` | Auto duyệt USDT TRC20 (Binance) |
+| Card doithe | `*/2 * * * *` | `card` | Active check trạng thái nạp thẻ |
+| Maintenance | `*/5 * * * *` | `maintenance` | Xóa key hết hạn, hủy đơn quá 15p |
+| Monitor | `*/5 * * * *` | `monitor` | Cảnh báo lỗi qua Telegram |
+| Automation | `0 8 * * *` | `automation` | Báo cáo hàng ngày 8h sáng |
+| Health Check | `0 9 * * *` | `health` | Kiểm tra hệ thống 9h sáng |
+| DB Backup | `0 3 * * *` | `backup` | Backup DB hàng ngày 3h sáng |
 
 Command mẫu (paste vào cPanel):
 ```bash
-wget -q -O - "https://your-domain.com/cron_run.php?token=TOKEN&job=mbbank" >/dev/null 2>&1
+wget -q -O - "https://your-domain.com/cron/run.php?token=TOKEN&job=mbbank" >/dev/null 2>&1
 ```
 
 ---
@@ -177,11 +180,15 @@ git pull origin main
 ├── migrations/             ← SQL migration cho hosting đã chạy cũ
 ├── index.php               ← Trang chủ Mini App
 ├── admin/                  ← Admin panel
-├── api/                    ← REST API
 ├── webhook.php             ← Telegram webhook
 ├── claim.php               ← Free key claim
-├── mbbank_poll.php         ← Auto MBBANK polling
-├── cron_run.php            ← Cron dispatcher
+├── assets/                 ← app.css + app.js (Mini App)
+├── backend/
+│   ├── api/index.php       ← REST API Mini App
+│   └── lib/                ← Helpers (balance, crypto, order_approval, topup)
+├── cron/                   ← 9 file cron + run.php dispatcher
+├── card_callback.php       ← Callback doithe.vn
+├── setup_webhook.php       ← Tool re-set Telegram webhook
 ├── data/                   ← Runtime: log, lock, cache (gitignored)
 └── .htaccess               ← Apache security config
 ```
