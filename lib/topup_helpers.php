@@ -255,6 +255,82 @@ function callDoitheCharge(string $request_id, string $telco, int $face_value, st
 }
 
 /**
+ * Active check (poll) trạng thái 1 thẻ đã gửi sang doithe.vn.
+ *
+ * Dùng khi callback từ doithe chưa về (vd doithe bị chậm, hoặc callback URL bị
+ * firewall chặn). Cron /card_poll.php gọi function này cho mỗi topup_request
+ * đang pending > 60s.
+ *
+ * Pattern doithe.vn /chargingws/v2 với command=check:
+ *   POST: command=check, request_id, partner_id, sign=md5(partner_key+request_id)
+ *   Response: { status, message, value, declared_value, ... } — schema giống charging
+ *
+ * @param string $request_id  Mã request lúc charging
+ * @return array [ok, status, message, value, declared_value, raw]
+ *   - ok = true nếu HTTP OK + parse được JSON (KHÔNG phản ánh status thẻ)
+ *   - status: 1=success, 2=wrong_amount, 3=card_invalid, 4=error, 99=pending, 100-199=merchant_err
+ */
+function callDoitheCheckStatus(string $request_id): array {
+    if (!defined('DOITHE_API_URL') || DOITHE_API_URL === '' ||
+        !defined('DOITHE_PARTNER_ID') || DOITHE_PARTNER_ID === '' ||
+        !defined('DOITHE_PARTNER_KEY') || DOITHE_PARTNER_KEY === '') {
+        return ['ok' => false, 'status' => 0, 'message' => 'doithe.vn chưa cấu hình', 'value' => 0, 'declared_value' => 0, 'raw' => ''];
+    }
+
+    $sign = md5(DOITHE_PARTNER_KEY . $request_id);
+    $body = http_build_query([
+        'request_id' => $request_id,
+        'partner_id' => DOITHE_PARTNER_ID,
+        'sign'       => $sign,
+        'command'    => 'check',
+    ]);
+
+    $ch = curl_init(DOITHE_API_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+    ]);
+    $raw = curl_exec($ch);
+    $err = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // Log gọn (không log lại serial/code vì check không gửi nữa)
+    $logDir = __DIR__ . '/../data';
+    @mkdir($logDir, 0775, true);
+    @file_put_contents($logDir . '/card_api.log',
+        json_encode([
+            'time' => date('Y-m-d H:i:s'),
+            'action' => 'check',
+            'request_id' => $request_id,
+            'http_code' => $httpCode,
+            'curl_err' => $err,
+            'response' => $raw,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n",
+        FILE_APPEND | LOCK_EX);
+
+    if ($raw === false) {
+        return ['ok' => false, 'status' => 0, 'message' => 'cURL error: ' . $err, 'value' => 0, 'declared_value' => 0, 'raw' => ''];
+    }
+    $json = json_decode($raw, true);
+    if (!is_array($json)) {
+        return ['ok' => false, 'status' => 0, 'message' => 'Response không phải JSON', 'value' => 0, 'declared_value' => 0, 'raw' => $raw];
+    }
+    $status = isset($json['status']) ? (int)$json['status'] : 0;
+    return [
+        'ok'             => true,
+        'status'         => $status,
+        'message'        => (string)($json['message'] ?? ''),
+        'value'          => (int)($json['value'] ?? $json['amount'] ?? 0),
+        'declared_value' => (int)($json['declared_value'] ?? 0),
+        'raw'            => $raw,
+    ];
+}
+
+/**
  * Verify callback signature từ doithe.vn.
  * Pattern phổ biến: md5(partner_key + status + request_id + value)
  * (sửa lại khi có docs chính thức).

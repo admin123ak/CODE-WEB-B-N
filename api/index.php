@@ -302,14 +302,14 @@ switch ($action) {
         $items = balanceHistory($db, (int)$user['id'], 50);
         jsonResponse(['success' => true, 'items' => $items]);
 
-    // Lịch sử nạp thẻ gần đây (10 dòng) — hiện trong form nạp card.
+    // Lịch sử nạp thẻ gần đây (5 dòng) — hiện trong form nạp card.
     case 'topup_history_card':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $stmt = $db->prepare("SELECT id, status, card_telco, card_face_value, amount_credited, note,
                                      provider_response, created_at, processed_at
                               FROM topup_requests
                               WHERE user_id=? AND method='card'
-                              ORDER BY id DESC LIMIT 10");
+                              ORDER BY id DESC LIMIT 5");
         $stmt->execute([(int)$user['id']]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         // Trích message từ provider_response để hiện ngắn gọn.

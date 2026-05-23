@@ -1080,7 +1080,7 @@ async function appendCardHistory(){
       var tc=document.getElementById('topupContent'); if(tc) tc.insertAdjacentHTML('beforeend', noBox);
       return;
     }
-    var html='<div id="cardHistBox" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:8px">📋 LỊCH SỬ NẠP THẺ (10 LƯỢT GẦN NHẤT)</div>';
+    var html='<div id="cardHistBox" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--text2);font-weight:700;margin-bottom:8px">📋 LỊCH SỬ NẠP THẺ (5 LƯỢT GẦN NHẤT)</div>';
     for(var i=0;i<res.items.length;i++){
       var it=res.items[i];
       var badge='', col='';

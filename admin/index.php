@@ -1104,6 +1104,7 @@ $_crFresh = ($_crS && !empty($_crS['last_run_at']) && (time() - strtotime($_crS[
 $_cronJobs = [
     'mbbank'      => ['label' => '🏦 MBBANK Auto-bank',    'sched' => '*/1m',  'fresh_sec' => 180],
     'crypto'      => ['label' => '🪙 Crypto Auto-USDT',     'sched' => '*/1m',  'fresh_sec' => 180],
+    'card'        => ['label' => '🎴 Card doithe poll',     'sched' => '*/2m',  'fresh_sec' => 360],
     'maintenance' => ['label' => '🧹 Maintenance',         'sched' => '*/5m',  'fresh_sec' => 600],
     'monitor'     => ['label' => '📊 Monitor',             'sched' => '*/5m',  'fresh_sec' => 600],
     'automation'  => ['label' => '🤖 Automation Daily',    'sched' => '8h',    'fresh_sec' => 90000],
@@ -1294,6 +1295,7 @@ function _hclouFormatBytes($b) {
 $cronJobs = [
     ['label'=>'🏦 MBBANK Auto-bank', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=mbbank'],
     ['label'=>'🪙 Crypto Auto-USDT', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=crypto'],
+    ['label'=>'🎴 Card doithe poll', 'schedule'=>'Mỗi 2 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=card'],
     ['label'=>'🧹 Maintenance', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=maintenance'],
     ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
     ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=automation'],

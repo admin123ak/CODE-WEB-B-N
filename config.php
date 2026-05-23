@@ -81,6 +81,11 @@ if (!defined('DOITHE_PARTNER_KEY'))        define('DOITHE_PARTNER_KEY', '');
 if (defined('DOITHE_PARTNER_KEY') && DOITHE_PARTNER_KEY !== '' && defined('BOT_TOKEN') && !defined('CARD_CALLBACK_SECRET')) {
     define('CARD_CALLBACK_SECRET', hash_hmac('sha256', DOITHE_PARTNER_KEY, BOT_TOKEN));
 }
+// Card poll secret: HMAC từ partner_id + BOT_TOKEN — auth cho cron /card_poll.php.
+// Tách khỏi CARD_CALLBACK_SECRET để rotate độc lập nếu cần.
+if (defined('DOITHE_PARTNER_ID') && DOITHE_PARTNER_ID !== '' && defined('BOT_TOKEN') && !defined('CARD_POLL_SECRET')) {
+    define('CARD_POLL_SECRET', hash_hmac('sha256', 'card_poll:' . DOITHE_PARTNER_ID, BOT_TOKEN));
+}
 
 // --- Timezone ---
 date_default_timezone_set(APP_TIMEZONE);

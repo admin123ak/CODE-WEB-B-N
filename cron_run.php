@@ -103,6 +103,13 @@ $jobMap = [
         }
         return hclouHttpCall('/crypto_poll.php', ['secret' => CRYPTO_POLL_SECRET]);
     },
+    'card'        => function() {
+        // Active check doithe.vn pending topups — fallback nếu callback chậm/lỗi.
+        if (!defined('CARD_POLL_SECRET')) {
+            return ['ok' => true, 'code' => 200, 'body' => json_encode(['success' => true, 'skipped' => true, 'reason' => 'card_not_configured'])];
+        }
+        return hclouHttpCall('/card_poll.php', ['secret' => CARD_POLL_SECRET]);
+    },
     'maintenance' => function() {
         return hclouHttpCall('/maintenance.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
