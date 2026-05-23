@@ -70,7 +70,7 @@ if (!defined('BALANCE_ENABLED'))           define('BALANCE_ENABLED', false);
 // --- Card top-up (doithe.vn auto API) ---
 if (!defined('CARD_AUTO_APPROVE_ENABLED')) define('CARD_AUTO_APPROVE_ENABLED', false);
 if (!defined('CARD_BALANCE_MULTIPLIER'))   define('CARD_BALANCE_MULTIPLIER', '1.5'); // string trong DB, cast float khi dùng
-if (!defined('DOITHE_API_URL'))            define('DOITHE_API_URL', '');
+if (!defined('DOITHE_API_URL'))            define('DOITHE_API_URL', 'https://doithe.vn/chargingws/v2'); // hardcode default — admin không cần sửa
 if (!defined('DOITHE_PARTNER_ID'))         define('DOITHE_PARTNER_ID', '');
 if (!defined('DOITHE_PARTNER_KEY'))        define('DOITHE_PARTNER_KEY', '');
 // Callback secret: HMAC từ partner_key + BOT_TOKEN — dùng để xác thực URL callback
@@ -331,7 +331,6 @@ function hclouConfigEditableKeys() {
         // --- Card top-up qua doithe.vn (auto API) ---
         'CARD_AUTO_APPROVE_ENABLED'   => 'bool',
         'CARD_BALANCE_MULTIPLIER'     => 'string', // float: 1.5 = card 30k → balance 20k
-        'DOITHE_API_URL'              => 'string', // vd https://doithe.vn/chargingws/v2
         'DOITHE_PARTNER_ID'           => 'string',
         'DOITHE_PARTNER_KEY'          => 'string',
     ];

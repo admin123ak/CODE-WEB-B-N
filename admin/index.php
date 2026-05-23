@@ -1184,7 +1184,6 @@ function _hclouFormatBytes($b) {
 
 <h3 style="margin-top:20px">💳 Nạp card qua doithe.vn (Ví user)</h3>
 <div class="form-row">
-<div style="flex:1;min-width:300px"><label>API URL</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_API_URL]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_API_URL'))?>" placeholder="https://doithe.vn/chargingws/v2"></div>
 <div style="flex:1;min-width:220px"><label>Partner ID</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_ID]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_ID'))?>" placeholder="Mã đối tác doithe.vn"></div>
 <div style="flex:1;min-width:260px"><label>Partner Key</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_KEY'))?>" placeholder="Secret key để ký md5"></div>
 <div style="min-width:160px"><label>Hệ số markup</label><input style="width:100%" name="cfg[CARD_BALANCE_MULTIPLIER]" value="<?=htmlspecialchars((string)hclouConfigValue('CARD_BALANCE_MULTIPLIER') ?: '1.5')?>" placeholder="1.5"><small>card 30k ÷ 1.5 = 20k vào ví</small></div>
