@@ -1181,6 +1181,33 @@ function _hclouFormatBytes($b) {
   • Mỗi đơn được cộng thêm số lẻ thập phân duy nhất (vd <span class="mono">2.001234 USDT</span> cho đơn #1234) để hệ thống phân biệt đơn khi nhiều khách chuyển cùng số tròn.<br>
   • Khi cả 2 ô trên đã điền + bật <b>Auto-crypto</b>, option Binance mới hiện ở Mini App của khách.
 </div>
+
+<h3 style="margin-top:20px">💳 Nạp card qua doithe.vn (Ví user)</h3>
+<div class="form-row">
+<div style="flex:1;min-width:300px"><label>API URL</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_API_URL]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_API_URL'))?>" placeholder="https://doithe.vn/chargingws/v2"></div>
+<div style="flex:1;min-width:220px"><label>Partner ID</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_ID]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_ID'))?>" placeholder="Mã đối tác doithe.vn"></div>
+<div style="flex:1;min-width:260px"><label>Partner Key</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_KEY'))?>" placeholder="Secret key để ký md5"></div>
+<div style="min-width:160px"><label>Hệ số markup</label><input style="width:100%" name="cfg[CARD_BALANCE_MULTIPLIER]" value="<?=htmlspecialchars((string)hclouConfigValue('CARD_BALANCE_MULTIPLIER') ?: '1.5')?>" placeholder="1.5"><small>card 30k ÷ 1.5 = 20k vào ví</small></div>
+<div><label>Auto-card</label><select name="cfg[CARD_AUTO_APPROVE_ENABLED]"><option value="1" <?=(defined('CARD_AUTO_APPROVE_ENABLED') && CARD_AUTO_APPROVE_ENABLED)?'selected':''?>>Bật</option><option value="0" <?=(!defined('CARD_AUTO_APPROVE_ENABLED') || !CARD_AUTO_APPROVE_ENABLED)?'selected':''?>>Tắt</option></select></div>
+<div><label>Ví user (balance)</label><select name="cfg[BALANCE_ENABLED]"><option value="1" <?=(defined('BALANCE_ENABLED') && BALANCE_ENABLED)?'selected':''?>>Bật</option><option value="0" <?=(!defined('BALANCE_ENABLED') || !BALANCE_ENABLED)?'selected':''?>>Tắt</option></select></div>
+</div>
+<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:12px;margin-top:8px;font-size:13px;line-height:1.7">
+  <b style="color:#fde68a">🔔 Callback URL cấu hình bên doithe.vn:</b><br>
+  <br>
+  <span style="background:#1f2937;color:#34d399;padding:4px 8px;border-radius:4px;font-weight:700">POST</span>
+  &nbsp;<span class="mono" style="word-break:break-all;color:#67e8f9"><?=htmlspecialchars(rtrim(SITE_URL,'/').'/card_callback.php')?></span>
+  <br><br>
+  • Vào trang merchant của <b>doithe.vn</b> → mục <b>Cấu hình callback / Webhook URL</b> → paste URL ở trên.<br>
+  • Method: <b>POST</b> (chuẩn các provider VN). Body gửi về dạng <span class="mono">application/x-www-form-urlencoded</span> hoặc JSON tuỳ provider — code đã handle cả 2.<br>
+  • Provider sẽ POST kết quả về URL này khi xử lý xong thẻ (status <span class="mono">1</span>=đúng mệnh giá, <span class="mono">2</span>=sai mệnh giá, <span class="mono">3</span>=lỗi, <span class="mono">4</span>=đang xử lý, <span class="mono">99</span>=chờ duyệt).<br>
+  • Sign md5 verify dùng <b>Partner Key</b> ở trên — KHÔNG paste key này lên đâu khác.<br>
+  <br>
+  <b style="color:#fde68a">💡 Hệ số markup hoạt động thế nào:</b><br>
+  • User nhập card 30.000đ → hệ thống nạp lên doithe → nhận được 30.000đ face value → chia cho markup (1.5) → cộng <b>20.000đ</b> vào ví user.<br>
+  • Sai mệnh giá: nếu provider trả về <span class="mono">value</span> khác face_value khách nhập, hệ thống vẫn cộng theo giá thực × markup (không bị mất tiền hay over-credit).<br>
+  • Đổi markup tuỳ chiết khấu doithe.vn áp cho bạn (1.43 = chiết khấu 30%, 1.25 = chiết khấu 20%, …).
+</div>
+
 <h3 style="margin-top:20px">Cron Tokens</h3><div class="form-row">
 <div style="flex:1;min-width:260px"><label>CRON_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[CRON_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('CRON_RUN_TOKEN'))?>"></div>
 <div style="flex:1;min-width:260px"><label>AUTOMATION_RUN_TOKEN</label><input style="width:100%;font-family:monospace" name="cfg[AUTOMATION_RUN_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('AUTOMATION_RUN_TOKEN'))?>"></div>
