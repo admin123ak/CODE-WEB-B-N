@@ -1,6 +1,8 @@
 <?php
 require_once '../config.php';
 require_once __DIR__ . '/../lib/crypto_helpers.php';
+require_once __DIR__ . '/../lib/balance_helpers.php';
+require_once __DIR__ . '/../lib/topup_helpers.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 
@@ -15,6 +17,8 @@ $rateRules = [
     'my_orders' => [60, 60], 'profile_stats' => [60, 60],
     'free_key_status' => [30, 60], 'daily_free_key' => [5, 86400],
     'payment_options' => [120, 60],
+    'me_balance' => [120, 60], 'topup_options' => [120, 60],
+    'topup_create' => [6, 60], 'balance_history' => [60, 60],
 ];
 if (isset($rateRules[$action])) { [$lim,$win] = $rateRules[$action]; rateLimit('api_'.$action, $lim, $win, $ip); }
 
@@ -128,12 +132,226 @@ switch ($action) {
         $mbbankOn = defined('MBBANK_AUTO_APPROVE_ENABLED') ? (bool)MBBANK_AUTO_APPROVE_ENABLED : true;
         $binanceConfigured = defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '';
         $binanceOn = defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED && $binanceConfigured;
+        $cardConfigured = defined('DOITHE_PARTNER_KEY') && DOITHE_PARTNER_KEY !== '' && defined('DOITHE_PARTNER_ID') && DOITHE_PARTNER_ID !== '';
+        $cardOn = defined('CARD_AUTO_APPROVE_ENABLED') && CARD_AUTO_APPROVE_ENABLED && $cardConfigured && defined('BALANCE_ENABLED') && BALANCE_ENABLED;
         jsonResponse([
             'success' => true,
             'options' => [
                 'mbbank'  => $mbbankOn,
                 'binance' => $binanceOn,
+                'card'    => $cardOn,
             ],
+        ]);
+
+    // Đọc số dư ví user. Yêu cầu BALANCE_ENABLED bật.
+    case 'me_balance':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        if (!defined('BALANCE_ENABLED') || !BALANCE_ENABLED) {
+            jsonResponse(['error' => 'Ví user chưa bật'], 400);
+        }
+        $bal = balanceGet($db, (int)$user['id']);
+        jsonResponse(['success' => true, 'balance' => $bal]);
+
+    // Option nạp ví — frontend dùng để hiện 3 nút bank/binance/card trong modal Nạp.
+    case 'topup_options':
+        if (!defined('BALANCE_ENABLED') || !BALANCE_ENABLED) {
+            jsonResponse(['success' => true, 'options' => ['mbbank'=>false,'binance'=>false,'card'=>false]]);
+        }
+        $mbbankOn = defined('MBBANK_AUTO_APPROVE_ENABLED') ? (bool)MBBANK_AUTO_APPROVE_ENABLED : false;
+        $binanceConfigured = defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '';
+        $binanceOn = defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED && $binanceConfigured;
+        $cardConfigured = defined('DOITHE_PARTNER_KEY') && DOITHE_PARTNER_KEY !== '' && defined('DOITHE_PARTNER_ID') && DOITHE_PARTNER_ID !== '';
+        $cardOn = defined('CARD_AUTO_APPROVE_ENABLED') && CARD_AUTO_APPROVE_ENABLED && $cardConfigured;
+        jsonResponse([
+            'success' => true,
+            'options' => ['mbbank'=>$mbbankOn, 'binance'=>$binanceOn, 'card'=>$cardOn],
+        ]);
+
+    // Tạo topup_request mới (chưa duyệt — cron/callback sẽ duyệt sau).
+    case 'topup_create':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        if (!defined('BALANCE_ENABLED') || !BALANCE_ENABLED) jsonResponse(['error' => 'Ví user chưa bật'], 400);
+
+        $method = $_POST['method'] ?? '';
+        if (!in_array($method, ['mbbank','binance','card'], true)) {
+            jsonResponse(['error' => 'Method không hợp lệ'], 400);
+        }
+
+        // Anti-spam: tối đa 3 topup pending cùng lúc
+        $pendCount = $db->prepare("SELECT COUNT(*) FROM topup_requests WHERE user_id=? AND status='pending'");
+        $pendCount->execute([$user['id']]);
+        if ((int)$pendCount->fetchColumn() >= 3) {
+            jsonResponse(['error' => 'Bạn đang có quá nhiều yêu cầu nạp đang chờ, hoàn tất hoặc chờ hết hạn'], 429);
+        }
+
+        try {
+            if ($method === 'mbbank') {
+                $amount = (int)($_POST['amount'] ?? 0);
+                if ($amount < 10000) jsonResponse(['error' => 'Tối thiểu 10.000đ'], 400);
+                if ($amount > 50000000) jsonResponse(['error' => 'Tối đa 50.000.000đ'], 400);
+                $r = topupCreateRequest($db, (int)$user['id'], 'mbbank', (float)$amount);
+                jsonResponse([
+                    'success'          => true,
+                    'method'           => 'mbbank',
+                    'topup_id'         => $r['id'],
+                    'amount_requested' => $amount,
+                    'unique_code'      => $r['unique_code'],
+                    'bank_name'        => defined('BANK_NAME') ? BANK_NAME : '',
+                    'bank_account'     => defined('BANK_ACCOUNT') ? BANK_ACCOUNT : '',
+                    'bank_owner'       => defined('BANK_OWNER') ? BANK_OWNER : '',
+                    'vietqr_url'       => function_exists('buildVietQrUrl') ? buildVietQrUrl($amount, $r['unique_code']) : '',
+                ]);
+            }
+
+            if ($method === 'binance') {
+                if (!defined('CRYPTO_AUTO_APPROVE_ENABLED') || !CRYPTO_AUTO_APPROVE_ENABLED || !defined('USDT_TRC20_ADDRESS') || USDT_TRC20_ADDRESS === '') {
+                    jsonResponse(['error' => 'Binance USDT đang tạm khoá'], 400);
+                }
+                $amount = (int)($_POST['amount'] ?? 0);
+                if ($amount < 10000) jsonResponse(['error' => 'Tối thiểu 10.000đ'], 400);
+                if ($amount > 50000000) jsonResponse(['error' => 'Tối đa 50.000.000đ'], 400);
+
+                // Insert trước để có topup_id, sau đó tính crypto_amount unique decimal
+                $r = topupCreateRequest($db, (int)$user['id'], 'binance', (float)$amount);
+                $conv = cryptoConvertVndToUsdt($amount, $r['id']);
+                $db->prepare("UPDATE topup_requests SET crypto_amount=?, usdt_vnd_rate=? WHERE id=?")
+                   ->execute([$conv['usdt'], $conv['rate'], $r['id']]);
+                $qrUrl = function_exists('cryptoBuildQrUrl') ? cryptoBuildQrUrl(USDT_TRC20_ADDRESS, $conv['usdt']) : '';
+                jsonResponse([
+                    'success'          => true,
+                    'method'           => 'binance',
+                    'topup_id'         => $r['id'],
+                    'amount_requested' => $amount,
+                    'crypto_amount'    => $conv['usdt'],
+                    'crypto_address'   => USDT_TRC20_ADDRESS,
+                    'crypto_qr_url'    => $qrUrl,
+                    'usdt_vnd_rate'    => $conv['rate'],
+                ]);
+            }
+
+            if ($method === 'card') {
+                if (!defined('CARD_AUTO_APPROVE_ENABLED') || !CARD_AUTO_APPROVE_ENABLED || !defined('DOITHE_PARTNER_KEY') || DOITHE_PARTNER_KEY === '') {
+                    jsonResponse(['error' => 'Nạp thẻ đang tạm khoá'], 400);
+                }
+                $telco = strtoupper(trim($_POST['card_telco'] ?? ''));
+                $face  = (int)($_POST['card_face_value'] ?? 0);
+                $serial = trim($_POST['card_serial'] ?? '');
+                $code   = trim($_POST['card_code'] ?? '');
+                if (!in_array($telco, ['VIETTEL','MOBIFONE','VINAPHONE'], true)) jsonResponse(['error' => 'Nhà mạng không hợp lệ'], 400);
+                if (!in_array($face, [10000,20000,30000,50000,100000,200000,300000,500000,1000000], true)) jsonResponse(['error' => 'Mệnh giá không hợp lệ'], 400);
+                if (strlen($serial) < 6 || strlen($serial) > 50) jsonResponse(['error' => 'Serial không hợp lệ'], 400);
+                if (strlen($code)   < 6 || strlen($code)   > 50) jsonResponse(['error' => 'Mã thẻ không hợp lệ'], 400);
+
+                $request_id = 'CARD' . date('YmdHis') . substr(bin2hex(random_bytes(3)), 0, 5);
+                $r = topupCreateRequest($db, (int)$user['id'], 'card', (float)$face, [
+                    'card_telco'         => $telco,
+                    'card_face_value'    => $face,
+                    'card_serial'        => $serial,
+                    'card_code'          => $code,
+                    'provider_request_id'=> $request_id,
+                ]);
+
+                // Gọi doithe.vn (sync). Nếu lỗi network, vẫn giữ topup pending — admin có thể xử lý tay.
+                $api = callDoitheCharge($request_id, $telco, $face, $serial, $code);
+                $db->prepare("UPDATE topup_requests SET provider_response=? WHERE id=?")
+                   ->execute([$api['raw'], $r['id']]);
+                if (!$api['ok']) {
+                    topupReject($db, $r['id'], 'doithe.vn từ chối: ' . ($api['message'] ?: 'status=' . $api['status']), $api['raw']);
+                    jsonResponse(['error' => 'Thẻ không hợp lệ: ' . ($api['message'] ?: 'lỗi nhà cung cấp')], 400);
+                }
+
+                jsonResponse([
+                    'success'           => true,
+                    'method'            => 'card',
+                    'topup_id'          => $r['id'],
+                    'card_face_value'   => $face,
+                    'provider_status'   => $api['status'],  // 99=pending, 1=success
+                    'message'           => 'Đã gửi thẻ lên hệ thống. Kết quả sẽ về sau 1-3 phút.',
+                ]);
+            }
+        } catch (Throwable $e) {
+            jsonResponse(['error' => 'Lỗi: ' . $e->getMessage()], 500);
+        }
+        jsonResponse(['error' => 'Method chưa hỗ trợ'], 400);
+
+    // Lịch sử ví user (50 dòng gần nhất).
+    case 'balance_history':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        if (!defined('BALANCE_ENABLED') || !BALANCE_ENABLED) jsonResponse(['error' => 'Ví user chưa bật'], 400);
+        $items = balanceHistory($db, (int)$user['id'], 50);
+        jsonResponse(['success' => true, 'items' => $items]);
+
+    // Mua key trừ thẳng từ ví user (KHÔNG qua MBBank/Binance/Card).
+    // Yêu cầu BALANCE_ENABLED + user.balance >= package.price.
+    case 'buy_with_balance':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        if (!defined('BALANCE_ENABLED') || !BALANCE_ENABLED) jsonResponse(['error' => 'Ví user chưa bật'], 400);
+
+        $game_id = (int)($_POST['game_id'] ?? 0);
+        $package_id = (int)($_POST['package_id'] ?? 0);
+
+        $pkg = $db->prepare("SELECT p.*, g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id WHERE p.id=? AND p.game_id=? AND p.is_active=1 AND g.is_active=1");
+        $pkg->execute([$package_id, $game_id]);
+        $package = $pkg->fetch();
+        if (!$package) jsonResponse(['error' => 'Gói không tồn tại'], 404);
+
+        $price = (float)$package['price'];
+        $curBal = balanceGet($db, (int)$user['id']);
+        if ($curBal < $price) {
+            jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($price) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
+        }
+
+        // Reserve key + tạo order + debit ví trong cùng transaction-ish:
+        // balanceDebit có tx riêng — ta gọi balanceDebit TRƯỚC, nếu fail throws,
+        // không tốn key. Sau đó tạo order + assign key.
+        $order_code = generateOrderCode();
+        $db->beginTransaction();
+        try {
+            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT 1 FOR UPDATE");
+            $keyStmt->execute([$game_id, $package_id]);
+            $poolKey = $keyStmt->fetch();
+            if (!$poolKey) {
+                $db->rollBack();
+                jsonResponse(['error' => 'Hết key cho gói này'], 400);
+            }
+
+            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, payment_method, status, approved_at, approved_by) VALUES (?,?,?,?,?,?,'approved', NOW(), 'balance')")
+               ->execute([$order_code, $user['id'], $game_id, $package_id, $price, 'balance']);
+            $order_id = (int)$db->lastInsertId();
+
+            $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$package['days'] . ' days'));
+            $db->prepare("UPDATE `keys` SET status='active', user_id=?, order_id=?, days=?, start_at=NOW(), expire_at=? WHERE id=?")
+               ->execute([$user['id'], $order_id, $package['days'], $expire, $poolKey['id']]);
+            $key_code = $poolKey['key_code'];
+
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            jsonResponse(['error' => 'Lỗi tạo đơn: ' . $e->getMessage()], 500);
+        }
+
+        // Debit ví (atomic, riêng tx). Nếu fail thì refund key.
+        try {
+            $debit = balanceDebit($db, (int)$user['id'], $price, 'purchase', 'order', $order_id, 'Mua key gói #' . $package_id);
+        } catch (Throwable $e) {
+            // Rollback: huỷ order, trả key về pool
+            try {
+                $db->beginTransaction();
+                $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL, start_at=NULL, expire_at=NULL WHERE id=?")
+                   ->execute([$poolKey['id']]);
+                $db->prepare("UPDATE orders SET status='cancelled', admin_note=? WHERE id=?")
+                   ->execute(['Trừ ví fail: ' . $e->getMessage(), $order_id]);
+                $db->commit();
+            } catch (Throwable $e2) { if ($db->inTransaction()) $db->rollBack(); }
+            jsonResponse(['error' => 'Trừ ví thất bại: ' . $e->getMessage()], 400);
+        }
+
+        jsonResponse([
+            'success'       => true,
+            'order_code'    => $order_code,
+            'key_code'      => $key_code,
+            'balance_after' => $debit['balance_after'],
+            'package'       => ['name' => $package['name'], 'days' => $package['days'], 'price' => $price],
         ]);
 
     // ===== TẠO ĐƠN HÀNG =====

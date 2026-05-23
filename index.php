@@ -960,40 +960,151 @@ async function fetchPaymentOptions(){
   try{
     var res=await api('payment_options');
     if(res&&res.success&&res.options) paymentOptions=res.options;
-    else paymentOptions={mbbank:true, binance:false};
-  }catch(e){ paymentOptions={mbbank:true, binance:false}; }
+    else paymentOptions={mbbank:true, binance:false, card:false};
+  }catch(e){ paymentOptions={mbbank:true, binance:false, card:false}; }
   return paymentOptions;
 }
 async function doOrder(){
   if(!selGame||!selPkg||buying)return;
   if(selPkg.is_free){ getFreeKey(); return; }
   await fetchPaymentOptions();
-  // Nếu chỉ MBBank bật → đi thẳng. Nếu cả 2 bật → cho user chọn.
-  if(paymentOptions.binance && paymentOptions.mbbank){
-    showPaymentMethodPicker();
-  } else if (paymentOptions.binance && !paymentOptions.mbbank){
-    selectedPaymentMethod='binance';
-    showOrderConfirm();
-  } else {
-    selectedPaymentMethod='mbbank';
-    showOrderConfirm();
-  }
+  // Có ≥2 option bật → hiện picker. Chỉ 1 option → chọn thẳng.
+  var nOn=(paymentOptions.mbbank?1:0)+(paymentOptions.binance?1:0)+(paymentOptions.card?1:0);
+  if(nOn>=2){ showPaymentMethodPicker(); return; }
+  if(paymentOptions.binance){ selectedPaymentMethod='binance'; showOrderConfirm(); return; }
+  if(paymentOptions.card){ selectedPaymentMethod='card'; openCardForOrder(); return; }
+  selectedPaymentMethod='mbbank';
+  showOrderConfirm();
 }
 function showPaymentMethodPicker(){
-  document.querySelector('#confirmModal .mtitle').textContent=T.pickerTitle;
-  document.getElementById('confirmContent').innerHTML=
-    '<div style="display:flex;flex-direction:column;gap:10px;margin:8px 0">'
-    +'<button class="confirm-btn ok" onclick="pickPayment(\'mbbank\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px"><span style="font-size:22px">🏦</span><span><b>'+T.pickerMbbankT+'</b><div style="font-size:11px;opacity:.8;font-weight:400">'+T.pickerMbbankSub+'</div></span></button>'
-    +'<button class="confirm-btn ok" onclick="pickPayment(\'binance\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px;background:linear-gradient(135deg,#f0b90b,#f3ba2f)"><span style="font-size:22px">🪙</span><span><b>'+T.pickerBnbT+'</b><div style="font-size:11px;opacity:.8;font-weight:400">'+T.pickerBnbSub+'</div></span></button>'
-    +'</div>';
-  // Ẩn nút OK mặc định, chỉ dùng nút Huỷ
+  document.querySelector('#confirmModal .mtitle').textContent=T.pickerTitle||'Chọn phương thức thanh toán';
+  var html='<div style="display:flex;flex-direction:column;gap:10px;margin:8px 0">';
+  if(paymentOptions.mbbank){
+    html+='<button class="confirm-btn ok" onclick="pickPayment(\'mbbank\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px"><span style="font-size:22px">🏦</span><span><b>'+(T.pickerMbbankT||'MBBank')+'</b><div style="font-size:11px;opacity:.8;font-weight:400">'+(T.pickerMbbankSub||'Chuyển khoản VND')+'</div></span></button>';
+  }
+  if(paymentOptions.binance){
+    html+='<button class="confirm-btn ok" onclick="pickPayment(\'binance\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px;background:linear-gradient(135deg,#f0b90b,#f3ba2f)"><span style="font-size:22px">🪙</span><span><b>'+(T.pickerBnbT||'Binance USDT')+'</b><div style="font-size:11px;opacity:.8;font-weight:400">'+(T.pickerBnbSub||'USDT TRC20')+'</div></span></button>';
+  }
+  if(paymentOptions.card){
+    html+='<button class="confirm-btn ok" onclick="pickPayment(\'card\')" style="text-align:left;display:flex;align-items:center;gap:10px;padding:14px;background:linear-gradient(135deg,#a855f7,#c084fc)"><span style="font-size:22px">💳</span><span><b>Nạp thẻ cào</b><div style="font-size:11px;opacity:.8;font-weight:400">Viettel/Mobi/Vina (chiết khấu ~33%)</div></span></button>';
+  }
+  html+='</div>';
+  document.getElementById('confirmContent').innerHTML=html;
   document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='none';
   document.getElementById('confirmModal').classList.add('show');
 }
 function pickPayment(method){
-  selectedPaymentMethod=(method==='binance')?'binance':'mbbank';
+  selectedPaymentMethod=method;
   document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
+  if(method==='card'){
+    closeModal('confirmModal');
+    openCardForOrder();
+    return;
+  }
   showOrderConfirm();
+}
+
+// Card-in-order: chọn Card khi mua key → hiện form thẻ kèm số dư + giá key.
+// Submit → nạp vào ví; user về picker tự bấm "Mua bằng ví" khi đủ tiền.
+async function openCardForOrder(){
+  document.getElementById('topupTitle').textContent='💳 Nạp thẻ để mua key';
+  document.getElementById('topupContent').innerHTML='<div class="loading"><div class="spin"></div>Đang tải...</div>';
+  document.getElementById('topupModal').classList.add('show');
+  var price=selPkg?parseInt(selPkg.price,10)||0:0;
+  var bal=0;
+  try{
+    var b=await api('me_balance','GET');
+    if(b&&b.success) bal=parseInt(b.balance,10)||0;
+  }catch(e){}
+  var need=Math.max(0,price-bal);
+  var inp='width:100%;padding:13px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;margin-top:6px;font-family:inherit';
+  var inpMono=inp+';font-family:monospace;letter-spacing:.5px';
+  var statusBox=
+    '<div style="background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(52,211,153,.05));border:1px solid rgba(52,211,153,.3);border-radius:12px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;font-size:12px">'
+    +'<div><div style="color:var(--text2);font-weight:700;font-size:11px">SỐ DƯ VÍ</div><div style="font-weight:900;color:#34d399;margin-top:2px">'+fmtMoney(bal)+'đ</div></div>'
+    +'<div style="text-align:center"><div style="color:var(--text2);font-weight:700;font-size:11px">GIÁ KEY</div><div style="font-weight:900;margin-top:2px">'+fmtMoney(price)+'đ</div></div>'
+    +'<div style="text-align:right"><div style="color:var(--text2);font-weight:700;font-size:11px">'+(need>0?'CẦN NẠP':'ĐỦ TIỀN')+'</div><div style="font-weight:900;color:'+(need>0?'#fbbf24':'#34d399')+';margin-top:2px">'+(need>0?fmtMoney(need)+'đ':'✓')+'</div></div>'
+    +'</div>';
+  if(need===0){
+    document.getElementById('topupContent').innerHTML=statusBox
+      +'<div style="text-align:center;padding:14px;color:var(--text2);font-size:13px;line-height:1.6">Ví của bạn đã đủ để mua key này.<br>Không cần nạp thẻ — bấm nút dưới để trừ ví và nhận key.</div>'
+      +'<button class="topup-submit-btn" onclick="buyWithBalance()" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">💰 Mua bằng ví ('+fmtMoney(price)+'đ)</button>';
+    return;
+  }
+  var html=statusBox
+    +'<div style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:11.5px;line-height:1.6;color:#e9d5ff">'
+    +'Thẻ có chiết khấu ~33%: thẻ 30k → ví nhận khoảng 20k. Sau khi nạp đủ, bấm "Mua bằng ví" để nhận key.'
+    +'</div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Nhà mạng</label>'
+    +'<select id="cardTelco" style="'+inp+'"><option value="VIETTEL">Viettel</option><option value="MOBIFONE">Mobifone</option><option value="VINAPHONE">Vinaphone</option></select></div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Mệnh giá</label>'
+    +'<select id="cardFace" style="'+inp+'"><option value="10000">10.000đ</option><option value="20000">20.000đ</option><option value="50000" selected>50.000đ</option><option value="100000">100.000đ</option><option value="200000">200.000đ</option><option value="500000">500.000đ</option><option value="1000000">1.000.000đ</option></select></div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Số Serial</label>'
+    +'<input id="cardSerial" type="text" autocomplete="off" placeholder="Số serial in trên thẻ" style="'+inpMono+'"></div>'
+    +'<div style="margin-bottom:14px"><label style="font-size:12px;color:var(--text2);font-weight:700">Mã thẻ (PIN)</label>'
+    +'<input id="cardCode" type="text" autocomplete="off" placeholder="Dãy số cào trên thẻ" style="'+inpMono+'"></div>'
+    +'<button class="topup-submit-btn" onclick="submitCardForOrder()" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">Gửi thẻ nạp ví</button>';
+  document.getElementById('topupContent').innerHTML=html;
+}
+async function submitCardForOrder(){
+  // Tái sử dụng logic submitCardTopup, sau khi xong vẫn ở modal — refresh status.
+  var telco=document.getElementById('cardTelco').value;
+  var face=parseInt(document.getElementById('cardFace').value,10);
+  var serial=document.getElementById('cardSerial').value.trim();
+  var code=document.getElementById('cardCode').value.trim();
+  if(!serial||!code){ toast('Nhập đủ Serial + Mã thẻ','error'); return; }
+  if(serial.length<6||code.length<6){ toast('Serial/mã thẻ quá ngắn','error'); return; }
+  var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
+  btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+  btn.disabled=true;
+  var res=await api('topup_create','POST',{method:'card', card_telco:telco, card_face_value:face, card_serial:serial, card_code:code});
+  btn.disabled=false; btn.innerHTML=old;
+  if(!res||!res.success){ toast((res&&res.error)||'Lỗi gửi thẻ','error'); return; }
+  document.getElementById('topupContent').innerHTML=
+    '<div style="text-align:center;padding:24px 10px">'
+    +'<div style="font-size:48px">⏳</div>'
+    +'<div style="font-weight:900;margin-top:12px;font-size:16px">Đã gửi thẻ — chờ doithe.vn xử lý</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-top:8px;line-height:1.6">1-3 phút sẽ có kết quả.<br>Đang theo dõi số dư ví...</div>'
+    +'<div style="margin-top:14px"><div class="spin" style="margin:0 auto"></div></div>'
+    +'</div>';
+  // Poll balance mỗi 5s, tối đa 60 lần (5 phút).
+  var price=selPkg?parseInt(selPkg.price,10)||0:0;
+  var startBal=0; try{ var b0=await api('me_balance','GET'); if(b0&&b0.success) startBal=parseInt(b0.balance,10)||0; }catch(e){}
+  var tries=0;
+  if(window._cardPollTimer) clearInterval(window._cardPollTimer);
+  window._cardPollTimer=setInterval(async function(){
+    tries++;
+    try{
+      var b=await api('me_balance','GET');
+      if(b&&b.success){
+        var cur=parseInt(b.balance,10)||0;
+        if(cur>startBal){
+          clearInterval(window._cardPollTimer); window._cardPollTimer=null;
+          openCardForOrder(); // refresh — sẽ hiện "đủ tiền" hoặc "còn thiếu Yđ"
+          return;
+        }
+      }
+    }catch(e){}
+    if(tries>=60){
+      clearInterval(window._cardPollTimer); window._cardPollTimer=null;
+      document.getElementById('topupContent').innerHTML+='<div style="margin-top:14px;text-align:center;color:#fbbf24;font-size:12px">Quá lâu chưa có callback. Kiểm tra Lịch sử ví trong tab Cá nhân.</div>';
+    }
+  }, 5000);
+}
+async function buyWithBalance(){
+  if(!selGame||!selPkg) return;
+  var btn=document.querySelector('.topup-submit-btn'); if(btn){ btn.disabled=true; btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>'; }
+  var res=await api('buy_with_balance','POST',{game_id:selGame.id,package_id:selPkg.id});
+  if(btn){ btn.disabled=false; btn.innerHTML='💰 Mua bằng ví'; }
+  if(!res||!res.success){ toast((res&&res.error)||'Lỗi trừ ví','error'); return; }
+  closeModal('topupModal');
+  toast('🎉 Đã mua key thành công!','success');
+  if(typeof loadMyKeys==='function') loadMyKeys();
+  if(typeof loadBalance==='function') loadBalance();
+}
+function showPaymentMethodPickerOld(){
+  // legacy, không dùng nữa — giữ làm fallback
+}
 }
 function showOrderConfirm(){
   document.querySelector('#confirmModal .mtitle').textContent=T.xacNhan;
