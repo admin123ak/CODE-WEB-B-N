@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 
-// Cho phép gọi qua HTTP với token (cho cron_run.php) hoặc CLI (cho crontab)
+// Cho phép gọi qua HTTP với token (cho cron/run.php) hoặc CLI (cho crontab)
 $isHttpCall = PHP_SAPI !== 'cli';
 if ($isHttpCall) {
     $httpToken = $_GET['cron_token'] ?? $_POST['cron_token'] ?? '';

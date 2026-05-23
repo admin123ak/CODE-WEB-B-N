@@ -2,7 +2,7 @@
 /**
  * Shared helper to approve a paid order atomically.
  *
- * Tách ra từ mbbank_poll.php để cả MBBank lẫn Crypto (Binance USDT) reuse.
+ * Tách ra từ cron/mbbank_poll.php để cả MBBank lẫn Crypto (Binance USDT) reuse.
  * Giữ nguyên 100% logic atomic + telegram notify gốc cho MBBank.
  *
  * @param PDO    $db         DB handle
@@ -44,7 +44,7 @@ function approvePaidOrder(
 
     // Với MBBank: so sánh amount VND theo order.amount.
     // Với Binance: $amount là USDT, không thể so trực tiếp với order.amount (VND).
-    //   → Phía crypto_poll.php đã match theo orders.crypto_amount trước khi gọi hàm này,
+    //   → Phía cron/crypto_poll.php đã match theo orders.crypto_amount trước khi gọi hàm này,
     //     nên ở đây chỉ check cho MBBank (approvedBy='mbbank_api').
     if ($approvedBy === 'mbbank_api' && (float)$order['amount'] > $amount) {
         return ['status' => 'ignored', 'note' => 'Số tiền nhận nhỏ hơn đơn'];

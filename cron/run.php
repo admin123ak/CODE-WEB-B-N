@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 defined('CRON_RUN_TOKEN') || define('CRON_RUN_TOKEN', '');
@@ -95,36 +95,36 @@ register_shutdown_function(function() use ($lockHandle) {
 
 $jobMap = [
     'mbbank'      => function() {
-        return hclouHttpCall('/mbbank_poll.php', ['secret' => MBBANK_POLL_SECRET]);
+        return hclouHttpCall('/cron/mbbank_poll.php', ['secret' => MBBANK_POLL_SECRET]);
     },
     'crypto'      => function() {
         if (!defined('CRYPTO_POLL_SECRET')) {
             return ['ok' => true, 'code' => 200, 'body' => json_encode(['success' => true, 'skipped' => true, 'reason' => 'crypto_not_configured'])];
         }
-        return hclouHttpCall('/crypto_poll.php', ['secret' => CRYPTO_POLL_SECRET]);
+        return hclouHttpCall('/cron/crypto_poll.php', ['secret' => CRYPTO_POLL_SECRET]);
     },
     'card'        => function() {
         // Active check doithe.vn pending topups — fallback nếu callback chậm/lỗi.
         if (!defined('CARD_POLL_SECRET')) {
             return ['ok' => true, 'code' => 200, 'body' => json_encode(['success' => true, 'skipped' => true, 'reason' => 'card_not_configured'])];
         }
-        return hclouHttpCall('/card_poll.php', ['secret' => CARD_POLL_SECRET]);
+        return hclouHttpCall('/cron/card_poll.php', ['secret' => CARD_POLL_SECRET]);
     },
     'maintenance' => function() {
-        return hclouHttpCall('/maintenance.php', ['cron_token' => CRON_RUN_TOKEN]);
+        return hclouHttpCall('/cron/maintenance.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
     'automation'  => function() {
-        return hclouHttpCall('/automation_daily.php', ['cron_token' => CRON_RUN_TOKEN]);
+        return hclouHttpCall('/cron/automation_daily.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
     'health'      => function() {
-        return hclouHttpCall('/health_check_daily.php', ['cron_token' => CRON_RUN_TOKEN]);
+        return hclouHttpCall('/cron/health_check_daily.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
     'monitor'     => function() {
-        return hclouHttpCall('/cron_monitor.php', ['cron_token' => CRON_RUN_TOKEN]);
+        return hclouHttpCall('/cron/cron_monitor.php', ['cron_token' => CRON_RUN_TOKEN]);
     },
     'backup'      => function() {
         // DB dump có thể chậm (vài giây với DB lớn). Cho timeout dài hơn các job khác.
-        return hclouHttpCall('/db_backup.php', ['cron_token' => CRON_RUN_TOKEN], 120);
+        return hclouHttpCall('/cron/db_backup.php', ['cron_token' => CRON_RUN_TOKEN], 120);
     },
 ];
 

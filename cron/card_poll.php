@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/lib/balance_helpers.php';
-require_once __DIR__ . '/lib/topup_helpers.php';
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../lib/balance_helpers.php';
+require_once __DIR__ . '/../lib/topup_helpers.php';
 
 // =============================================
 // CARD_POLL.PHP — ACTIVE CHECK CRON cho topup_requests method='card'
@@ -23,7 +23,7 @@ require_once __DIR__ . '/lib/topup_helpers.php';
 //       status=99 / 4 → giữ pending, log
 //
 // Auth: ?secret=<CARD_POLL_SECRET>  (HMAC sha256 từ partner_id + BOT_TOKEN)
-// Run: hclouHttpCall('/card_poll.php', ['secret' => CARD_POLL_SECRET]) qua cron_run.php
+// Run: hclouHttpCall('/cron/card_poll.php', ['secret' => CARD_POLL_SECRET]) qua cron/run.php
 // =============================================
 
 $cpStartedAt = microtime(true);

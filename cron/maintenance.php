@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 
 function runMaintenance(PDO $db): array {
     $out = ['expired_keys'=>0, 'deleted_expired_keys'=>0, 'cancelled_orders'=>0, 'returned_to_pool'=>0];

@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');
 
 // =============================================
-// AUTH: chỉ chạy qua cron_run.php (CRON_RUN_TOKEN) hoặc CLI
+// AUTH: chỉ chạy qua cron/run.php (CRON_RUN_TOKEN) hoặc CLI
 // =============================================
 if (PHP_SAPI !== 'cli') {
     $tok = $_GET['cron_token'] ?? '';

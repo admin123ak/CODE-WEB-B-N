@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/maintenance.php';
 
 // Cho phép gọi qua HTTP với token hoặc CLI

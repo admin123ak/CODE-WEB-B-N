@@ -629,13 +629,13 @@ $tok      = $_SESSION['installer']['cron_run_token'] ?? '';
 $autoTok  = $_SESSION['installer']['automation_token'] ?? '';
 $siteUrl  = rtrim($_SESSION['installer']['site_url'] ?? '', '/');
 $cronJobs = [
-    ['MBBANK Auto-bank',   '*/1 * * * *', "{$siteUrl}/cron_run.php?token={$tok}&job=mbbank",       'Duyệt thanh toán tự động'],
-    ['Crypto USDT TRC20',  '*/1 * * * *', "{$siteUrl}/cron_run.php?token={$tok}&job=crypto",       'Auto duyệt nạp USDT (Binance/TRC20)'],
-    ['Card doithe poll',   '*/2 * * * *', "{$siteUrl}/cron_run.php?token={$tok}&job=card",         'Active check trạng thái nạp thẻ doithe.vn'],
-    ['Maintenance',        '*/5 * * * *', "{$siteUrl}/cron_run.php?token={$tok}&job=maintenance",  'Xóa key hết hạn, hủy đơn quá 15 phút'],
-    ['Monitor',            '*/5 * * * *', "{$siteUrl}/cron_run.php?token={$tok}&job=monitor",      'Cảnh báo lỗi qua Telegram'],
-    ['Automation Daily',   '0 8 * * *',   "{$siteUrl}/cron_run.php?token={$tok}&job=automation",   'Báo cáo hàng ngày 8h'],
-    ['Health Check',       '0 9 * * *',   "{$siteUrl}/cron_run.php?token={$tok}&job=health",       'Health check 9h'],
+    ['MBBANK Auto-bank',   '*/1 * * * *', "{$siteUrl}/cron/run.php?token={$tok}&job=mbbank",       'Duyệt thanh toán tự động'],
+    ['Crypto USDT TRC20',  '*/1 * * * *', "{$siteUrl}/cron/run.php?token={$tok}&job=crypto",       'Auto duyệt nạp USDT (Binance/TRC20)'],
+    ['Card doithe poll',   '*/2 * * * *', "{$siteUrl}/cron/run.php?token={$tok}&job=card",         'Active check trạng thái nạp thẻ doithe.vn'],
+    ['Maintenance',        '*/5 * * * *', "{$siteUrl}/cron/run.php?token={$tok}&job=maintenance",  'Xóa key hết hạn, hủy đơn quá 15 phút'],
+    ['Monitor',            '*/5 * * * *', "{$siteUrl}/cron/run.php?token={$tok}&job=monitor",      'Cảnh báo lỗi qua Telegram'],
+    ['Automation Daily',   '0 8 * * *',   "{$siteUrl}/cron/run.php?token={$tok}&job=automation",   'Báo cáo hàng ngày 8h'],
+    ['Health Check',       '0 9 * * *',   "{$siteUrl}/cron/run.php?token={$tok}&job=health",       'Health check 9h'],
 ];
 ?>
 <table class="cron-table">

@@ -98,13 +98,13 @@ function hclouAutomationRunToken() {
 function hclouCronRunUrl($job, $masked = false) {
     $token = hclouCronRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
-    return rtrim(SITE_URL, '/') . '/cron_run.php?token=' . $show . '&job=' . rawurlencode($job);
+    return rtrim(SITE_URL, '/') . '/cron/run.php?token=' . $show . '&job=' . rawurlencode($job);
 }
 function hclouAutomationRunUrl($masked = false) {
     $token = hclouAutomationRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
-    // automation_run.php đã bỏ; chuyển sang cron_run.php?job=automation
-    return rtrim(SITE_URL, '/') . '/cron_run.php?token=' . $show . '&job=automation';
+    // automation_run.php đã bỏ; chuyển sang cron/run.php?job=automation
+    return rtrim(SITE_URL, '/') . '/cron/run.php?token=' . $show . '&job=automation';
 }
 
 // Xử lý action POST
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($act === 'run_maintenance') {
         try {
-            require_once __DIR__ . '/../maintenance.php';
+            require_once __DIR__ . '/../cron/maintenance.php';
             $r = runMaintenance($db);
             header("Location: ?tab=sysconfig&ok=1&maint=" . urlencode(json_encode($r, JSON_UNESCAPED_UNICODE))); exit;
         } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!defined('CRON_RUN_TOKEN') || CRON_RUN_TOKEN === '') {
                 throw new Exception('CRON_RUN_TOKEN chưa configured.');
             }
-            $url = rtrim(SITE_URL, '/') . '/db_backup.php?cron_token=' . rawurlencode(CRON_RUN_TOKEN);
+            $url = rtrim(SITE_URL, '/') . '/cron/db_backup.php?cron_token=' . rawurlencode(CRON_RUN_TOKEN);
             $ch  = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -211,13 +211,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($act === 'mbbank_test_poll') {
-        // Gọi mbbank_poll.php cùng-host qua cURL với MBBANK_POLL_SECRET.
+        // Gọi cron/mbbank_poll.php cùng-host qua cURL với MBBANK_POLL_SECRET.
         // Tránh require trực tiếp để giữ nguyên cơ chế lock + môi trường giống cron.
         try {
             if (!defined('MBBANK_POLL_SECRET') || MBBANK_POLL_SECRET === '') {
                 throw new Exception('MBBANK_POLL_SECRET chưa khả dụng (kiểm tra MBBANK_HISTORY_API_KEY + BOT_TOKEN).');
             }
-            $url = rtrim(SITE_URL, '/') . '/mbbank_poll.php?src=admin&secret=' . rawurlencode(MBBANK_POLL_SECRET);
+            $url = rtrim(SITE_URL, '/') . '/cron/mbbank_poll.php?src=admin&secret=' . rawurlencode(MBBANK_POLL_SECRET);
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -241,12 +241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($act === 'crypto_test_poll') {
-        // Gọi crypto_poll.php cùng-host qua cURL với CRYPTO_POLL_SECRET.
+        // Gọi cron/crypto_poll.php cùng-host qua cURL với CRYPTO_POLL_SECRET.
         try {
             if (!defined('CRYPTO_POLL_SECRET') || CRYPTO_POLL_SECRET === '') {
                 throw new Exception('CRYPTO_POLL_SECRET chưa khả dụng (cần nhập USDT_TRC20_ADDRESS + BOT_TOKEN).');
             }
-            $url = rtrim(SITE_URL, '/') . '/crypto_poll.php?src=admin&secret=' . rawurlencode(CRYPTO_POLL_SECRET);
+            $url = rtrim(SITE_URL, '/') . '/cron/crypto_poll.php?src=admin&secret=' . rawurlencode(CRYPTO_POLL_SECRET);
             $ch = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -634,7 +634,7 @@ $txSrcMap=[]; foreach($txSrcStats as $r){ $txSrcMap[$r['source']??'mbbank'] = $r
     <button type="submit">🔍 Lọc</button>
     <a class="btn" href="?tab=banktx">Reset</a>
   </form>
-  <div class="alert" style="background:rgba(59,130,246,.10);border-color:rgba(59,130,246,.25);color:#bfdbfe">Cron poll mỗi phút: <span class="mono">mbbank_poll.php</span> + <span class="mono">crypto_poll.php</span>. Có ai chuyển khoản vào TK MBBank hoặc gửi USDT TRC20 vào ví là tự động xuất hiện ở bảng dưới. Nếu giao dịch không auto duyệt, kiểm tra cột <b>Ghi chú</b> + <b>Nội dung</b>.</div>
+  <div class="alert" style="background:rgba(59,130,246,.10);border-color:rgba(59,130,246,.25);color:#bfdbfe">Cron poll mỗi phút: <span class="mono">cron/mbbank_poll.php</span> + <span class="mono">cron/crypto_poll.php</span>. Có ai chuyển khoản vào TK MBBank hoặc gửi USDT TRC20 vào ví là tự động xuất hiện ở bảng dưới. Nếu giao dịch không auto duyệt, kiểm tra cột <b>Ghi chú</b> + <b>Nội dung</b>.</div>
 </div>
 <div class="table-wrap"><table>
 <tr><th>ID</th><th>Nguồn</th><th>Thời gian</th><th>Mã đơn</th><th>Số tiền</th><th>Trạng thái</th><th>Ghi chú</th><th>Nội dung</th><th>Đọc lúc</th><th>Xử lý lúc</th></tr>
@@ -1028,7 +1028,7 @@ $_mbFresh = ($_mbS && !empty($_mbS['last_run_at']) && (time() - strtotime($_mbS[
 <div class="form-card" style="margin-bottom:16px;border:1px solid <?= $_mbFresh ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.35)' ?>">
   <h3>🏦 MBBank Poll — Quan sát</h3>
   <?php if (!$_mbS): ?>
-    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhấn <b>Test Poll Ngay</b> hoặc đợi cron chạy mbbank_poll.php.</p>
+    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhấn <b>Test Poll Ngay</b> hoặc đợi cron chạy cron/mbbank_poll.php.</p>
   <?php else: ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
       <div><small style="color:#8b949e">Lần chạy cuối</small><div style="font-weight:800;color:<?= $_mbFresh ? '#bbf7d0' : '#fde68a' ?>"><?= h($_mbAgo) ?></div><div class="mono" style="font-size:11px;color:#6b7f9e"><?= h($_mbS['last_run_at']) ?></div></div>
@@ -1049,7 +1049,7 @@ $_mbFresh = ($_mbS && !empty($_mbS['last_run_at']) && (time() - strtotime($_mbS[
     <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
     <input type="hidden" name="act" value="mbbank_test_poll">
     <button class="btn btn-blue" type="submit">▶️ Test Poll Ngay</button>
-    <small style="color:#8b949e">Gọi <span class="mono">mbbank_poll.php</span> đồng bộ qua cURL — kết quả hiển thị ngay phía trên.</small>
+    <small style="color:#8b949e">Gọi <span class="mono">cron/mbbank_poll.php</span> đồng bộ qua cURL — kết quả hiển thị ngay phía trên.</small>
   </form>
 </div>
 <?php
@@ -1075,7 +1075,7 @@ $_crFresh = ($_crS && !empty($_crS['last_run_at']) && (time() - strtotime($_crS[
 <div class="form-card" style="margin-bottom:16px;border:1px solid <?= $_crFresh ? 'rgba(34,197,94,.35)' : 'rgba(245,158,11,.35)' ?>">
   <h3>🪙 Crypto Poll (Binance USDT TRC20) — Quan sát</h3>
   <?php if (!$_crS): ?>
-    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhập <span class="mono">USDT_TRC20_ADDRESS</span> ở panel bên dưới rồi bấm <b>Test Poll Ngay</b>, hoặc đợi cron chạy crypto_poll.php.</p>
+    <p style="color:#fde68a">Chưa có dữ liệu poll. Nhập <span class="mono">USDT_TRC20_ADDRESS</span> ở panel bên dưới rồi bấm <b>Test Poll Ngay</b>, hoặc đợi cron chạy cron/crypto_poll.php.</p>
   <?php else: ?>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">
       <div><small style="color:#8b949e">Lần chạy cuối</small><div style="font-weight:800;color:<?= $_crFresh ? '#bbf7d0' : '#fde68a' ?>"><?= h($_crAgo) ?></div><div class="mono" style="font-size:11px;color:#6b7f9e"><?= h($_crS['last_run_at']) ?></div></div>
@@ -1096,11 +1096,11 @@ $_crFresh = ($_crS && !empty($_crS['last_run_at']) && (time() - strtotime($_crS[
     <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
     <input type="hidden" name="act" value="crypto_test_poll">
     <button class="btn btn-blue" type="submit">▶️ Test Poll Ngay</button>
-    <small style="color:#8b949e">Gọi <span class="mono">crypto_poll.php</span> đồng bộ — fetch lịch sử giao dịch TRC20 mới nhất.</small>
+    <small style="color:#8b949e">Gọi <span class="mono">cron/crypto_poll.php</span> đồng bộ — fetch lịch sử giao dịch TRC20 mới nhất.</small>
   </form>
 </div>
 <?php
-// Bảng trạng thái cron jobs - đọc data/cron_status_{job}.json (do cron_run.php ghi)
+// Bảng trạng thái cron jobs - đọc data/cron_status_{job}.json (do cron/run.php ghi)
 $_cronJobs = [
     'mbbank'      => ['label' => '🏦 MBBANK Auto-bank',    'sched' => '*/1m',  'fresh_sec' => 180],
     'crypto'      => ['label' => '🪙 Crypto Auto-USDT',     'sched' => '*/1m',  'fresh_sec' => 180],
@@ -1124,7 +1124,7 @@ function _hclouCronAgo($iso) {
 ?>
 <div class="form-card" style="margin-bottom:16px">
   <h3>⏱️ Trạng thái Cron Jobs</h3>
-  <p style="color:#8b949e;font-size:13px;margin-bottom:10px">Đọc snapshot từ <span class="mono">data/cron_status_*.json</span> (do <span class="mono">cron_run.php</span> ghi sau mỗi lần chạy). Đỏ = quá hạn / lỗi, xanh = OK.</p>
+  <p style="color:#8b949e;font-size:13px;margin-bottom:10px">Đọc snapshot từ <span class="mono">data/cron_status_*.json</span> (do <span class="mono">cron/run.php</span> ghi sau mỗi lần chạy). Đỏ = quá hạn / lỗi, xanh = OK.</p>
   <table style="width:100%;border-collapse:collapse;font-size:13px">
     <tr><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Job</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Schedule</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Lần cuối</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Thời gian</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Kết quả</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Detail</th></tr>
   <?php foreach ($_cronJobs as $jkey => $jinfo):
@@ -1184,7 +1184,7 @@ function _hclouFormatBytes($b) {
     <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
     <input type="hidden" name="act" value="db_backup_now">
     <button class="btn btn-blue" type="submit" onclick="return confirm('Tạo backup ngay? (có thể mất vài giây)')">💾 Backup ngay</button>
-    <small style="color:#8b949e">Cron URL: <span class="mono" style="word-break:break-all"><?= h(rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=backup') ?></span></small>
+    <small style="color:#8b949e">Cron URL: <span class="mono" style="word-break:break-all"><?= h(rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=backup') ?></span></small>
   </form>
 
   <?php if ($_bkFiles): ?>
@@ -1293,14 +1293,14 @@ function _hclouFormatBytes($b) {
 <p style="color:#8b949e;font-size:13px;margin-bottom:12px">Copy các URL dưới đây vào <a href="https://cron-job.org" target="_blank" style="color:#58a6ff">cron-job.org</a> (hoặc cPanel Cron Jobs). Tất cả chạy qua HTTP, không cần SSH/exec().</p>
 <div class="codebox"><?php
 $cronJobs = [
-    ['label'=>'🏦 MBBANK Auto-bank', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=mbbank'],
-    ['label'=>'🪙 Crypto Auto-USDT', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=crypto'],
-    ['label'=>'🎴 Card doithe poll', 'schedule'=>'Mỗi 2 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=card'],
-    ['label'=>'🧹 Maintenance', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=maintenance'],
-    ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
-    ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=automation'],
-    ['label'=>'🏥 Health Check', 'schedule'=>'9h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=health'],
-    ['label'=>'💾 DB Backup', 'schedule'=>'3h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron_run.php?token='.CRON_RUN_TOKEN.'&job=backup'],
+    ['label'=>'🏦 MBBANK Auto-bank', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=mbbank'],
+    ['label'=>'🪙 Crypto Auto-USDT', 'schedule'=>'Mỗi 1 phút', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=crypto'],
+    ['label'=>'🎴 Card doithe poll', 'schedule'=>'Mỗi 2 phút', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=card'],
+    ['label'=>'🧹 Maintenance', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=maintenance'],
+    ['label'=>'📊 Monitor', 'schedule'=>'Mỗi 5 phút', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=monitor'],
+    ['label'=>'🤖 Automation Daily', 'schedule'=>'8h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=automation'],
+    ['label'=>'🏥 Health Check', 'schedule'=>'9h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=health'],
+    ['label'=>'💾 DB Backup', 'schedule'=>'3h sáng hàng ngày', 'url'=>rtrim(SITE_URL,'/').'/cron/run.php?token='.CRON_RUN_TOKEN.'&job=backup'],
 ];
 foreach($cronJobs as $cj){
     echo '<div style="margin-bottom:8px;padding:6px 0;border-bottom:1px solid #21262d">';
@@ -1333,19 +1333,19 @@ curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=packages&amp;game_id=4'</div><
 
   <div class="guide-card"><span class="where">config.php + index.php</span><h3>🏦 Bank/VietQR</h3><ul><li>Sửa <code>BANK_NAME</code>, <code>BANK_ACCOUNT</code>, <code>BANK_OWNER</code>, <code>VIETQR_BANK_ID</code>.</li><li>MBBank BIN hiện tại: <code>970422</code>.</li><li>VietQR tự điền số tiền + mã đơn ORD.</li></ul><div class="codebox">php -r "require '/www/wwwroot/hclou.com/config.php'; echo buildVietQrUrl(25000,'ORDTEST'), PHP_EOL;"</div></div>
 
-  <div class="guide-card"><span class="where">config.php + mbbank_poll.php</span><h3>✅ MBBANK Auto-bank (Queenvps API)</h3><ul><li>API: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code></li><li>Nhập API Key vào config <code>MBBANK_HISTORY_API_KEY</code> hoặc qua form admin phía trên.</li><li>Script poll: <code>mbbank_poll.php</code> — chạy qua cron mỗi 1-5 phút.</li><li>Response: <code>{ "success": true, "api_info": {...}, "transactions": [{"amount": 100000, "type": "IN", "description": "...", "formatted_date": "..."}] }</code></li><li>Nội dung chuyển khoản có mã <code>ORDxxxxx</code> để auto match đơn.</li></ul><div class="codebox">Test API:
+  <div class="guide-card"><span class="where">config.php + cron/mbbank_poll.php</span><h3>✅ MBBANK Auto-bank (Queenvps API)</h3><ul><li>API: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code></li><li>Nhập API Key vào config <code>MBBANK_HISTORY_API_KEY</code> hoặc qua form admin phía trên.</li><li>Script poll: <code>cron/mbbank_poll.php</code> — chạy qua cron mỗi 1-5 phút.</li><li>Response: <code>{ "success": true, "api_info": {...}, "transactions": [{"amount": 100000, "type": "IN", "description": "...", "formatted_date": "..."}] }</code></li><li>Nội dung chuyển khoản có mã <code>ORDxxxxx</code> để auto match đơn.</li></ul><div class="codebox">Test API:
 curl -sS "https://queenvps.com/api/historymb/{API_KEY}"
 
 Test VPS:
-php /www/wwwroot/hclou.com/mbbank_poll.php
+php /www/wwwroot/hclou.com/cron/mbbank_poll.php
 
 Test HTTP (qua cron wrapper):
 curl '<?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>'
 
 Cron (mỗi 1-5 phút):
-*/1 * * * * php /www/wwwroot/hclou.com/mbbank_poll.php</div></div>
+*/1 * * * * php /www/wwwroot/hclou.com/cron/mbbank_poll.php</div></div>
 
-  <div class="guide-card"><span class="where">cron-job.org + cron_run.php</span><h3>🤖 Cron ngoài đang dùng</h3><ul><li>Web quản lý/tạo job: <code>https://console.cron-job.org/</code>.</li><li>API key cron-job.org lấy tại Console → Settings → API keys.</li><li><code>CRON_RUN_TOKEN</code> nằm trong file <code>cron_run.php</code>; dùng chung cho các job wrapper.</li><li>Token chỉ hiển thị dạng rút gọn để tránh lộ secret.</li></ul><div class="codebox">HCLOU MBBANK     | mỗi phút   | <?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>
+  <div class="guide-card"><span class="where">cron-job.org + cron/run.php</span><h3>🤖 Cron ngoài đang dùng</h3><ul><li>Web quản lý/tạo job: <code>https://console.cron-job.org/</code>.</li><li>API key cron-job.org lấy tại Console → Settings → API keys.</li><li><code>CRON_RUN_TOKEN</code> nằm trong file <code>cron/run.php</code>; dùng chung cho các job wrapper.</li><li>Token chỉ hiển thị dạng rút gọn để tránh lộ secret.</li></ul><div class="codebox">HCLOU MBBANK     | mỗi phút   | <?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>
 HCLOU Maintenance| mỗi 5 phút | <?=htmlspecialchars(hclouCronRunUrl('maintenance'))?>
 HCLOU Automation | mỗi 2 phút | <?=htmlspecialchars(hclouCronRunUrl('automation'))?>
 HCLOU Health    | 08:00 VN  | <?=htmlspecialchars(hclouCronRunUrl('health'))?>
@@ -1354,22 +1354,22 @@ Tuỳ chọn Backup  | hằng ngày  | <?=htmlspecialchars(hclouCronRunUrl('back
 Cron-job.org API docs: https://docs.cron-job.org/rest-api.html
 Verify history: Console → job → History → phải thấy 200 OK</div></div>
 
-  <div class="guide-card"><span class="where">automation_run.php + automation_daily.php</span><h3>🔔 Automation/Reminder trực tiếp</h3><ul><li>Endpoint cũ/trực tiếp: <code>automation_run.php</code>; hiện nên ưu tiên wrapper <code>cron_run.php?job=automation</code>.</li><li><code>AUTOMATION_RUN_TOKEN</code> nằm trong file <code>automation_run.php</code>.</li><li>Chức năng: nhắc thanh toán gần hết hạn, báo đơn bị huỷ, cảnh báo bank ignored/error, báo cáo ngày nếu cron chạy đúng khung.</li></ul><div class="codebox">Direct URL: <?=htmlspecialchars(hclouAutomationRunUrl())?>
+  <div class="guide-card"><span class="where">automation_run.php + cron/automation_daily.php</span><h3>🔔 Automation/Reminder trực tiếp</h3><ul><li>Endpoint cũ/trực tiếp: <code>automation_run.php</code>; hiện nên ưu tiên wrapper <code>cron/run.php?job=automation</code>.</li><li><code>AUTOMATION_RUN_TOKEN</code> nằm trong file <code>automation_run.php</code>.</li><li>Chức năng: nhắc thanh toán gần hết hạn, báo đơn bị huỷ, cảnh báo bank ignored/error, báo cáo ngày nếu cron chạy đúng khung.</li></ul><div class="codebox">Direct URL: <?=htmlspecialchars(hclouAutomationRunUrl())?>
 Khuyến nghị dùng: <?=htmlspecialchars(hclouCronRunUrl('automation'))?>
-Test VPS: php /www/wwwroot/hclou.com/automation_daily.php
+Test VPS: php /www/wwwroot/hclou.com/cron/automation_daily.php
 Test HTTP: curl '<?=htmlspecialchars(hclouCronRunUrl('automation'))?>'</div></div>
 
-  <div class="guide-card"><span class="where">cron-job.org + health_check_daily.php</span><h3>🩺 Daily Health Check</h3><ul><li>Job ngoài chạy hằng ngày khoảng 08:00 giờ Việt Nam.</li><li>Kiểm tra web home, Mini App API, DB, MBBANK auto approve, maintenance, disk/RAM, đơn/key/bank lỗi.</li><li>Sau khi chạy sẽ gửi báo cáo về Telegram admin.</li><li>Endpoint wrapper: <code>cron_run.php?job=health</code>; script thật: <code>health_check_daily.php</code>.</li></ul><div class="codebox">Cron-job.org: HCLOU Daily Health Check
+  <div class="guide-card"><span class="where">cron-job.org + cron/health_check_daily.php</span><h3>🩺 Daily Health Check</h3><ul><li>Job ngoài chạy hằng ngày khoảng 08:00 giờ Việt Nam.</li><li>Kiểm tra web home, Mini App API, DB, MBBANK auto approve, maintenance, disk/RAM, đơn/key/bank lỗi.</li><li>Sau khi chạy sẽ gửi báo cáo về Telegram admin.</li><li>Endpoint wrapper: <code>cron/run.php?job=health</code>; script thật: <code>cron/health_check_daily.php</code>.</li></ul><div class="codebox">Cron-job.org: HCLOU Daily Health Check
 Lịch: 08:00 Asia/Ho_Chi_Minh mỗi ngày
 URL: <?=htmlspecialchars(hclouCronRunUrl('health'))?>
-Test VPS: php /www/wwwroot/hclou.com/health_check_daily.php
+Test VPS: php /www/wwwroot/hclou.com/cron/health_check_daily.php
 Test HTTP: curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div></div>
 
   <div class="guide-card"><span class="where">config.php + admin GetKey Free</span><h3>🎁 Link4M/YeuMoney</h3><ul><li>Lấy token trong dashboard Link4M/YeuMoney mục API/Developer.</li><li>Sửa <code>LINK4M_API_TOKEN</code>, <code>YEUMONEY_API_TOKEN</code>.</li><li>Flow: Link4M → YeuMoney → HCLOU claim.</li></ul><div class="codebox">Admin → GetKey Free → nhập key → chọn game/gói → Tạo link 2 lớp</div></div>
 
   <div class="guide-card"><span class="where">admin/index.php</span><h3>🛠 Quản lý trong Admin</h3><ul><li>Games: thêm/sửa/tắt game.</li><li>Gói cước: sửa ngày/giá/key type.</li><li>Keys: khoá/mở/xoá key.</li><li>Đơn hàng: xem trạng thái, từ chối đơn pending lỗi/spam.</li></ul><div class="codebox">Paid order: pending → MBBANK API xác nhận → approved → key active</div></div>
 
-  <div class="guide-card"><span class="where">/www/backup/hclou_db</span><h3>💾 Backup DB</h3><ul><li>Script backup: <code>/www/backup/hclou_db/backup.sh</code>.</li><li>Giữ 7 bản backup mới nhất.</li><li>Có thể chạy qua <code>cron_run.php?job=backup</code> nếu muốn dùng cron ngoài.</li><li>Không xoá backup DB nếu chưa chắc.</li></ul><div class="codebox">Cron ngoài: <?=htmlspecialchars(hclouCronRunUrl('backup'))?>
+  <div class="guide-card"><span class="where">/www/backup/hclou_db</span><h3>💾 Backup DB</h3><ul><li>Script backup: <code>/www/backup/hclou_db/backup.sh</code>.</li><li>Giữ 7 bản backup mới nhất.</li><li>Có thể chạy qua <code>cron/run.php?job=backup</code> nếu muốn dùng cron ngoài.</li><li>Không xoá backup DB nếu chưa chắc.</li></ul><div class="codebox">Cron ngoài: <?=htmlspecialchars(hclouCronRunUrl('backup'))?>
 Hoặc cron VPS: 17 3 * * * /www/backup/hclou_db/backup.sh &gt;/dev/null 2&gt;&amp;1
 Test VPS: /www/backup/hclou_db/backup.sh</div></div>
 </div>
@@ -1384,14 +1384,14 @@ php -l admin/index.php
 php -l webhook.php
 php -l claim.php
 php -l setup_webhook.php
-php -l mbbank_poll.php
-php -l maintenance.php
-php -l automation_daily.php
-php -l cron_run.php
+php -l cron/mbbank_poll.php
+php -l cron/maintenance.php
+php -l cron/automation_daily.php
+php -l cron/run.php
 curl -I <?=htmlspecialchars(SITE_URL)?>/
 curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=games'
-php mbbank_poll.php
-php maintenance.php
+php cron/mbbank_poll.php
+php cron/maintenance.php
 curl '<?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>'
 curl '<?=htmlspecialchars(hclouCronRunUrl('maintenance'))?>'
 curl '<?=htmlspecialchars(hclouCronRunUrl('automation'))?>'
@@ -1403,7 +1403,7 @@ curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div>
 <table><tr><th>Lỗi</th><th>Kiểm tra</th><th>File liên quan</th></tr>
 <tr><td>API games lỗi DB</td><td>DB_HOST/DB_USER/DB_PASS, dùng 127.0.0.1</td><td>config.php</td></tr>
 <tr><td>Bot không trả lời</td><td>BOT_TOKEN, webhook, php -l webhook.php</td><td>config.php, webhook.php</td></tr>
-<tr><td>Thanh toán không auto active</td><td>Kiểm tra <code>MBBANK_HISTORY_API_KEY</code> trong config.php, cron chạy <code>mbbank_poll.php</code>, API key còn hạn, description có mã ORD, amount đủ tiền</td><td>mbbank_poll.php, config.php</td></tr>
+<tr><td>Thanh toán không auto active</td><td>Kiểm tra <code>MBBANK_HISTORY_API_KEY</code> trong config.php, cron chạy <code>cron/mbbank_poll.php</code>, API key còn hạn, description có mã ORD, amount đủ tiền</td><td>cron/mbbank_poll.php, config.php</td></tr>
 <tr><td>VietQR không hiện</td><td>buildVietQrUrl, bank id, img.vietqr.io</td><td>config.php, index.php</td></tr>
 <tr><td>GetKey Free lỗi link</td><td>Token Link4M/YeuMoney, endpoint, curl internet</td><td>config.php, admin/index.php</td></tr>
 </table>

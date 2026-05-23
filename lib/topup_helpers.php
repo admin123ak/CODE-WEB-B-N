@@ -258,7 +258,7 @@ function callDoitheCharge(string $request_id, string $telco, int $face_value, st
  * Active check (poll) trạng thái 1 thẻ đã gửi sang doithe.vn.
  *
  * Dùng khi callback từ doithe chưa về (vd doithe bị chậm, hoặc callback URL bị
- * firewall chặn). Cron /card_poll.php gọi function này cho mỗi topup_request
+ * firewall chặn). Cron /cron/card_poll.php gọi function này cho mỗi topup_request
  * đang pending > 60s.
  *
  * Pattern doithe.vn /chargingws/v2 với command=check:
