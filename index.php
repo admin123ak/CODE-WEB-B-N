@@ -1105,7 +1105,6 @@ async function buyWithBalance(){
 function showPaymentMethodPickerOld(){
   // legacy, không dùng nữa — giữ làm fallback
 }
-}
 function showOrderConfirm(){
   document.querySelector('#confirmModal .mtitle').textContent=T.xacNhan;
   document.querySelector('#confirmModal .confirm-btn.cancel').textContent=T.huy;
