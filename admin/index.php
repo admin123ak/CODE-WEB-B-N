@@ -169,6 +169,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=sysconfig&ok=1"); exit;
     }
 
+    if ($act === 'reset_webhook') {
+        // Re-set Telegram webhook với SITE_URL hiện tại + TELEGRAM_WEBHOOK_SECRET.
+        // Dùng sau khi cài lại code hoặc đổi domain.
+        try {
+            if (!defined('BOT_TOKEN') || BOT_TOKEN === '' || strpos(BOT_TOKEN, 'your_bot') === 0) {
+                throw new Exception('BOT_TOKEN chưa cấu hình');
+            }
+            $whUrl = rtrim(SITE_URL, '/') . '/webhook.php';
+            $secret = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
+            $ch = curl_init('https://api.telegram.org/bot' . BOT_TOKEN . '/setWebhook');
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_POSTFIELDS => http_build_query([
+                    'url' => $whUrl,
+                    'secret_token' => $secret,
+                    'allowed_updates' => json_encode(['message', 'callback_query']),
+                ]),
+            ]);
+            $res = curl_exec($ch); curl_close($ch);
+            $j = json_decode($res, true);
+            if (empty($j['ok'])) throw new Exception('Telegram: ' . ($j['description'] ?? 'unknown'));
+            header("Location: ?tab=sysconfig&ok=1&wh=" . urlencode('Set webhook OK: ' . $whUrl)); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode('Reset webhook: ' . $e->getMessage())); exit;
+        }
+    }
+
+    if ($act === 'test_telegram') {
+        // Gửi tin nhắn test tới ADMIN_CHAT_ID để verify BOT_TOKEN + sendTelegram hoạt động.
+        try {
+            if (!defined('ADMIN_CHAT_ID') || ADMIN_CHAT_ID === '') throw new Exception('ADMIN_CHAT_ID chưa cấu hình');
+            $r = sendTelegram(ADMIN_CHAT_ID, "✅ Test từ admin panel — " . date('Y-m-d H:i:s'));
+            if (empty($r['ok'])) throw new Exception($r['description'] ?? ($r['error'] ?? 'Telegram trả lỗi'));
+            header("Location: ?tab=sysconfig&ok=1&wh=" . urlencode('Đã gửi test tới Telegram admin')); exit;
+        } catch (Exception $e) {
+            header("Location: ?tab=sysconfig&err=" . urlencode('Test Telegram: ' . $e->getMessage())); exit;
+        }
+    }
+
     if ($act === 'mbbank_test_poll') {
         // Gọi mbbank_poll.php cùng-host qua cURL với MBBANK_POLL_SECRET.
         // Tránh require trực tiếp để giữ nguyên cơ chế lock + môi trường giống cron.
@@ -931,6 +972,40 @@ $_crCfgOk    = defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '';
       </form>
     </div>
   </div>
+</div>
+<?php
+// =============================================
+// PANEL "🤖 Telegram bot" — re-set webhook + test gửi tin nhắn
+// Hữu ích sau khi cài lại code / đổi domain / khi installer set webhook fail.
+// =============================================
+$_botCfg = defined('BOT_TOKEN') && BOT_TOKEN !== '' && strpos(BOT_TOKEN, 'your_bot') !== 0;
+$_botWhUrl = (defined('SITE_URL') ? rtrim(SITE_URL, '/') : '') . '/webhook.php';
+?>
+<div class="form-card" style="margin-bottom:16px;border:1px solid <?= $_botCfg ? 'rgba(59,130,246,.35)' : 'rgba(245,158,11,.45)' ?>">
+  <h3>🤖 Telegram bot — Webhook & Test</h3>
+  <?php if (!$_botCfg): ?>
+    <div class="warnbox" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.30);color:#fde68a">⚠️ <span class="mono">BOT_TOKEN</span> chưa cấu hình. Sửa <span class="mono">config.local.php</span> qua FTP rồi mới test được.</div>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px">
+      <div><small style="color:#8b949e">Webhook URL</small><div class="mono" style="word-break:break-all"><?= h($_botWhUrl) ?></div></div>
+      <div><small style="color:#8b949e">ADMIN_CHAT_ID</small><div class="mono"><?= defined('ADMIN_CHAT_ID') ? h((string)ADMIN_CHAT_ID) : '—' ?></div></div>
+    </div>
+  <?php endif; ?>
+  <?php if (!empty($_GET['wh'])): ?><div class="codebox" style="margin:0 0 10px">✅ <?= htmlspecialchars((string)$_GET['wh']) ?></div><?php endif; ?>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <form method="POST" style="margin:0">
+      <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+      <input type="hidden" name="act" value="reset_webhook">
+      <button class="btn btn-blue" type="submit" <?= !$_botCfg ? 'disabled' : '' ?>>🔄 Set lại Webhook</button>
+    </form>
+    <form method="POST" style="margin:0">
+      <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+      <input type="hidden" name="act" value="test_telegram">
+      <button class="btn" type="submit" <?= !$_botCfg ? 'disabled' : '' ?>>📨 Gửi tin nhắn test</button>
+    </form>
+    <a class="btn" target="_blank" href="https://api.telegram.org/bot<?= $_botCfg ? h(BOT_TOKEN) : '' ?>/getWebhookInfo" <?= !$_botCfg ? 'style="pointer-events:none;opacity:.5"' : '' ?>>🔍 Xem getWebhookInfo</a>
+  </div>
+  <small style="color:#8b949e;display:block;margin-top:8px">Dùng khi: cài lại code, đổi domain, bot không phản hồi, installer set webhook fail.</small>
 </div>
 <?php
 // Panel observability MBBank poll — đọc data/mbbank_poll_status.json
