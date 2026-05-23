@@ -96,8 +96,6 @@ try {
             $note .= ($note ? '; ' : '') . "wrong_value declared=$declared real=$value";
         }
         if ($note) {
-            $db->prepare("UPDATE topup_requests SET note=COALESCE(note,'') WHERE id=?")
-               ->execute([$topup['id']]);  // giữ lại note cũ nếu có
             $db->prepare("UPDATE topup_requests SET note=? WHERE id=?")
                ->execute([$note, $topup['id']]);
         }

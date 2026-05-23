@@ -110,10 +110,6 @@ function topupApprove(
         throw new InvalidArgumentException('topupApprove: amount_credited phải > 0');
     }
 
-    $row = $db->prepare("SELECT * FROM topup_requests WHERE id=? FOR UPDATE");
-    // FOR UPDATE cần trong transaction — balanceCredit cũng begin tx, nhưng nó begin sau.
-    // Để tránh nested, ta begin tx ở đây, lock row, check idempotent, commit trước
-    // khi gọi balanceCredit (balanceCredit có tx riêng).
     $db->beginTransaction();
     try {
         $row = $db->prepare("SELECT * FROM topup_requests WHERE id=? FOR UPDATE");
