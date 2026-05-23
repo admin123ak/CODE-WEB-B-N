@@ -608,7 +608,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 </div>
 
 <script>
-var API='./api/index.php',currentUser=null,selGame=null,selPkg=null,tgInitData='',appToken='';
+var API='./backend/api/index.php',currentUser=null,selGame=null,selPkg=null,tgInitData='',appToken='';
 var PLAY_BASE='https://play.google.com/store/apps/details?id=';
 var allKeys=[],curFilter='all',cdTimers={},gCache=[],pCache=[],pendingPayOrders=[];
 

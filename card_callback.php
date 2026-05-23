@@ -19,8 +19,8 @@
  */
 
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/lib/balance_helpers.php';
-require_once __DIR__ . '/lib/topup_helpers.php';
+require_once __DIR__ . '/backend/lib/balance_helpers.php';
+require_once __DIR__ . '/backend/lib/topup_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

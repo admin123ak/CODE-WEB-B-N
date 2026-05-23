@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../lib/order_approval.php';
+require_once __DIR__ . '/../backend/lib/order_approval.php';
 
 // =============================================
 // SCRIPT LOCK - tránh chạy chồng cron jobs

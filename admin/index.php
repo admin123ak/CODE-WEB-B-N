@@ -1328,8 +1328,8 @@ foreach($cronJobs as $cj){
 https://api.telegram.org/bot&lt;BOT_TOKEN&gt;/setWebhook?url=<?=htmlspecialchars(SITE_URL)?>/webhook.php
 php -l webhook.php</div></div>
 
-  <div class="guide-card"><span class="where">@BotFather + index.php</span><h3>📱 Telegram Mini App</h3><ul><li>Trong @BotFather đặt Web App/Menu Button URL về <code><?=htmlspecialchars(SITE_URL)?>/</code>.</li><li>Frontend chính nằm ở <code>index.php</code>.</li><li>API Mini App nằm ở <code>api/index.php</code>.</li></ul><div class="codebox">curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=games'
-curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=packages&amp;game_id=4'</div></div>
+  <div class="guide-card"><span class="where">@BotFather + index.php</span><h3>📱 Telegram Mini App</h3><ul><li>Trong @BotFather đặt Web App/Menu Button URL về <code><?=htmlspecialchars(SITE_URL)?>/</code>.</li><li>Frontend chính nằm ở <code>index.php</code>.</li><li>API Mini App nằm ở <code>backend/api/index.php</code>.</li></ul><div class="codebox">curl '<?=htmlspecialchars(SITE_URL)?>/backend/api/?action=games'
+curl '<?=htmlspecialchars(SITE_URL)?>/backend/api/?action=packages&amp;game_id=4'</div></div>
 
   <div class="guide-card"><span class="where">config.php + index.php</span><h3>🏦 Bank/VietQR</h3><ul><li>Sửa <code>BANK_NAME</code>, <code>BANK_ACCOUNT</code>, <code>BANK_OWNER</code>, <code>VIETQR_BANK_ID</code>.</li><li>MBBank BIN hiện tại: <code>970422</code>.</li><li>VietQR tự điền số tiền + mã đơn ORD.</li></ul><div class="codebox">php -r "require '/www/wwwroot/hclou.com/config.php'; echo buildVietQrUrl(25000,'ORDTEST'), PHP_EOL;"</div></div>
 
@@ -1379,7 +1379,7 @@ Test VPS: /www/backup/hclou_db/backup.sh</div></div>
 <div class="codebox">cd /www/wwwroot/hclou.com
 php -l config.php
 php -l index.php
-php -l api/index.php
+php -l backend/api/index.php
 php -l admin/index.php
 php -l webhook.php
 php -l claim.php
@@ -1389,7 +1389,7 @@ php -l cron/maintenance.php
 php -l cron/automation_daily.php
 php -l cron/run.php
 curl -I <?=htmlspecialchars(SITE_URL)?>/
-curl '<?=htmlspecialchars(SITE_URL)?>/api/?action=games'
+curl '<?=htmlspecialchars(SITE_URL)?>/backend/api/?action=games'
 php cron/mbbank_poll.php
 php cron/maintenance.php
 curl '<?=htmlspecialchars(hclouCronRunUrl('mbbank'))?>'

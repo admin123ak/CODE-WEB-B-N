@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../lib/crypto_helpers.php';
 require_once __DIR__ . '/../lib/balance_helpers.php';
 require_once __DIR__ . '/../lib/topup_helpers.php';

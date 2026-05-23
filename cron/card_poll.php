@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../lib/balance_helpers.php';
-require_once __DIR__ . '/../lib/topup_helpers.php';
+require_once __DIR__ . '/../backend/lib/balance_helpers.php';
+require_once __DIR__ . '/../backend/lib/topup_helpers.php';
 
 // =============================================
 // CARD_POLL.PHP — ACTIVE CHECK CRON cho topup_requests method='card'

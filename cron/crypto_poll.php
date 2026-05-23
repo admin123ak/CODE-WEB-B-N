@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
-require_once __DIR__ . '/../lib/order_approval.php';
-require_once __DIR__ . '/../lib/crypto_helpers.php';
+require_once __DIR__ . '/../backend/lib/order_approval.php';
+require_once __DIR__ . '/../backend/lib/crypto_helpers.php';
 
 // =============================================
 // SCRIPT — Poll TronGrid để auto-approve order Binance USDT TRC20
