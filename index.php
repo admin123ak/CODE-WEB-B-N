@@ -303,6 +303,14 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
   </div>
 </div>
 
+<div class="moverlay" id="topupModal">
+  <div class="mbox">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="topupTitle">💳 Nạp tiền vào ví</div>
+    <div class="mscroll" id="topupContent"></div>
+  </div>
+</div>
+
 <div class="moverlay" id="confirmModal">
   <div class="mbox confirm-box">
     <div class="mhandle"></div>
@@ -519,6 +527,18 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
           <div class="profile-stat"><div class="num orange" id="pfPending">0</div><div class="lbl" data-i18n="profilePending">Chờ xử lý</div></div>
           <div class="profile-stat"><div class="num blue" id="pfKeys">0</div><div class="lbl" data-i18n="profileKeysOwned">Key đang có</div></div>
         </div>
+      </div>
+
+      <div class="profile-card" id="walletCard" style="display:none">
+        <h3><span class="pc-ico"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 14h4"/></svg></span>Số dư ví</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0 10px">
+          <div>
+            <div style="font-size:11px;color:var(--text2);font-weight:700;letter-spacing:.4px">SỐ DƯ HIỆN TẠI</div>
+            <div id="pfBalance" style="font-size:26px;font-weight:900;color:var(--green2);margin-top:2px">0đ</div>
+          </div>
+          <button onclick="openTopupModal()" style="padding:11px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-weight:900;font-size:13px;cursor:pointer;box-shadow:0 6px 18px rgba(16,185,129,.3)">💳 Nạp tiền</button>
+        </div>
+        <div class="profile-btn" onclick="openBalanceHistory()">📜 Lịch sử ví</div>
       </div>
 
       <div class="profile-card">
@@ -1029,6 +1049,183 @@ async function getFreeKey(){
   else toast(res.error||T.freeHet,'error');
 }
 
+// ===================== WALLET / TOP-UP =====================
+var topupOptions=null;
+async function loadBalance(){
+  try{
+    var res=await api('me_balance','GET');
+    if(res&&res.success){
+      document.getElementById('pfBalance').textContent=fmtMoney(res.balance||0)+'đ';
+      document.getElementById('walletCard').style.display='';
+    } else if(res&&res.error){
+      // ví chưa bật -> giấu card
+      document.getElementById('walletCard').style.display='none';
+    }
+  }catch(e){}
+}
+async function fetchTopupOptions(){
+  if(topupOptions) return topupOptions;
+  try{
+    var res=await api('topup_options','GET');
+    topupOptions=(res&&res.success&&res.options)?res.options:{mbbank:false,binance:false,card:false};
+  }catch(e){ topupOptions={mbbank:false,binance:false,card:false}; }
+  return topupOptions;
+}
+async function openTopupModal(){
+  document.getElementById('topupTitle').textContent='💳 Nạp tiền vào ví';
+  document.getElementById('topupContent').innerHTML='<div class="loading"><div class="spin"></div>Đang tải...</div>';
+  document.getElementById('topupModal').classList.add('show');
+  var o=await fetchTopupOptions();
+  var html='';
+  var any=false;
+  var btnBase='display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:14px;text-align:left;cursor:pointer;font-family:inherit';
+  if(o.mbbank){ any=true; html+='<button onclick="pickTopupMethod(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">🏦</span><span><b>Nạp qua MBBank</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Chuyển khoản ngân hàng (1-2 phút)</div></span></button>'; }
+  if(o.binance){ any=true; html+='<button onclick="pickTopupMethod(\'binance\')" style="'+btnBase+';border-color:rgba(240,185,11,.4);background:linear-gradient(135deg,rgba(240,185,11,.14),rgba(243,186,47,.06))"><span style="font-size:24px">🪙</span><span><b>Nạp qua Binance USDT</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">USDT TRC20 (1-3 phút)</div></span></button>'; }
+  if(o.card){ any=true; html+='<button onclick="pickTopupMethod(\'card\')" style="'+btnBase+';border-color:rgba(168,85,247,.4);background:linear-gradient(135deg,rgba(168,85,247,.14),rgba(192,132,252,.06))"><span style="font-size:24px">💳</span><span><b>Nạp bằng thẻ cào</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Viettel/Mobifone/Vinaphone</div></span></button>'; }
+  if(!any){ html='<div style="text-align:center;color:var(--text2);padding:30px 10px">Hiện chưa mở chức năng nạp ví. Liên hệ admin để bật.</div>'; }
+  else { html='<div style="display:flex;flex-direction:column;gap:10px">'+html+'</div>'; }
+  document.getElementById('topupContent').innerHTML=html;
+}
+function pickTopupMethod(m){
+  if(m==='card') showCardForm();
+  else showAmountForm(m);
+}
+var topupAmtPick=null;
+function setQuickAmt(v){
+  topupAmtPick=v;
+  var el=document.getElementById('topupAmount'); if(el) el.value=v;
+  var btns=document.querySelectorAll('.quick-amt');
+  for(var i=0;i<btns.length;i++){ btns[i].style.background=(parseInt(btns[i].dataset.v,10)===v)?'linear-gradient(135deg,#3b82f6,#60a5fa)':'var(--bg3)'; }
+}
+function showAmountForm(m){
+  topupAmtPick=null;
+  var label=(m==='binance')?'Số tiền VND (tự convert sang USDT)':'Số tiền cần nạp (VND)';
+  var qBtn='display:inline-flex;align-items:center;justify-content:center;padding:10px 0;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;flex:1;min-width:60px';
+  var html=
+    '<div style="margin-bottom:12px">'
+    +'<label style="font-size:12px;color:var(--text2);font-weight:700;display:block;margin-bottom:6px">'+escapeHtml(label)+'</label>'
+    +'<input id="topupAmount" type="number" min="10000" step="1000" placeholder="VD: 50000" inputmode="numeric" '
+    +'style="width:100%;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:18px;font-weight:800;font-family:inherit"></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">'
+    +'<button class="quick-amt" data-v="20000" onclick="setQuickAmt(20000)" style="'+qBtn+'">20k</button>'
+    +'<button class="quick-amt" data-v="50000" onclick="setQuickAmt(50000)" style="'+qBtn+'">50k</button>'
+    +'<button class="quick-amt" data-v="100000" onclick="setQuickAmt(100000)" style="'+qBtn+'">100k</button>'
+    +'<button class="quick-amt" data-v="200000" onclick="setQuickAmt(200000)" style="'+qBtn+'">200k</button>'
+    +'<button class="quick-amt" data-v="500000" onclick="setQuickAmt(500000)" style="'+qBtn+'">500k</button>'
+    +'</div>'
+    +'<button class="topup-submit-btn" onclick="submitTopupAmount('+JSON.stringify(m)+')" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">Tiếp tục</button>'
+    +'<button onclick="openTopupModal()" style="width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">← Chọn lại phương thức</button>';
+  document.getElementById('topupContent').innerHTML=html;
+}
+function showCardForm(){
+  var inp='width:100%;padding:13px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;margin-top:6px;font-family:inherit';
+  var inpMono=inp+';font-family:monospace;letter-spacing:.5px';
+  var html=
+    '<div style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;line-height:1.6;color:#e9d5ff">'
+    +'⚠️ Thẻ cào có chiết khấu ~33%: thẻ 30.000đ → ví nhận khoảng 20.000đ. Sai mệnh giá sẽ cộng theo giá thực.'
+    +'</div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Nhà mạng</label>'
+    +'<select id="cardTelco" style="'+inp+'"><option value="VIETTEL">Viettel</option><option value="MOBIFONE">Mobifone</option><option value="VINAPHONE">Vinaphone</option></select></div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Mệnh giá</label>'
+    +'<select id="cardFace" style="'+inp+'"><option value="10000">10.000đ</option><option value="20000">20.000đ</option><option value="50000" selected>50.000đ</option><option value="100000">100.000đ</option><option value="200000">200.000đ</option><option value="500000">500.000đ</option><option value="1000000">1.000.000đ</option></select></div>'
+    +'<div style="margin-bottom:10px"><label style="font-size:12px;color:var(--text2);font-weight:700">Số Serial</label>'
+    +'<input id="cardSerial" type="text" autocomplete="off" placeholder="Số serial in trên thẻ" style="'+inpMono+'"></div>'
+    +'<div style="margin-bottom:14px"><label style="font-size:12px;color:var(--text2);font-weight:700">Mã thẻ (PIN)</label>'
+    +'<input id="cardCode" type="text" autocomplete="off" placeholder="Dãy số cào trên thẻ" style="'+inpMono+'"></div>'
+    +'<button class="topup-submit-btn" onclick="submitCardTopup()" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">Gửi thẻ</button>'
+    +'<button onclick="openTopupModal()" style="width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">← Chọn lại phương thức</button>';
+  document.getElementById('topupContent').innerHTML=html;
+}
+async function submitTopupAmount(m){
+  var amount=parseInt(document.getElementById('topupAmount').value,10)||0;
+  if(amount<10000){ toast('Tối thiểu 10.000đ','error'); return; }
+  if(amount>50000000){ toast('Tối đa 50 triệu/lần','error'); return; }
+  var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
+  btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+  btn.disabled=true;
+  var res=await api('topup_create','POST',{method:m, amount:amount});
+  btn.disabled=false; btn.innerHTML=old;
+  if(!res||!res.success){ toast((res&&res.error)||'Lỗi tạo yêu cầu nạp','error'); return; }
+  showTopupPayInfo(res);
+}
+async function submitCardTopup(){
+  var telco=document.getElementById('cardTelco').value;
+  var face=parseInt(document.getElementById('cardFace').value,10);
+  var serial=document.getElementById('cardSerial').value.trim();
+  var code=document.getElementById('cardCode').value.trim();
+  if(!serial||!code){ toast('Nhập đủ Serial + Mã thẻ','error'); return; }
+  if(serial.length<6||code.length<6){ toast('Serial/mã thẻ quá ngắn','error'); return; }
+  var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
+  btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
+  btn.disabled=true;
+  var res=await api('topup_create','POST',{method:'card', card_telco:telco, card_face_value:face, card_serial:serial, card_code:code});
+  btn.disabled=false; btn.innerHTML=old;
+  if(!res||!res.success){ toast((res&&res.error)||'Lỗi gửi thẻ','error'); return; }
+  document.getElementById('topupContent').innerHTML=
+    '<div style="text-align:center;padding:24px 10px">'
+    +'<div style="font-size:48px">⏳</div>'
+    +'<div style="font-weight:900;margin-top:12px;font-size:16px">Đã gửi thẻ lên doithe.vn</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-top:8px;line-height:1.6">Hệ thống đang xử lý (1-3 phút). Số dư ví sẽ tự cộng khi xác thực thành công.<br><br>Nếu thẻ sai/đã dùng, sẽ báo lỗi trong Lịch sử ví.</div>'
+    +'</div>';
+  setTimeout(function(){ closeModal('topupModal'); loadBalance(); }, 3000);
+}
+function showTopupPayInfo(d){
+  var html='';
+  if(d.method==='mbbank'){
+    var amount=d.amount_requested||d.amount||0;
+    html='<div class="pay-amount">'+fmtMoney(amount)+'đ</div>'
+      +(d.vietqr_url?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(d.vietqr_url)+'" alt="QR"></div>':'')
+      +'<div class="pay-row"><span class="pay-lbl">Ngân hàng</span><span class="pay-val"><b>'+escapeHtml(d.bank_name||'')+'</b></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Số TK</span><span class="pay-val"><b>'+escapeHtml(d.bank_account||'')+'</b> <button class="cpbtn" onclick="copyText('+jsAttr(d.bank_account||'')+',\'Đã copy\')">📋</button></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Chủ TK</span><span class="pay-val">'+escapeHtml(d.bank_owner||'')+'</span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Nội dung CK</span><span class="pay-val"><b style="color:#fbbf24">'+escapeHtml(d.unique_code||'')+'</b> <button class="cpbtn" onclick="copyText('+jsAttr(d.unique_code||'')+',\'Đã copy\')">📋</button></span></div>'
+      +'<div class="pay-note" style="color:#fca5a5;font-weight:600">⚠️ Bắt buộc ghi đúng nội dung "'+escapeHtml(d.unique_code||'')+'" — sai = không tự cộng tiền</div>'
+      +'<button class="pay-refresh-btn" onclick="closeModal(\'topupModal\');loadBalance();">Đã chuyển khoản</button>';
+  } else if(d.method==='binance'){
+    var amtUsdt=String(d.crypto_amount||'');
+    html='<div class="pay-amount">'+escapeHtml(amtUsdt)+' USDT</div>'
+      +(d.usdt_vnd_rate?'<div class="pay-small-note">1 USDT ≈ '+fmtMoney(d.usdt_vnd_rate)+'đ ('+fmtMoney(d.amount_requested||d.amount||0)+'đ)</div>':'')
+      +(d.crypto_qr_url?'<div class="vietqr-box"><img class="vietqr-img" src="'+escapeHtml(d.crypto_qr_url)+'" alt="QR"></div>':'')
+      +'<div class="pay-row"><span class="pay-lbl">Mạng</span><span class="pay-val"><b>TRC20 (TRON)</b></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Địa chỉ</span><span class="pay-val" style="word-break:break-all;font-family:monospace;font-size:12px">'+escapeHtml(d.crypto_address||'')+' <button class="cpbtn" onclick="copyText('+jsAttr(d.crypto_address||'')+',\'Đã copy\')">📋</button></span></div>'
+      +'<div class="pay-row"><span class="pay-lbl">Số USDT</span><span class="pay-val"><b>'+escapeHtml(amtUsdt)+'</b> <button class="cpbtn" onclick="copyText('+jsAttr(amtUsdt)+',\'Đã copy\')">📋</button></span></div>'
+      +'<div class="pay-note" style="color:#fca5a5;font-weight:600">⚠️ Gửi đúng số '+escapeHtml(amtUsdt)+' USDT mạng TRC20 — sai mạng MẤT TIỀN</div>'
+      +'<button class="pay-refresh-btn" onclick="closeModal(\'topupModal\');loadBalance();">Đã chuyển</button>';
+  }
+  document.getElementById('topupContent').innerHTML=html;
+}
+async function openBalanceHistory(){
+  document.getElementById('topupTitle').textContent='📜 Lịch sử ví';
+  document.getElementById('topupContent').innerHTML='<div class="loading"><div class="spin"></div>Đang tải...</div>';
+  document.getElementById('topupModal').classList.add('show');
+  try{
+    var res=await api('balance_history','GET');
+    if(!res||!res.success||!res.items||!res.items.length){
+      document.getElementById('topupContent').innerHTML='<div style="text-align:center;color:var(--text2);padding:30px 10px">Chưa có giao dịch nào.</div>';
+      return;
+    }
+    var html='<div style="display:flex;flex-direction:column;gap:8px">';
+    res.items.forEach(function(it){
+      var amt=parseFloat(it.amount);
+      var isCredit=amt>=0;
+      var color=isCredit?'#34d399':'#fca5a5';
+      var sign=isCredit?'+':'';
+      var reasonLabel={topup:'Nạp tiền',purchase:'Mua key',refund:'Hoàn tiền',admin_adjust:'Admin điều chỉnh'}[it.reason]||it.reason;
+      html+='<div style="padding:10px 12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">'+escapeHtml(reasonLabel)+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+escapeHtml(it.created_at||'')+(it.note?' · '+escapeHtml(it.note):'')+'</div></div>'
+        +'<div style="text-align:right"><div style="font-weight:900;color:'+color+'">'+sign+fmtMoney(Math.abs(amt))+'đ</div>'
+        +'<div style="font-size:10px;color:var(--text2)">Còn '+fmtMoney(it.balance_after)+'đ</div></div>'
+        +'</div>';
+    });
+    html+='</div>';
+    document.getElementById('topupContent').innerHTML=html;
+  }catch(e){
+    document.getElementById('topupContent').innerHTML='<div style="text-align:center;color:var(--text2);padding:30px 10px">Lỗi tải lịch sử.</div>';
+  }
+}
+// =========================================================
+
 function parseDateLocal(s){ return s?new Date(String(s).replace(' ','T')):null; }
 function secondsLeftFromOrder(d){
   if(d.pay_seconds_left!==undefined) return Math.max(0,parseInt(d.pay_seconds_left,10)||0);
@@ -1454,6 +1651,7 @@ async function loadProfile(){
     document.getElementById('pfJoined').textContent = currentUser.created_at ? fmtDate(currentUser.created_at) : '--';
     profLoaded = true;
   }
+  loadBalance();
   // Load stats
   try {
     var res = await api('profile_stats','GET',{});
