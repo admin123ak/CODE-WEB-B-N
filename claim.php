@@ -195,7 +195,7 @@ function langPills($current, $t, $tg = '') {
 function claimIcon($name) {
     $stroke = 'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
     $icons = [
-        'diamond' => '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" ' . $stroke . '><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3l-2 6m6-6l2 6M2 9h20"/></svg>',
+        'diamond' => '<svg viewBox="0 0 24 24" width="34" height="34" fill="#fff" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z" fill="#fff"/><path d="M11 3l-2 6m6-6l2 6M2 9h20" stroke="rgba(0,0,0,.2)" stroke-width="1.3" fill="none"/></svg>',
         'clock'   => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" ' . $stroke . '><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
         'game'    => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" ' . $stroke . '><rect x="2" y="8" width="20" height="11" rx="3"/><path d="M7 13h3M8.5 11.5v3M15 12h.01M18 14h.01"/></svg>',
         'phone'   => '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" ' . $stroke . '><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>',
@@ -205,6 +205,7 @@ function claimIcon($name) {
         'warn'    => '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" ' . $stroke . '><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18.5v.01"/></svg>',
         'copy'    => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' . $stroke . '><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
         'arrow'   => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' . $stroke . '><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+        'chev'    => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' . $stroke . '><path d="M6 9l6 6 6-6"/></svg>',
     ];
     return $icons[$name] ?? '';
 }
@@ -225,35 +226,34 @@ function claimPage($title, $msg, $ok = false, $extra = '', $pills = '', $feature
         : '<div class="header-ico">' . claimIcon('diamond') . '</div>';
     echo '<!doctype html><html lang="' . h($GLOBALS['LANG'] ?? 'vi') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#06080f;color:#e6edf3;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px 18px;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
-body:before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(220,38,38,.12),transparent 50%),radial-gradient(ellipse at 80% 15%,rgba(249,115,22,.08),transparent 45%),radial-gradient(ellipse at 50% 100%,rgba(239,68,68,.06),transparent 50%);z-index:-1;pointer-events:none}
-.card{max-width:440px;width:100%;background:linear-gradient(160deg,rgba(12,17,32,.88),rgba(19,27,46,.82));border:1px solid rgba(239,68,68,.18);border-radius:28px;padding:32px 26px 24px;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.55),0 0 28px rgba(239,68,68,.06);backdrop-filter:blur(16px);position:relative;z-index:1}
-.header-ico{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 14px 30px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18)}
-.header-ico--ok{background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 14px 30px rgba(16,185,129,.45),inset 0 1px 0 rgba(255,255,255,.18)}
-.title{font-size:30px;font-weight:900;margin:6px 0 8px;background:linear-gradient(135deg,#fff 0%,#fca5a5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px;line-height:1.15}
-.msg{font-size:14.5px;color:#9fb3d0;line-height:1.55;margin:0 0 22px}
+body{margin:0;min-height:100vh;background:#0a0f1c;color:#e6edf3;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px 18px;-webkit-font-smoothing:antialiased}
+.card{max-width:480px;width:100%;background:#0e1424;border:1px solid rgba(239,68,68,.14);border-radius:26px;padding:34px 28px 26px;text-align:center;box-shadow:0 28px 70px rgba(0,0,0,.5)}
+.header-ico{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#dc2626,#ef4444);display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 10px 22px rgba(220,38,38,.35)}
+.header-ico--ok{background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 10px 22px rgba(16,185,129,.35)}
+.title{font-size:32px;font-weight:900;margin:6px 0 8px;color:#fff;letter-spacing:-.6px;line-height:1.15}
+.msg{font-size:14.5px;color:#94a3b8;line-height:1.55;margin:0 0 24px}
 .pills{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 22px}
-.pill{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 12px;border-radius:18px;background:rgba(239,68,68,.06);border:1px solid rgba(248,113,113,.16);color:#e2e8f0;font-size:14px;font-weight:600;letter-spacing:.2px}
-.pill-ico{color:#fdba74;display:inline-flex}
-.label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#7a8ba8;text-align:left;margin:18px 4px 8px}
-.info-box{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;border-radius:16px;background:rgba(239,68,68,.04);border:1px solid rgba(248,113,113,.16);color:#e6edf3;font-size:15px;font-weight:700;letter-spacing:.3px}
-.info-box .meta{color:#9fb3d0;font-weight:600;font-size:12px;letter-spacing:.04em}
+.pill{display:flex;align-items:center;justify-content:center;gap:10px;padding:15px 12px;border-radius:16px;background:rgba(239,68,68,.04);border:1px solid rgba(248,113,113,.14);color:#e2e8f0;font-size:14px;font-weight:600;letter-spacing:.2px}
+.pill-ico{color:#fb923c;display:inline-flex}
+.label{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#6e7d95;text-align:left;margin:20px 4px 10px}
+.info-box{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;border-radius:14px;background:rgba(239,68,68,.03);border:1px solid rgba(248,113,113,.14);color:#e6edf3;font-size:15px;font-weight:700;letter-spacing:.2px}
+.info-box .info-right{display:inline-flex;align-items:center;gap:10px}
+.info-box .meta{color:#94a3b8;font-weight:600;font-size:12px;letter-spacing:.04em}
+.info-box .chev{color:#7a8ba8;display:inline-flex}
 .key-code{font-size:22px;font-weight:800;color:#fdba74;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;letter-spacing:2px;word-break:break-all;text-align:center}
 .key-code--ok{color:#34d399}
-input[type=text]{width:100%;padding:16px 18px;border-radius:16px;border:1px solid rgba(248,113,113,.16);background:rgba(19,27,46,.78);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0 6px;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:border-color .2s,box-shadow .2s}
+input[type=text]{width:100%;padding:16px 18px;border-radius:14px;border:1px solid rgba(248,113,113,.16);background:#0a0f1c;color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0 6px;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:border-color .2s,box-shadow .2s}
 input[type=text]:focus{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.18)}
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;padding:16px;border-radius:18px;border:none;font-weight:700;font-size:15px;cursor:pointer;width:100%;transition:transform .2s,box-shadow .2s,background .2s;text-decoration:none;letter-spacing:.2px;font-family:inherit}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;padding:17px;border-radius:14px;border:none;font-weight:800;font-size:15px;cursor:pointer;width:100%;transition:transform .2s,box-shadow .2s,filter .2s;text-decoration:none;letter-spacing:.2px;font-family:inherit}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);color:#fff;box-shadow:0 14px 32px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18);position:relative;overflow:hidden}
-.btn.primary:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-120%);animation:claimShine 2.8s ease-in-out infinite}
-@keyframes claimShine{55%,100%{transform:translateX(120%)}}
-.btn.primary:hover{box-shadow:0 18px 40px rgba(220,38,38,.55)}
+.btn.primary{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 10px 24px rgba(220,38,38,.4)}
+.btn.primary:hover{filter:brightness(1.08);box-shadow:0 12px 30px rgba(220,38,38,.5)}
 .btn.ghost{background:transparent;border:1px solid rgba(248,113,113,.22);color:#cbd5e1}
 .btn.ghost:hover{border-color:rgba(248,113,113,.45);background:rgba(239,68,68,.04)}
 .hint{font-size:12px;color:#64748b;line-height:1.55;margin:14px 0 0;text-align:center}
 .foot{display:flex;align-items:center;justify-content:center;gap:6px;color:#475569;font-size:11.5px;margin:18px 0 2px;letter-spacing:.02em}
 .foot svg{opacity:.7}
-@media(max-width:380px){.title{font-size:25px}.pill{font-size:13px;padding:13px 10px}}
+@media(max-width:380px){.title{font-size:26px}.pill{font-size:13px;padding:13px 10px}}
 </style></head><body><div class="card">' . $pills . $iconBlock . '<h1 class="title">' . $title . '</h1><p class="msg">' . $msg . '</p>' . $features . $extra . '<div class="foot">' . claimIcon('lock') . '<span>' . h($GLOBALS['L']['foot_secure'] ?? 'Protected by advanced security') . '</span></div></div></body></html>';
     exit;
 }
@@ -411,7 +411,7 @@ if ($tg) {
         '<div class="label">' . h($L['lbl_game']) . '</div>'
         . '<div class="info-box">'
         . '<span>' . h($fk['game_name']) . '</span>'
-        . '<span class="meta">' . (int)$fk['days'] . ' ' . h($L['days']) . '</span>'
+        . '<span class="info-right"><span class="meta">' . (int)$fk['days'] . ' ' . h($L['days']) . '</span><span class="chev">' . claimIcon('chev') . '</span></span>'
         . '</div>'
         . '<form method="POST">'
         . '<input type="hidden" name="lang" value="' . h($LANG) . '">'
