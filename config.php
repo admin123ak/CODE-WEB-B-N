@@ -44,7 +44,7 @@ if (!defined('VIETQR_BANK_ID'))             define('VIETQR_BANK_ID', '970422');
 
 // --- Crypto (Binance USDT TRC20) defaults ---
 // Bật ON khi đã cấu hình USDT_TRC20_ADDRESS + TRONGRID_API_KEY trong config.local.php.
-// Nếu chưa cấu hình → option thanh toán Binance bị ẩn ở checkout (xem api/index.php).
+// Nếu chưa cấu hình → option thanh toán Binance bị ẩn ở checkout (xem backend/api/index.php).
 if (!defined('CRYPTO_AUTO_APPROVE_ENABLED')) define('CRYPTO_AUTO_APPROVE_ENABLED', false);
 if (!defined('USDT_TRC20_ADDRESS'))          define('USDT_TRC20_ADDRESS', '');
 if (!defined('TRONGRID_API_KEY'))            define('TRONGRID_API_KEY', '');

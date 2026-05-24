@@ -93,19 +93,10 @@ function hclouMaskSecret($value, $left = 8, $right = 4) {
 function hclouCronRunToken() {
     return defined('CRON_RUN_TOKEN') ? (string)CRON_RUN_TOKEN : '';
 }
-function hclouAutomationRunToken() {
-    return defined('AUTOMATION_RUN_TOKEN') ? (string)AUTOMATION_RUN_TOKEN : '';
-}
 function hclouCronRunUrl($job, $masked = false) {
     $token = hclouCronRunToken();
     $show = $masked ? hclouMaskSecret($token) : $token;
     return rtrim(SITE_URL, '/') . '/cron/run.php?token=' . $show . '&job=' . rawurlencode($job);
-}
-function hclouAutomationRunUrl($masked = false) {
-    $token = hclouAutomationRunToken();
-    $show = $masked ? hclouMaskSecret($token) : $token;
-    // automation_run.php đã bỏ; chuyển sang cron/run.php?job=automation
-    return rtrim(SITE_URL, '/') . '/cron/run.php?token=' . $show . '&job=automation';
 }
 
 // Xử lý action POST
@@ -1355,8 +1346,7 @@ Tuỳ chọn Backup  | hằng ngày  | <?=htmlspecialchars(hclouCronRunUrl('back
 Cron-job.org API docs: https://docs.cron-job.org/rest-api.html
 Verify history: Console → job → History → phải thấy 200 OK</div></div>
 
-  <div class="guide-card"><span class="where">automation_run.php + cron/automation_daily.php</span><h3>🔔 Automation/Reminder trực tiếp</h3><ul><li>Endpoint cũ/trực tiếp: <code>automation_run.php</code>; hiện nên ưu tiên wrapper <code>cron/run.php?job=automation</code>.</li><li><code>AUTOMATION_RUN_TOKEN</code> nằm trong file <code>automation_run.php</code>.</li><li>Chức năng: nhắc thanh toán gần hết hạn, báo đơn bị huỷ, cảnh báo bank ignored/error, báo cáo ngày nếu cron chạy đúng khung.</li></ul><div class="codebox">Direct URL: <?=htmlspecialchars(hclouAutomationRunUrl())?>
-Khuyến nghị dùng: <?=htmlspecialchars(hclouCronRunUrl('automation'))?>
+  <div class="guide-card"><span class="where">cron/automation_daily.php</span><h3>🔔 Automation/Reminder</h3><ul><li>Endpoint: <code>cron/run.php?job=automation</code> (wrapper có token + lock).</li><li>Chức năng: nhắc thanh toán gần hết hạn, báo đơn bị huỷ, cảnh báo bank ignored/error, báo cáo ngày nếu cron chạy đúng khung.</li></ul><div class="codebox">Cron URL: <?=htmlspecialchars(hclouCronRunUrl('automation'))?>
 Test VPS: php /www/wwwroot/hclou.com/cron/automation_daily.php
 Test HTTP: curl '<?=htmlspecialchars(hclouCronRunUrl('automation'))?>'</div></div>
 

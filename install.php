@@ -164,7 +164,7 @@ function writeConfigLocal($data) {
 //   - BOT_TOKEN + TELEGRAM_WEBHOOK_SECRET (mất → bot chết câm, phải re-install)
 //   - Tokens MBBank / Binance / doithe.vn (mất → không thu được tiền)
 //
-// Khi up code mới qua FTP/cPanel, CHỈ ghi đè file mã nguồn (*.php, lib/, assets/).
+// Khi up code mới qua FTP/cPanel, CHỈ ghi đè file mã nguồn (*.php, backend/, cron/, assets/).
 // GIỮ NGUYÊN 3 thứ trên hosting:
 //   1. config.local.php  (file này)
 //   2. .install_lock     (chặn installer chạy lại)

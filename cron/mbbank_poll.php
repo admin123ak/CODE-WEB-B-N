@@ -173,7 +173,7 @@ function normalizeDateForDb($raw) {
     return $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
 }
 
-// approvePaidOrder() đã chuyển sang lib/order_approval.php để chia sẻ với crypto_poll.php
+// approvePaidOrder() ở backend/lib/order_approval.php — share với crypto_poll.php
 
 try {
     if (!defined('MBBANK_AUTO_APPROVE_ENABLED') || !MBBANK_AUTO_APPROVE_ENABLED) {
