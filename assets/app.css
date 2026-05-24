@@ -240,7 +240,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 @keyframes freeBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 .free-title{font-size:26px;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px;line-height:1.2}
 .free-sub{font-size:14px;color:#7a8499;margin:-12px 0 0;line-height:1.55}
-.free-btn{width:100%;padding:17px;border-radius:14px;border:none;background:linear-gradient(135deg,#7c6fe0,#5b52c4);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:"Inter",inherit;box-shadow:0 8px 24px rgba(100,80,220,.3);transition:opacity .2s,transform .15s,box-shadow .2s;display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.free-btn{width:100%;padding:17px;border-radius:14px;border:none;background:linear-gradient(135deg,#7c6fe0,#5b52c4);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:"Inter",sans-serif;box-shadow:0 8px 24px rgba(100,80,220,.3);transition:opacity .2s,transform .15s,box-shadow .2s;display:inline-flex;align-items:center;justify-content:center;gap:10px}
 .free-btn:active{transform:scale(.98)}
 .free-btn:hover{opacity:.9;transform:translateY(-1px)}
 .free-btn:disabled{opacity:.4;filter:grayscale(1);cursor:not-allowed;box-shadow:none;transform:none}
