@@ -474,6 +474,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
   <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders">🛒 Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
   <div class="nav-sub">
     <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx">💰 Giao dịch</a>
+    <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet">👛 Ví user</a>
     <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys">🔑 Keys</a>
   </div>
 
@@ -546,21 +547,38 @@ if($pending): ?>
 <h1>🛒 Quản lý đơn hàng</h1>
 <?php
 $filter_status = $_GET['s'] ?? 'pending';
-$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id WHERE o.status=? ORDER BY o.created_at DESC LIMIT 100");
-$orders->execute([$filter_status]); $orders = $orders->fetchAll();
+$filter_method = $_GET['m'] ?? '';
+$pmAllowed = ['mbbank','binance','card','balance'];
+if ($filter_method !== '' && !in_array($filter_method, $pmAllowed, true)) $filter_method = '';
+$sqlWhereParts = ['o.status=?']; $sqlParams = [$filter_status];
+if ($filter_method !== '') { $sqlWhereParts[] = 'o.payment_method=?'; $sqlParams[] = $filter_method; }
+$sqlWhere = implode(' AND ', $sqlWhereParts);
+$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
+$orders->execute($sqlParams); $orders = $orders->fetchAll();
+$pmLabel = ['mbbank'=>'🏦 MBBank','binance'=>'🪙 Binance','card'=>'🎴 Card','balance'=>'💰 Ví'];
+$pmBadgeColor = ['mbbank'=>'blue','binance'=>'orange','card'=>'purple','balance'=>'green'];
+$buildOrderUrl = function($s, $m) { $qs = ['tab'=>'orders','s'=>$s]; if ($m !== '') $qs['m'] = $m; return '?' . http_build_query($qs); };
 ?>
-<div style="margin-bottom:14px;display:flex;gap:8px">
+<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
   <?php foreach(['pending'=>'⏳ Chờ TT','approved'=>'✅ Auto duyệt','rejected'=>'❌ Từ chối','cancelled'=>'🚫 Huỷ'] as $s=>$l): ?>
-  <a href="?tab=orders&s=<?=$s?>" class="btn <?=$filter_status===$s?'btn-blue':'btn-gray'?>"><?=$l?></a>
+  <a href="<?=h($buildOrderUrl($s, $filter_method))?>" class="btn <?=$filter_status===$s?'btn-blue':'btn-gray'?>"><?=$l?></a>
+  <?php endforeach ?>
+</div>
+<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:13px;align-items:center">
+  <span style="color:#8b949e">Phương thức:</span>
+  <a href="<?=h($buildOrderUrl($filter_status, ''))?>" class="btn <?=$filter_method===''?'btn-blue':'btn-gray'?>">Tất cả</a>
+  <?php foreach($pmLabel as $m=>$l): ?>
+  <a href="<?=h($buildOrderUrl($filter_status, $m))?>" class="btn <?=$filter_method===$m?'btn-blue':'btn-gray'?>"><?=$l?></a>
   <?php endforeach ?>
 </div>
 <table>
-<tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Trạng thái</th><th>Thời gian</th><?php if($filter_status==='pending'):?><th>Thao tác</th><?php endif?></tr>
-<?php foreach($orders as $o): $cls=['pending'=>'orange','approved'=>'green','rejected'=>'red','cancelled'=>'gray'][$o['status']]??'gray'; ?>
+<tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>PT</th><th>Key đã tạo</th><th>Tiền</th><th>Trạng thái</th><th>Thời gian</th><?php if($filter_status==='pending'):?><th>Thao tác</th><?php endif?></tr>
+<?php foreach($orders as $o): $cls=['pending'=>'orange','approved'=>'green','rejected'=>'red','cancelled'=>'gray'][$o['status']]??'gray'; $pm = $o['payment_method'] ?? 'mbbank'; ?>
 <tr>
   <td><b><?=h($o['order_code'])?></b></td>
   <td>@<?=h($o['telegram_username'])?></td>
   <td><?=h($o['game_name'])?><br><small style="color:#8b949e"><?=h($o['pkg_name'])?></small></td>
+  <td><span class="badge <?=h($pmBadgeColor[$pm] ?? 'gray')?>" style="font-size:11px"><?=h($pmLabel[$pm] ?? $pm)?></span></td>
   <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? '--')?><br><small style="color:#8b949e"><?=htmlspecialchars($o['key_status'] ?? '')?></small></td>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
   <td><span class="badge <?=$cls?>"><?=h($o['status'])?></span></td>
@@ -645,6 +663,90 @@ $txSrcMap=[]; foreach($txSrcStats as $r){ $txSrcMap[$r['source']??'mbbank'] = $r
 </tr>
 <?php endforeach; if(!$txs): ?><tr><td colspan="10"><p>Chưa có giao dịch phù hợp.</p></td></tr><?php endif; ?>
 </table></div>
+
+<?php elseif($tab==='wallet'): ?>
+<h1>👛 Ví user (balance + lịch sử)</h1>
+<?php
+$bl_reason = $_GET['r']  ?? '';
+$bl_q      = trim($_GET['q'] ?? '');
+$bl_allowed = ['topup','purchase','refund','admin_adjust'];
+if ($bl_reason !== '' && !in_array($bl_reason, $bl_allowed, true)) $bl_reason = '';
+
+$wWhere = []; $wParams = [];
+if ($bl_reason !== '') { $wWhere[] = 'bl.reason=?'; $wParams[] = $bl_reason; }
+if ($bl_q !== '') { $wWhere[] = '(u.telegram_username LIKE ? OR u.full_name LIKE ? OR CAST(u.telegram_id AS CHAR) LIKE ?)';
+    $wParams[] = '%'.$bl_q.'%'; $wParams[] = '%'.$bl_q.'%'; $wParams[] = '%'.$bl_q.'%'; }
+$wSqlWhere = $wWhere ? ('WHERE '.implode(' AND ', $wWhere)) : '';
+
+$blStmt = $db->prepare("SELECT bl.*, u.telegram_username, u.full_name, u.telegram_id, u.balance AS user_balance
+    FROM balance_logs bl
+    JOIN users u ON bl.user_id = u.id
+    $wSqlWhere
+    ORDER BY bl.id DESC LIMIT 200");
+$blStmt->execute($wParams);
+$balanceLogs = $blStmt->fetchAll();
+
+$walletStats = [
+    'total_balance'   => (float)$db->query("SELECT COALESCE(SUM(balance), 0) FROM users")->fetchColumn(),
+    'users_with_bal'  => (int)$db->query("SELECT COUNT(*) FROM users WHERE balance > 0")->fetchColumn(),
+    'credit_today'    => (float)$db->query("SELECT COALESCE(SUM(amount), 0) FROM balance_logs WHERE amount > 0 AND DATE(created_at) = CURDATE()")->fetchColumn(),
+    'debit_today'     => (float)$db->query("SELECT COALESCE(SUM(ABS(amount)), 0) FROM balance_logs WHERE amount < 0 AND DATE(created_at) = CURDATE()")->fetchColumn(),
+];
+$reasonLabel = ['topup'=>'💵 Nạp','purchase'=>'🛒 Mua key','refund'=>'↩️ Hoàn','admin_adjust'=>'🛠️ Admin chỉnh'];
+$reasonColor = ['topup'=>'green','purchase'=>'blue','refund'=>'orange','admin_adjust'=>'purple'];
+$buildWalletUrl = function($r, $q) { $qs = ['tab'=>'wallet']; if ($r !== '') $qs['r'] = $r; if ($q !== '') $qs['q'] = $q; return '?' . http_build_query($qs); };
+?>
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-val blue"><?=number_format($walletStats['total_balance'],0,',','.')?> đ</div><div class="stat-label">Tổng số dư hệ thống</div></div>
+  <div class="stat-card"><div class="stat-val purple"><?=$walletStats['users_with_bal']?></div><div class="stat-label">User có số dư &gt; 0</div></div>
+  <div class="stat-card"><div class="stat-val green">+ <?=number_format($walletStats['credit_today'],0,',','.')?> đ</div><div class="stat-label">Credit hôm nay</div></div>
+  <div class="stat-card"><div class="stat-val red">- <?=number_format($walletStats['debit_today'],0,',','.')?> đ</div><div class="stat-label">Debit hôm nay</div></div>
+</div>
+
+<div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <span style="color:#8b949e">Lý do:</span>
+  <a href="<?=h($buildWalletUrl('', $bl_q))?>" class="btn <?=$bl_reason===''?'btn-blue':'btn-gray'?>">Tất cả</a>
+  <?php foreach($reasonLabel as $r=>$l): ?>
+  <a href="<?=h($buildWalletUrl($r, $bl_q))?>" class="btn <?=$bl_reason===$r?'btn-blue':'btn-gray'?>"><?=$l?></a>
+  <?php endforeach ?>
+</div>
+<form method="get" style="margin-bottom:14px;display:flex;gap:8px;align-items:center">
+  <input type="hidden" name="tab" value="wallet">
+  <?php if($bl_reason!==''):?><input type="hidden" name="r" value="<?=h($bl_reason)?>"><?php endif ?>
+  <input type="text" name="q" placeholder="Tìm username / full name / telegram_id" value="<?=h($bl_q)?>" style="flex:1;max-width:360px;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3">
+  <button class="btn btn-blue" type="submit">🔍 Tìm</button>
+  <?php if($bl_q!==''):?><a href="<?=h($buildWalletUrl($bl_reason, ''))?>" class="btn btn-gray">Xoá</a><?php endif?>
+</form>
+
+<div style="overflow-x:auto">
+<table>
+<tr><th>ID</th><th>User</th><th>Số dư hiện tại</th><th>Lý do</th><th>Thay đổi</th><th>Sau giao dịch</th><th>Ref</th><th>Note</th><th>Thời gian</th></tr>
+<?php foreach($balanceLogs as $bl):
+    $amt = (float)$bl['amount']; $reason = $bl['reason'];
+    $reasonHtml = '<span class="badge ' . h($reasonColor[$reason] ?? 'gray') . '" style="font-size:11px">' . h($reasonLabel[$reason] ?? $reason) . '</span>';
+?>
+<tr>
+  <td class="mono"><?=$bl['id']?></td>
+  <td>
+    @<?=h($bl['telegram_username'] ?? '--')?><br>
+    <small style="color:#8b949e">ID <?=h($bl['telegram_id'])?></small>
+  </td>
+  <td><b><?=number_format((float)$bl['user_balance'],0,',','.')?> đ</b></td>
+  <td><?=$reasonHtml?></td>
+  <td style="color:<?=$amt>=0?'#3fb950':'#f85149'?>"><b><?=($amt>=0?'+':'')?><?=number_format($amt,0,',','.')?> đ</b></td>
+  <td><?=number_format((float)$bl['balance_after'],0,',','.')?> đ</td>
+  <td class="mono" style="font-size:11px;color:#8b949e">
+    <?=h($bl['ref_type'] ?? '--')?><?php if($bl['ref_id']):?> #<?=(int)$bl['ref_id']?><?php endif ?>
+  </td>
+  <td style="font-size:12px;color:#8b949e;max-width:280px"><?=h($bl['note'] ?? '')?></td>
+  <td style="font-size:12px;color:#8b949e"><?=date('d/m H:i:s',strtotime($bl['created_at']))?></td>
+</tr>
+<?php endforeach; if(!$balanceLogs): ?>
+<tr><td colspan="9"><p style="color:#8b949e;padding:20px;text-align:center">Chưa có bút toán nào phù hợp.</p></td></tr>
+<?php endif ?>
+</table>
+</div>
+<p style="color:#6e7681;font-size:12px;margin-top:10px">Hiển thị tối đa 200 bút toán gần nhất. Lọc theo lý do / tìm user để zoom in.</p>
 
 <?php elseif($tab==='keys'): ?>
 <h1>🔑 Quản lý Keys</h1>
