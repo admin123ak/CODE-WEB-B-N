@@ -244,30 +244,30 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .free-btn:active{transform:scale(.98)}
 .free-btn:hover{opacity:.92;transform:translateY(-1px)}
 .free-btn:disabled{opacity:.4;filter:grayscale(1);cursor:not-allowed;box-shadow:none;transform:none}
-.free-timer{width:100%;margin:0;padding:14px;border-radius:12px;background:rgba(239,68,68,.05);border:1px solid rgba(248,113,113,.14);color:var(--orange2);font-size:13.5px;font-weight:500;line-height:1.5}
-.free-claimed{width:100%;margin:0;padding:16px;border-radius:12px;background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.22)}
+.free-timer{width:100%;margin:0;padding:14px;border-radius:14px;background:rgba(19,27,46,.78);border:1px solid rgba(79,140,255,.12);color:var(--orange2);font-size:13.5px;font-weight:500;line-height:1.5;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.free-claimed{width:100%;margin:0;padding:16px;border-radius:14px;background:rgba(19,27,46,.78);border:1px solid rgba(52,211,153,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .free-claimed-code{font-size:15px;font-weight:700;color:var(--green2);font-family:'SF Mono','JetBrains Mono',monospace;margin:8px 0;padding:11px;background:rgba(0,0,0,.25);border-radius:10px;word-break:break-all;letter-spacing:1.2px}
 .free-empty{margin:0 16px 14px;padding:48px 28px;background:var(--glass);border:1px solid rgba(239,68,68,.14);border-radius:24px;text-align:center;box-shadow:0 28px 70px rgba(0,0,0,.5)}
 /* Vipteam structure (4 badges + dropdown + result) — palette brand Mini App */
 .free-badges{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
-.free-badge{background:rgba(239,68,68,.05);border:1px solid rgba(248,113,113,.14);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;color:var(--text);font-size:14px;font-weight:500}
+.free-badge{background:rgba(19,27,46,.78);border:1px solid rgba(79,140,255,.12);border-radius:14px;padding:13px 14px;display:flex;align-items:center;gap:10px;color:var(--text);font-size:13.5px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .free-badge svg{width:18px;height:18px;opacity:.85;flex-shrink:0;stroke:var(--orange2);fill:none;stroke-width:2}
 .free-select-block{width:100%}
-.free-label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--text2);margin-bottom:8px;text-transform:uppercase;text-align:left}
+.free-label{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;text-align:left}
 .free-select-wrap{position:relative}
-.free-select{width:100%;background:rgba(239,68,68,.04);border:1px solid rgba(248,113,113,.14);border-radius:12px;padding:14px 40px 14px 16px;color:var(--text);font-size:15px;font-family:inherit;font-weight:500;appearance:none;-webkit-appearance:none;cursor:pointer;outline:none;transition:border-color .2s}
+.free-select{width:100%;background:rgba(19,27,46,.78);border:1px solid rgba(79,140,255,.12);border-radius:14px;padding:14px 40px 14px 16px;color:var(--text);font-size:14px;font-family:inherit;font-weight:700;appearance:none;-webkit-appearance:none;cursor:pointer;outline:none;transition:border-color .2s;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .free-select:focus{border-color:rgba(239,68,68,.5)}
-.free-select-wrap:after{content:'';position:absolute;right:18px;top:50%;width:10px;height:10px;border-right:2px solid var(--text2);border-bottom:2px solid var(--text2);transform:translateY(-65%) rotate(45deg);pointer-events:none}
+.free-select-wrap:after{content:'';position:absolute;right:18px;top:50%;width:9px;height:9px;border-right:2px solid var(--text2);border-bottom:2px solid var(--text2);transform:translateY(-65%) rotate(45deg);pointer-events:none}
 .free-btn .free-arrow{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;display:block}
 .free-btn .free-spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:freeSpin .7s linear infinite}
 .free-btn.loading .free-arrow{display:none}
 .free-btn.loading .free-spinner{display:block}
 @keyframes freeSpin{to{transform:rotate(360deg)}}
-.free-result-box{display:flex;width:100%;background:rgba(239,68,68,.05);border:1px solid rgba(248,113,113,.20);border-radius:12px;padding:14px 16px;gap:10px;align-items:center;animation:freeFadeIn .3s ease}
+.free-result-box{display:flex;width:100%;background:rgba(19,27,46,.78);border:1px solid rgba(79,140,255,.12);border-radius:14px;padding:14px 16px;gap:10px;align-items:center;animation:freeFadeIn .3s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 @keyframes freeFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .free-result-key{flex:1;font-size:12px;color:var(--orange2);font-family:'SF Mono',monospace;word-break:break-all;line-height:1.5}
-.free-copy-btn{background:none;border:1px solid rgba(248,113,113,.35);border-radius:8px;padding:6px 12px;color:var(--orange2);font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s}
-.free-copy-btn:hover{background:rgba(239,68,68,.10)}
+.free-copy-btn{background:rgba(19,27,46,.78);border:1px solid rgba(79,140,255,.12);border-radius:10px;padding:6px 12px;color:var(--orange2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s}
+.free-copy-btn:hover{background:rgba(26,37,64,.85)}
 .free-secure{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;opacity:.7}
 .free-secure svg{width:13px;height:13px;fill:currentColor}
 
