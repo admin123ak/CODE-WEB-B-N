@@ -1120,14 +1120,32 @@ async function loadFreeKey(){
         +'<button class="free-btn" style="margin-top:10px" onclick="copyText('+jsAttr(res.key_code)+','+jsAttr(T.copyKey)+')">'+escapeHtml(T.copy)+' Key</button>'
         +'</div>';
     } else if(res.available > 0){
-      var claimedInfo = res.total_claimed_today ? ' · <b style="color:var(--cyan2)">'+(parseInt(res.total_claimed_today,10)||0)+' '+escapeHtml(T.freePeopleSuffix)+'</b>' : '';
+      var days = parseInt(res.next_days,10) || 0;
+      var gameName = res.next_game || 'HCLOU';
+      var claimedCnt = parseInt(res.total_claimed_today,10) || 0;
+      var badgeTime = days > 0 ? (days + ' Days') : '6 Hours';
       wrap.innerHTML = '<div class="free-card">'
-        +'<div class="free-icon">🎁</div>'
+        +'<div class="free-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div>'
         +'<div class="free-title">'+escapeHtml(T.freeKeyToday)+'</div>'
         +'<div class="free-sub">'+T.freeSub+'</div>'
-        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">'+escapeHtml(T.freeBtnGetLink)+'</button>'
-        +'<div class="free-timer" style="margin-top:12px">'+escapeHtml(T.freeResetDaily)+claimedInfo+'</div>'
-        +'<div id="claimLinkArea" style="margin-top:12px;display:none"></div>'
+        +'<div class="free-badges">'
+        +  '<div class="free-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'+escapeHtml(badgeTime)+'</div>'
+        +  '<div class="free-badge"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3M15 3h6v6M10 14L21 3"/></svg>Full Access</div>'
+        +  '<div class="free-badge"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>1 Device</div>'
+        +  '<div class="free-badge"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Secure</div>'
+        +'</div>'
+        +'<div class="free-select-block">'
+        +  '<label class="free-label">Select Game</label>'
+        +  '<div class="free-select-wrap"><select class="free-select" id="freeGameSelect"><option>'+escapeHtml(gameName)+'</option></select></div>'
+        +'</div>'
+        +'<button class="free-btn" id="claimFreeBtn" onclick="claimDailyFree()">'
+        +  '<svg class="free-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'
+        +  '<div class="free-spinner"></div>'
+        +  '<span id="freeBtnText">'+escapeHtml(T.freeBtnGetLink)+'</span>'
+        +'</button>'
+        +'<div class="free-result-box" id="claimLinkArea" style="display:none"></div>'
+        +'<div class="free-timer">'+escapeHtml(T.freeResetDaily)+(claimedCnt? ' · <b style="color:#a78bfa">'+claimedCnt+' '+escapeHtml(T.freePeopleSuffix)+'</b>':'')+'</div>'
+        +'<div class="free-secure"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor"/></svg>Protected by advanced security</div>'
         +'</div>';
     } else {
       wrap.innerHTML = '<div class="free-card">'
@@ -1144,7 +1162,8 @@ async function loadFreeKey(){
 
 async function claimDailyFree(){
   var btn = document.getElementById('claimFreeBtn');
-  if(btn){ btn.disabled=true; btn.textContent=T.freeCreatingLink; }
+  var txt = document.getElementById('freeBtnText');
+  if(btn){ btn.disabled=true; btn.classList.add('loading'); if(txt) txt.textContent=T.freeCreatingLink; }
   try {
     var res = await api('daily_free_key','POST',{});
     if(res.success){
@@ -1153,19 +1172,15 @@ async function claimDailyFree(){
         freeKeyLoaded = false;
         loadFreeKey();
       } else if(res.claim_url){
-        // Hiện link claim riêng cho user
         var area = document.getElementById('claimLinkArea');
         if(area){
-          area.style.display = 'block';
+          area.style.display = 'flex';
           var claimUrl = safeUrl(res.claim_url);
-          area.innerHTML = '<div class="free-claimed">'
-            +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+escapeHtml(T.freeYourLink)+'</div>'
-            +'<div class="free-claimed-code" style="font-size:12px;word-break:break-all">'+escapeHtml(claimUrl)+'</div>'
-            +'<button class="free-btn" style="margin-top:10px;background:linear-gradient(135deg,var(--blue),var(--purple))" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">'+escapeHtml(T.freeOpenLink)+'</button>'
-            +'<button class="free-btn" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--text2)" onclick="copyText('+jsAttr(claimUrl)+','+jsAttr(T.freeCopiedLink)+')">'+escapeHtml(T.freeCopyLink)+'</button>'
-            +'</div>';
+          area.innerHTML = '<span class="free-result-key">'+escapeHtml(claimUrl)+'</span>'
+            +'<button class="free-copy-btn" onclick="copyText('+jsAttr(claimUrl)+','+jsAttr(T.freeCopiedLink)+')">Copy</button>'
+            +'<button class="free-copy-btn" style="background:rgba(124,111,224,.18)" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">Open</button>';
         }
-        if(btn){ btn.textContent=T.freeLinkCreated; btn.disabled=true; }
+        if(btn){ btn.classList.remove('loading'); btn.disabled=true; if(txt) txt.textContent=T.freeLinkCreated; }
       } else {
         toast(res.message || T.freeClaimOk,'success');
         freeKeyLoaded = false;
@@ -1173,11 +1188,11 @@ async function claimDailyFree(){
       }
     } else {
       toast(res.error || T.freeErrorGeneric,'error');
-      if(btn){ btn.disabled=false; btn.textContent=T.freeBtnGetLink; }
+      if(btn){ btn.classList.remove('loading'); btn.disabled=false; if(txt) txt.textContent=T.freeBtnGetLink; }
     }
   } catch(e){
     toast(T.toastLoadErr,'error');
-    if(btn){ btn.disabled=false; btn.textContent=T.freeBtnGetLink; }
+    if(btn){ btn.classList.remove('loading'); btn.disabled=false; if(txt) txt.textContent=T.freeBtnGetLink; }
   }
 }
 

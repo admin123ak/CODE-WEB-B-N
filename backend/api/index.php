@@ -762,10 +762,18 @@ switch ($action) {
         $freeAvail = $db->prepare("SELECT COUNT(*) FROM free_keys WHERE is_active=1 AND expire_at > NOW()");
         $freeAvail->execute();
         $freeCount = (int)$freeAvail->fetchColumn();
+        // Lấy info key gần nhất (badge + dropdown trong widget)
+        $nextDays = 0; $nextGame = '';
+        if ($freeCount > 0) {
+            $nx = $db->prepare("SELECT fk.days, g.name AS game_name FROM free_keys fk JOIN games g ON fk.game_id=g.id WHERE fk.is_active=1 AND fk.expire_at > NOW() ORDER BY fk.created_at DESC LIMIT 1");
+            $nx->execute();
+            $row = $nx->fetch();
+            if ($row) { $nextDays = (int)$row['days']; $nextGame = (string)$row['game_name']; }
+        }
         // Đếm số người đã nhận hôm nay
         $totalClaimed = $db->prepare("SELECT COUNT(*) FROM free_key_claims WHERE DATE(claimed_at)=?");
         $totalClaimed->execute([$today]);
-        jsonResponse(['success' => true, 'claimed' => false, 'available' => $freeCount, 'total_claimed_today' => $totalClaimed->fetchColumn()]);
+        jsonResponse(['success' => true, 'claimed' => false, 'available' => $freeCount, 'next_days' => $nextDays, 'next_game' => $nextGame, 'total_claimed_today' => $totalClaimed->fetchColumn()]);
 
     // ===== NHẬN LINK CLAIM KEY FREE — đi qua 2 lớp rút gọn (Link4M → YeuMoney → claim) =====
     case 'daily_free_key':
