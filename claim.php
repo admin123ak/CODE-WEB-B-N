@@ -226,33 +226,33 @@ function claimPage($title, $msg, $ok = false, $extra = '', $pills = '', $feature
         : '<div class="header-ico">' . claimIcon('diamond') . '</div>';
     echo '<!doctype html><html lang="' . h($GLOBALS['LANG'] ?? 'vi') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#0d1117;color:#e2e8f0;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
-.card{max-width:380px;width:100%;background:#161b27;border:1px solid rgba(255,255,255,.07);border-radius:24px;padding:40px 32px;display:flex;flex-direction:column;align-items:center;gap:24px;box-shadow:0 32px 80px rgba(0,0,0,.5)}
-.header-ico{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#7c6fe0,#5b52c4);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 24px rgba(100,80,220,.35)}
+body{margin:0;min-height:100vh;background:#06080f;color:#e6edf3;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
+.card{max-width:420px;width:100%;background:linear-gradient(160deg,rgba(12,17,32,.92),rgba(19,27,46,.88));border:1px solid rgba(239,68,68,.14);border-radius:24px;padding:40px 32px;display:flex;flex-direction:column;align-items:center;gap:22px;box-shadow:0 28px 70px rgba(0,0,0,.5),0 0 28px rgba(239,68,68,.05);backdrop-filter:blur(16px)}
+.header-ico{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 24px rgba(220,38,38,.35)}
 .header-ico--ok{background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 8px 24px rgba(16,185,129,.35)}
 .title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.2;margin:0 0 6px;text-align:center}
-.msg{font-size:14px;color:#7a8499;line-height:1.55;margin:0;text-align:center}
+.msg{font-size:14px;color:#7a8ba8;line-height:1.55;margin:0;text-align:center}
 .pills{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
-.pill{background:#1e2535;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;color:#a0aec0;font-size:14px;font-weight:500}
-.pill-ico{color:#a0aec0;display:inline-flex;opacity:.7;flex-shrink:0}
-.label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;color:#5a6478;margin-bottom:8px;text-transform:uppercase;text-align:left;width:100%}
-.info-box{position:relative;width:100%;background:#1e2535;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 40px 14px 16px;color:#e2e8f0;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:border-color .2s}
+.pill{background:rgba(239,68,68,.05);border:1px solid rgba(248,113,113,.14);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;color:#e6edf3;font-size:14px;font-weight:500}
+.pill-ico{color:#fdba74;display:inline-flex;opacity:.85;flex-shrink:0}
+.label{display:block;font-size:11px;font-weight:600;letter-spacing:.1em;color:#7a8ba8;margin-bottom:8px;text-transform:uppercase;text-align:left;width:100%}
+.info-box{position:relative;width:100%;background:rgba(239,68,68,.04);border:1px solid rgba(248,113,113,.14);border-radius:12px;padding:14px 40px 14px 16px;color:#e6edf3;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:border-color .2s}
 .info-box .info-right{display:inline-flex;align-items:center;gap:10px}
-.info-box .meta{color:#7a8499;font-weight:500;font-size:12.5px}
-.info-box .chev{position:absolute;right:14px;top:50%;width:10px;height:10px;border-right:2px solid #5a6478;border-bottom:2px solid #5a6478;transform:translateY(-65%) rotate(45deg);pointer-events:none}
+.info-box .meta{color:#7a8ba8;font-weight:500;font-size:12.5px}
+.info-box .chev{position:absolute;right:14px;top:50%;width:10px;height:10px;border-right:2px solid #7a8ba8;border-bottom:2px solid #7a8ba8;transform:translateY(-65%) rotate(45deg);pointer-events:none}
 .info-box .chev svg{display:none}
-.key-code{font-size:20px;font-weight:800;color:#a78bfa;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;letter-spacing:1.5px;word-break:break-all;text-align:center}
+.key-code{font-size:20px;font-weight:800;color:#fdba74;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;letter-spacing:1.5px;word-break:break-all;text-align:center}
 .key-code--ok{color:#34d399}
-input[type=text]{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#1e2535;color:#e2e8f0;font-size:15px;text-align:center;outline:0;font-family:inherit;font-weight:500;transition:border-color .2s,box-shadow .2s}
-input[type=text]:focus{border-color:rgba(124,111,224,.5);box-shadow:0 0 0 3px rgba(124,111,224,.18)}
+input[type=text]{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(248,113,113,.14);background:rgba(239,68,68,.04);color:#e6edf3;font-size:15px;text-align:center;outline:0;font-family:inherit;font-weight:500;transition:border-color .2s,box-shadow .2s}
+input[type=text]:focus{border-color:rgba(239,68,68,.5);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
 .btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:17px;border-radius:14px;border:none;font-weight:700;font-size:16px;cursor:pointer;width:100%;transition:opacity .2s,transform .15s,box-shadow .2s;text-decoration:none;font-family:"Inter",inherit}
 .btn:active{transform:scale(.98)}
-.btn.primary{background:linear-gradient(135deg,#7c6fe0,#5b52c4);color:#fff;box-shadow:0 8px 24px rgba(100,80,220,.3)}
-.btn.primary:hover{opacity:.9;transform:translateY(-1px)}
-.btn.ghost{background:transparent;border:1px solid rgba(124,111,224,.4);color:#a78bfa;font-size:14px;padding:14px}
-.btn.ghost:hover{background:rgba(124,111,224,.12)}
-.hint{font-size:12px;color:#5a6478;line-height:1.55;text-align:center;margin:0}
-.foot{display:flex;align-items:center;justify-content:center;gap:6px;color:#4a5568;font-size:12px}
+.btn.primary{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;box-shadow:0 8px 24px rgba(220,38,38,.3)}
+.btn.primary:hover{opacity:.92;transform:translateY(-1px)}
+.btn.ghost{background:transparent;border:1px solid rgba(248,113,113,.30);color:#fdba74;font-size:14px;padding:14px}
+.btn.ghost:hover{background:rgba(239,68,68,.06)}
+.hint{font-size:12px;color:#7a8ba8;line-height:1.55;text-align:center;margin:0;opacity:.7}
+.foot{display:flex;align-items:center;justify-content:center;gap:6px;color:#7a8ba8;font-size:12px;opacity:.65}
 .foot svg{width:13px;height:13px;opacity:.85}
 @media(max-width:380px){.title{font-size:23px}.pill{font-size:13px;padding:11px 13px}}
 </style></head><body><div class="card">' . $pills . $iconBlock . '<h1 class="title">' . $title . '</h1><p class="msg">' . $msg . '</p>' . $features . $extra . '<div class="foot">' . claimIcon('lock') . '<span>' . h($GLOBALS['L']['foot_secure'] ?? 'Protected by advanced security') . '</span></div></div></body></html>';
