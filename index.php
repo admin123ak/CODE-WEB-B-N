@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0a0e1a">
 <title><?= SITE_NAME ?></title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="./assets/app.css?v=20260523_1">
+<link rel="stylesheet" href="./assets/app.css?v=<?= @filemtime(__DIR__ . '/assets/app.css') ?: time() ?>">
 </head>
 <body style="background:#0a0e1a">
 
@@ -352,7 +352,7 @@
 </div>
 
 <script>window.HCLOU_BOT_USERNAME='<?= BOT_USERNAME ?>';</script>
-<script src="./assets/app.js?v=20260523_1"></script>
+<script src="./assets/app.js?v=<?= @filemtime(__DIR__ . '/assets/app.js') ?: time() ?>"></script>
 
 </body>
 </html>
