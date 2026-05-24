@@ -227,7 +227,7 @@ function claimPage($title, $msg, $ok = false, $extra = '', $pills = '', $feature
     echo '<!doctype html><html lang="' . h($GLOBALS['LANG'] ?? 'vi') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;background:#06080f;color:#e6edf3;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
-.card{max-width:420px;width:100%;background:linear-gradient(160deg,rgba(12,17,32,.88),rgba(19,27,46,.82));border:1px solid rgba(79,140,255,.12);border-radius:18px;padding:30px 22px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 8px 32px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.04);backdrop-filter:blur(16px)}
+.card{max-width:420px;width:100%;background:transparent;border:none;border-radius:0;padding:30px 18px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:none}
 .header-ico{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 28px rgba(239,68,68,.32),inset 0 1px 0 rgba(255,255,255,.18)}
 .header-ico--ok{background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 0 28px rgba(52,211,153,.32),inset 0 1px 0 rgba(255,255,255,.18)}
 .title{font-size:24px;font-weight:900;letter-spacing:-.3px;line-height:1.2;margin:0 0 4px;text-align:center;background:linear-gradient(135deg,#fff 0%,#fca5a5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
