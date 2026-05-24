@@ -225,28 +225,31 @@ function claimPage($title, $msg, $ok = false, $extra = '', $pills = '', $feature
         : '<div class="header-ico">' . claimIcon('diamond') . '</div>';
     echo '<!doctype html><html lang="' . h($GLOBALS['LANG'] ?? 'vi') . '"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU Claim</title><style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#0a0e1a;color:#e6edf3;font-family:-apple-system,"SF Pro Display","Segoe UI","Plus Jakarta Sans",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px 18px;-webkit-font-smoothing:antialiased}
-.card{max-width:440px;width:100%;background:linear-gradient(180deg,rgba(22,26,48,.65),rgba(13,17,30,.92));border:1px solid rgba(168,170,255,.10);border-radius:28px;padding:32px 26px 24px;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.55)}
-.header-ico{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,rgba(129,140,248,.28),rgba(99,102,241,.18));display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 14px 30px rgba(99,102,241,.32),inset 0 1px 0 rgba(255,255,255,.12)}
-.header-ico--ok{background:linear-gradient(135deg,rgba(52,211,153,.28),rgba(16,185,129,.18));box-shadow:0 14px 30px rgba(16,185,129,.32),inset 0 1px 0 rgba(255,255,255,.12)}
-.title{font-size:30px;font-weight:800;margin:6px 0 8px;color:#fff;letter-spacing:-.5px;line-height:1.15}
-.msg{font-size:14.5px;color:#94a3b8;line-height:1.55;margin:0 0 22px}
+body{margin:0;min-height:100vh;background:#06080f;color:#e6edf3;font-family:"Inter",-apple-system,"SF Pro Display","Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:24px 18px;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at 20% 0%,rgba(220,38,38,.12),transparent 50%),radial-gradient(ellipse at 80% 15%,rgba(249,115,22,.08),transparent 45%),radial-gradient(ellipse at 50% 100%,rgba(239,68,68,.06),transparent 50%);z-index:-1;pointer-events:none}
+.card{max-width:440px;width:100%;background:linear-gradient(160deg,rgba(12,17,32,.88),rgba(19,27,46,.82));border:1px solid rgba(239,68,68,.18);border-radius:28px;padding:32px 26px 24px;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.55),0 0 28px rgba(239,68,68,.06);backdrop-filter:blur(16px);position:relative;z-index:1}
+.header-ico{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:18px;box-shadow:0 14px 30px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18)}
+.header-ico--ok{background:linear-gradient(135deg,#34d399,#10b981);box-shadow:0 14px 30px rgba(16,185,129,.45),inset 0 1px 0 rgba(255,255,255,.18)}
+.title{font-size:30px;font-weight:900;margin:6px 0 8px;background:linear-gradient(135deg,#fff 0%,#fca5a5 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px;line-height:1.15}
+.msg{font-size:14.5px;color:#9fb3d0;line-height:1.55;margin:0 0 22px}
 .pills{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 22px}
-.pill{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 12px;border-radius:18px;background:rgba(129,140,248,.06);border:1px solid rgba(168,170,255,.12);color:#e2e8f0;font-size:14px;font-weight:600;letter-spacing:.2px}
-.pill-ico{color:#a5b4fc;display:inline-flex}
-.label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#6e7681;text-align:left;margin:18px 4px 8px}
-.info-box{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;border-radius:16px;background:rgba(129,140,248,.04);border:1px solid rgba(168,170,255,.12);color:#e6edf3;font-size:15px;font-weight:700;letter-spacing:.3px}
-.info-box .meta{color:#94a3b8;font-weight:600;font-size:12px;letter-spacing:.04em}
-.key-code{font-size:22px;font-weight:800;color:#a5b4fc;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;letter-spacing:2px;word-break:break-all;text-align:center}
+.pill{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 12px;border-radius:18px;background:rgba(239,68,68,.06);border:1px solid rgba(248,113,113,.16);color:#e2e8f0;font-size:14px;font-weight:600;letter-spacing:.2px}
+.pill-ico{color:#fdba74;display:inline-flex}
+.label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#7a8ba8;text-align:left;margin:18px 4px 8px}
+.info-box{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;border-radius:16px;background:rgba(239,68,68,.04);border:1px solid rgba(248,113,113,.16);color:#e6edf3;font-size:15px;font-weight:700;letter-spacing:.3px}
+.info-box .meta{color:#9fb3d0;font-weight:600;font-size:12px;letter-spacing:.04em}
+.key-code{font-size:22px;font-weight:800;color:#fdba74;font-family:"SF Mono","JetBrains Mono",ui-monospace,monospace;letter-spacing:2px;word-break:break-all;text-align:center}
 .key-code--ok{color:#34d399}
-input[type=text]{width:100%;padding:16px 18px;border-radius:16px;border:1px solid rgba(168,170,255,.14);background:rgba(15,18,32,.85);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0 6px;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:border-color .2s,box-shadow .2s}
-input[type=text]:focus{border-color:#818cf8;box-shadow:0 0 0 4px rgba(129,140,248,.18)}
+input[type=text]{width:100%;padding:16px 18px;border-radius:16px;border:1px solid rgba(248,113,113,.16);background:rgba(19,27,46,.78);color:#e6edf3;font-size:15px;text-align:center;outline:0;margin:14px 0 6px;font-family:inherit;font-weight:600;letter-spacing:.5px;transition:border-color .2s,box-shadow .2s}
+input[type=text]:focus{border-color:#ef4444;box-shadow:0 0 0 4px rgba(239,68,68,.18)}
 .btn{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;padding:16px;border-radius:18px;border:none;font-weight:700;font-size:15px;cursor:pointer;width:100%;transition:transform .2s,box-shadow .2s,background .2s;text-decoration:none;letter-spacing:.2px;font-family:inherit}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;box-shadow:0 14px 32px rgba(99,102,241,.45),inset 0 1px 0 rgba(255,255,255,.18)}
-.btn.primary:hover{box-shadow:0 18px 40px rgba(99,102,241,.55)}
-.btn.ghost{background:transparent;border:1px solid rgba(168,170,255,.18);color:#cbd5e1}
-.btn.ghost:hover{border-color:rgba(168,170,255,.32);background:rgba(129,140,248,.04)}
+.btn.primary{background:linear-gradient(135deg,#dc2626,#ef4444 55%,#f97316);color:#fff;box-shadow:0 14px 32px rgba(220,38,38,.45),inset 0 1px 0 rgba(255,255,255,.18);position:relative;overflow:hidden}
+.btn.primary:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-120%);animation:claimShine 2.8s ease-in-out infinite}
+@keyframes claimShine{55%,100%{transform:translateX(120%)}}
+.btn.primary:hover{box-shadow:0 18px 40px rgba(220,38,38,.55)}
+.btn.ghost{background:transparent;border:1px solid rgba(248,113,113,.22);color:#cbd5e1}
+.btn.ghost:hover{border-color:rgba(248,113,113,.45);background:rgba(239,68,68,.04)}
 .hint{font-size:12px;color:#64748b;line-height:1.55;margin:14px 0 0;text-align:center}
 .foot{display:flex;align-items:center;justify-content:center;gap:6px;color:#475569;font-size:11.5px;margin:18px 0 2px;letter-spacing:.02em}
 .foot svg{opacity:.7}
