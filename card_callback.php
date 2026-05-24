@@ -54,15 +54,23 @@ if (!$request_id) {
     exit;
 }
 
-// Verify signature. Nếu provider không có sign trong body (vài provider không gửi),
-// fallback: chỉ accept nếu IP whitelist (admin set), hoặc đành accept raw — log warn.
+// Verify signature. Nếu sign invalid → reject 403 để chặn fake callback (attacker
+// có thể spoof request_id + status=1 + value lớn → credit ví miễn phí).
+// Nếu doithe.vn không gửi sign chuẩn ở 1 vài case → dùng IP whitelist trong
+// config (DOITHE_CALLBACK_IPS, comma-separated) làm fallback.
 $signValid = verifyDoitheCallback($payload);
 if (!$signValid) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $ipWhitelist = defined('DOITHE_CALLBACK_IPS') ? array_map('trim', explode(',', DOITHE_CALLBACK_IPS)) : [];
+    $ipAllowed = $ip !== '' && in_array($ip, $ipWhitelist, true);
     @file_put_contents($logDir . '/card_callback.log',
-        date('Y-m-d H:i:s') . " WARN sign invalid for request_id=$request_id\n",
+        date('Y-m-d H:i:s') . " WARN sign invalid for request_id=$request_id ip=$ip ip_allowed=" . ($ipAllowed?'1':'0') . "\n",
         FILE_APPEND | LOCK_EX);
-    // KHÔNG return error luôn — vài provider không gửi sign chuẩn. Vẫn xử lý,
-    // nhưng đánh dấu trong note để admin biết.
+    if (!$ipAllowed) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'sign invalid']);
+        exit;
+    }
 }
 
 try {

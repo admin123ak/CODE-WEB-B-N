@@ -20,6 +20,10 @@ if (!$adminLoggedIn) {
 // Gia hạn session khi admin có hoạt động trên update.php.
 $_SESSION['admin_last_seen'] = time();
 
+// CSRF token (dùng chung với admin/index.php).
+if (empty($_SESSION['admin_csrf'])) $_SESSION['admin_csrf'] = bin2hex(random_bytes(16));
+$csrf = $_SESSION['admin_csrf'];
+
 header('Content-Type: text/html; charset=utf-8');
 
 function runCmd(string $cmd): array {
@@ -33,6 +37,11 @@ $action = $_POST['action'] ?? $_GET['action'] ?? 'status';
 $result = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF check: chặn attacker dụ admin click link external → forge pull/migrate.
+    if (!hash_equals($csrf, $_POST['csrf'] ?? '')) {
+        http_response_code(403);
+        exit('CSRF token không hợp lệ. Tải lại trang.');
+    }
     switch ($action) {
         case 'check':
             // Check git status + remote
@@ -107,6 +116,7 @@ code{background:#0d1117;padding:2px 6px;border-radius:4px;color:#79c0ff}
 <div class="box">
 <h3>1. Kiểm tra update</h3>
 <form method="post" style="display:inline">
+<input type="hidden" name="csrf" value="<?= h($csrf) ?>">
 <input type="hidden" name="action" value="check">
 <button class="btn" type="submit">🔍 Check update</button>
 </form>
@@ -119,6 +129,7 @@ code{background:#0d1117;padding:2px 6px;border-radius:4px;color:#79c0ff}
 Mọi file local (data/, logs/) sẽ KHÔNG bị ảnh hưởng (đã trong .gitignore).
 </div>
 <form method="post" onsubmit="return confirm('Pull code mới từ git?')">
+<input type="hidden" name="csrf" value="<?= h($csrf) ?>">
 <input type="hidden" name="action" value="pull">
 <button class="btn danger" type="submit">⬇️ Pull code mới</button>
 </form>
@@ -127,6 +138,7 @@ Mọi file local (data/, logs/) sẽ KHÔNG bị ảnh hưởng (đã trong .git
 <div class="box">
 <h3>3. Migration database (nếu có)</h3>
 <form method="post" style="display:inline">
+<input type="hidden" name="csrf" value="<?= h($csrf) ?>">
 <input type="hidden" name="action" value="migrate">
 <button class="btn" type="submit">📋 List migration</button>
 </form>

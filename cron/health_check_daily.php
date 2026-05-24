@@ -62,7 +62,7 @@ try {
     $web = hclouHealthHttp(SITE_URL . '/');
     $checks[] = ['name' => 'Web home', 'ok' => $web['ok'], 'detail' => 'HTTP ' . $web['code']];
 
-    $api = hclouHealthHttp(SITE_URL . '/api/?action=games');
+    $api = hclouHealthHttp(SITE_URL . '/backend/api/index.php?action=games');
     $apiJson = json_decode($api['body'], true);
     $checks[] = ['name' => 'Mini App API games', 'ok' => $api['ok'] && is_array($apiJson), 'detail' => 'HTTP ' . $api['code']];
 

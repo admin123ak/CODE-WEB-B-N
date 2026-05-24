@@ -70,7 +70,8 @@ function handleGameIconUpload() {
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mime = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
-    $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/svg+xml' => 'svg', 'image/gif' => 'gif'];
+    // SVG bị loại vì có thể chứa <script> → XSS khi user mở trực tiếp URL SVG (same-origin).
+    $allowed = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/gif' => 'gif'];
     if (!isset($allowed[$mime])) return '';
 
     $ext = $allowed[$mime];

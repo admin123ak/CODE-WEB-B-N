@@ -86,7 +86,7 @@ try {
     $home = hclouMonHttp(SITE_URL . '/', 12);
     $checks[] = hclouMonResult('Web home', $home['ok'], 'HTTP ' . $home['code'] . ' / ' . $home['ms'] . 'ms');
 
-    $api = hclouMonHttp(SITE_URL . '/api/?action=games', 12);
+    $api = hclouMonHttp(SITE_URL . '/backend/api/index.php?action=games', 12);
     $apiJson = json_decode($api['body'], true);
     $checks[] = hclouMonResult('Mini App API games', $api['ok'] && is_array($apiJson), 'HTTP ' . $api['code'] . ' / ' . $api['ms'] . 'ms');
 
