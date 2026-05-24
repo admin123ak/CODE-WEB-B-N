@@ -748,6 +748,104 @@ $buildWalletUrl = function($r, $q) { $qs = ['tab'=>'wallet']; if ($r !== '') $qs
 </div>
 <p style="color:#6e7681;font-size:12px;margin-top:10px">Hiển thị tối đa 200 bút toán gần nhất. Lọc theo lý do / tìm user để zoom in.</p>
 
+<h2 style="margin-top:30px">📥 Topup requests (yêu cầu nạp)</h2>
+<?php
+$tr_method = $_GET['tm'] ?? '';
+$tr_status = $_GET['ts'] ?? '';
+$tr_methods = ['mbbank','binance','card'];
+$tr_statuses = ['pending','approved','rejected','expired'];
+if ($tr_method !== '' && !in_array($tr_method, $tr_methods, true)) $tr_method = '';
+if ($tr_status !== '' && !in_array($tr_status, $tr_statuses, true)) $tr_status = '';
+
+$trWhere = []; $trParams = [];
+if ($tr_method !== '') { $trWhere[] = 'tr.method=?'; $trParams[] = $tr_method; }
+if ($tr_status !== '') { $trWhere[] = 'tr.status=?'; $trParams[] = $tr_status; }
+$trSqlWhere = $trWhere ? ('WHERE '.implode(' AND ', $trWhere)) : '';
+
+$trStmt = $db->prepare("SELECT tr.*, u.telegram_username, u.telegram_id
+    FROM topup_requests tr
+    JOIN users u ON tr.user_id = u.id
+    $trSqlWhere
+    ORDER BY tr.id DESC LIMIT 50");
+$trStmt->execute($trParams);
+$topups = $trStmt->fetchAll();
+
+$tr24 = $db->query("SELECT method, status, COUNT(*) c
+    FROM topup_requests
+    WHERE created_at > NOW() - INTERVAL 24 HOUR
+    GROUP BY method, status")->fetchAll();
+$tr24Total = 0; $tr24Approved = 0; $tr24Rejected = 0; $tr24Pending = 0;
+foreach ($tr24 as $r) {
+    $tr24Total += (int)$r['c'];
+    if ($r['status'] === 'approved') $tr24Approved += (int)$r['c'];
+    elseif ($r['status'] === 'rejected') $tr24Rejected += (int)$r['c'];
+    elseif ($r['status'] === 'pending') $tr24Pending += (int)$r['c'];
+}
+$tr24FailRate = $tr24Total > 0 ? round(($tr24Rejected / $tr24Total) * 100, 1) : 0;
+$failColor = $tr24FailRate >= 30 ? 'red' : ($tr24FailRate >= 10 ? 'orange' : 'green');
+
+$methodLabel = ['mbbank'=>'🏦 MBBank','binance'=>'🪙 Binance','card'=>'🎴 Card'];
+$statusLabel = ['pending'=>'⏳ Chờ','approved'=>'✅ Duyệt','rejected'=>'❌ Từ chối','expired'=>'⌛ Hết hạn'];
+$statusColor = ['pending'=>'orange','approved'=>'green','rejected'=>'red','expired'=>'gray'];
+$methodColor = ['mbbank'=>'blue','binance'=>'orange','card'=>'purple'];
+$buildTopupUrl = function($r, $q, $tm, $ts) {
+    $qs = ['tab'=>'wallet'];
+    if ($r !== '') $qs['r'] = $r;
+    if ($q !== '') $qs['q'] = $q;
+    if ($tm !== '') $qs['tm'] = $tm;
+    if ($ts !== '') $qs['ts'] = $ts;
+    return '?' . http_build_query($qs) . '#topup';
+};
+?>
+<div id="topup" class="stats-grid" style="margin-top:10px">
+  <div class="stat-card"><div class="stat-val blue"><?=$tr24Total?></div><div class="stat-label">Tổng request 24h</div></div>
+  <div class="stat-card"><div class="stat-val green"><?=$tr24Approved?></div><div class="stat-label">Approved 24h</div></div>
+  <div class="stat-card"><div class="stat-val orange"><?=$tr24Pending?></div><div class="stat-label">Còn pending 24h</div></div>
+  <div class="stat-card"><div class="stat-val <?=$failColor?>"><?=$tr24Rejected?> <small style="font-size:13px;color:#8b949e">(<?=$tr24FailRate?>%)</small></div><div class="stat-label">Rejected 24h / fail rate</div></div>
+</div>
+
+<div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <span style="color:#8b949e">Method:</span>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, '', $tr_status))?>" class="btn <?=$tr_method===''?'btn-blue':'btn-gray'?>">Tất cả</a>
+  <?php foreach($methodLabel as $m=>$l): ?>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $m, $tr_status))?>" class="btn <?=$tr_method===$m?'btn-blue':'btn-gray'?>"><?=$l?></a>
+  <?php endforeach ?>
+</div>
+<div style="margin:0 0 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <span style="color:#8b949e">Status:</span>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $tr_method, ''))?>" class="btn <?=$tr_status===''?'btn-blue':'btn-gray'?>">Tất cả</a>
+  <?php foreach($statusLabel as $s=>$l): ?>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $tr_method, $s))?>" class="btn <?=$tr_status===$s?'btn-blue':'btn-gray'?>"><?=$l?></a>
+  <?php endforeach ?>
+</div>
+
+<div style="overflow-x:auto">
+<table>
+<tr><th>ID</th><th>User</th><th>Method</th><th>Yêu cầu</th><th>Cộng thực</th><th>Status</th><th>Detail</th><th>Created</th><th>Processed</th></tr>
+<?php foreach($topups as $tr):
+    $detail = '';
+    if ($tr['method'] === 'mbbank') $detail = $tr['unique_code'] ?? '';
+    elseif ($tr['method'] === 'binance') $detail = (($tr['crypto_amount'] ?? '') !== '' ? rtrim(rtrim($tr['crypto_amount'], '0'), '.') . ' USDT' : '');
+    elseif ($tr['method'] === 'card') $detail = trim(($tr['card_telco'] ?? '') . ' ' . (int)($tr['card_face_value'] ?? 0) . 'k');
+?>
+<tr>
+  <td class="mono"><?=$tr['id']?></td>
+  <td>@<?=h($tr['telegram_username'] ?? '--')?><br><small style="color:#8b949e">ID <?=h($tr['telegram_id'])?></small></td>
+  <td><span class="badge <?=h($methodColor[$tr['method']] ?? 'gray')?>" style="font-size:11px"><?=h($methodLabel[$tr['method']] ?? $tr['method'])?></span></td>
+  <td><?=number_format((float)$tr['amount_requested'],0,',','.')?> đ</td>
+  <td><?= $tr['amount_credited'] !== null ? number_format((float)$tr['amount_credited'],0,',','.').' đ' : '<span style="color:#6e7681">--</span>' ?></td>
+  <td><span class="badge <?=h($statusColor[$tr['status']] ?? 'gray')?>" style="font-size:11px"><?=h($statusLabel[$tr['status']] ?? $tr['status'])?></span></td>
+  <td class="mono" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?=h($detail)?>"><?=h($detail ?: '--')?></td>
+  <td style="font-size:11px;color:#8b949e"><?=date('d/m H:i',strtotime($tr['created_at']))?></td>
+  <td style="font-size:11px;color:#8b949e"><?= $tr['processed_at'] ? date('d/m H:i',strtotime($tr['processed_at'])) : '--' ?></td>
+</tr>
+<?php endforeach; if(!$topups): ?>
+<tr><td colspan="9"><p style="color:#8b949e;padding:20px;text-align:center">Chưa có topup request phù hợp.</p></td></tr>
+<?php endif ?>
+</table>
+</div>
+<p style="color:#6e7681;font-size:12px;margin-top:10px">Hiển thị 50 request gần nhất. Fail rate ≥ 30% (đỏ) = nên kiểm tra provider doithe.vn / config bank.</p>
+
 <?php elseif($tab==='keys'): ?>
 <h1>🔑 Quản lý Keys</h1>
 
