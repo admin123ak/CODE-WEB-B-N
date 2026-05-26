@@ -422,14 +422,20 @@ if (!$fk['is_active'] || strtotime($fk['expire_at']) < time()) {
 }
 
 // =============================================
-// Claim logic (web, IP dedupe)
+// Claim logic — flow 2 lớp shortlink giống Mini App
+// =============================================
+//  GET trần      → render form. Bấm "Nhận Key Ngay" → POST.
+//  POST          → build/lấy short_url (2 lớp YeuMoney + Link4M, target = getkey.php?t=token),
+//                  rồi 302 redirect user sang short_url.
+//  GET có ?t=    → user đã vượt 2 lớp về → claim atomic (IP dedupe) → hiện key.
 // =============================================
 $ip     = getClientIp();
 $ipHash = ipHash($ip);
 $today  = date('Y-m-d');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // 1) Đã claim chính free_key này từ IP này
+// === PATH 1: GET có ?t= → user về sau khi vượt 2 lớp → claim & hiện key ===
+if ($t && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    // a) Đã claim chính free_key này từ IP này
     $chk = $db->prepare("SELECT key_code, claimed_at FROM free_key_web_claims WHERE free_key_id = ? AND ip_hash = ? LIMIT 1");
     $chk->execute([$fk['id'], $ipHash]);
     if ($row = $chk->fetch()) {
@@ -437,7 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         shellClose();
     }
 
-    // 2) IP đã claim free key nào hôm nay
+    // b) IP đã claim free key nào hôm nay
     $chk2 = $db->prepare("SELECT key_code, claimed_at FROM free_key_web_claims WHERE ip_hash = ? AND claim_date = ? ORDER BY id DESC LIMIT 1");
     $chk2->execute([$ipHash, $today]);
     if ($row = $chk2->fetch()) {
@@ -445,7 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         shellClose();
     }
 
-    // 3) INSERT — race protected by UNIQUE
+    // c) INSERT — race protected
     try {
         $ins = $db->prepare("INSERT INTO free_key_web_claims (free_key_id, ip_hash, key_code, claim_date) VALUES (?, ?, ?, ?)");
         $ins->execute([$fk['id'], $ipHash, $fk['key_code'], $today]);
@@ -467,7 +473,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// GET — show form OR show already-claimed nếu IP đã có key hôm nay
+// === PATH 2: POST từ form → build short_url 2 lớp → redirect ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Nếu IP đã có key hôm nay → ko cần đi shortlink nữa, redirect về trang gốc để nó hiện key cũ
+    $chk = $db->prepare("SELECT id FROM free_key_web_claims WHERE ip_hash = ? AND claim_date = ? LIMIT 1");
+    $chk->execute([$ipHash, $today]);
+    if ($chk->fetch()) {
+        header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?'));
+        exit;
+    }
+
+    // Build/lấy short_url. Target = getkey.php?t=token (sau khi vượt 2 lớp user về đây)
+    $shortUrl = $fk['short_url'] ?? null;
+    if (!$shortUrl) {
+        $target = SITE_URL . '/getkey.php?t=' . urlencode($fk['claim_token']);
+        try {
+            $shortUrl = buildFreeShortlink($target);
+            $db->prepare("UPDATE free_keys SET short_url = ? WHERE id = ?")->execute([$shortUrl, $fk['id']]);
+        } catch (Exception $e) {
+            error_log('[GETKEY_SHORT] ' . $e->getMessage());
+            renderError('error_title', 'error_msg', $L);
+            shellClose();
+        }
+    }
+    header('Location: ' . $shortUrl);
+    exit;
+}
+
+// === PATH 3: GET trần → hiện form (hoặc key cũ nếu IP đã claim hôm nay) ===
 $chk = $db->prepare("SELECT key_code, claimed_at FROM free_key_web_claims WHERE ip_hash = ? AND claim_date = ? ORDER BY id DESC LIMIT 1");
 $chk->execute([$ipHash, $today]);
 if ($row = $chk->fetch()) {
