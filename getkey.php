@@ -293,29 +293,34 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-famil
 ';
 }
 
-// Render card khi chưa claim (form 1 nút)
-function renderForm($fk, $L, $LANG) {
-    $gameName = h($fk['game_name']);
-    $days     = (int)$fk['days'];
+// Render card khi chưa claim — dropdown chứa tất cả game active để user chọn
+function renderForm($fk, $fkList, $L, $LANG) {
+    $days = (int)$fk['days'];
     ?>
     <div class="free-card">
       <div class="free-icon"><?= gkSvg('diamond') ?></div>
       <div class="free-title"><?= h($L['card_title']) ?></div>
       <div class="free-sub"><?= h($L['card_sub']) ?></div>
-      <div class="free-badges">
-        <div class="free-badge"><?= gkSvg('clock') ?><?= $days ?> <?= h($L['days']) ?></div>
+      <div class="free-badges" id="fkBadges">
+        <div class="free-badge"><?= gkSvg('clock') ?><span id="fkDays"><?= $days ?></span> <?= h($L['days']) ?></div>
         <div class="free-badge"><?= gkSvg('full') ?><?= h($L['feat_full']) ?></div>
         <div class="free-badge"><?= gkSvg('device') ?><?= h($L['feat_device']) ?></div>
         <div class="free-badge"><?= gkSvg('shield') ?><?= h($L['feat_secure']) ?></div>
       </div>
-      <div class="free-select-block">
-        <label class="free-label"><?= h($L['lbl_game']) ?></label>
-        <div class="free-select-wrap">
-          <select class="free-select" disabled><option><?= $gameName ?></option></select>
-        </div>
-      </div>
       <form method="POST" class="free-form" id="claimForm" onsubmit="document.getElementById('claimBtn').classList.add('loading');document.getElementById('claimBtnText').textContent=<?= json_encode($L['btn_loading']) ?>;">
         <input type="hidden" name="lang" value="<?= h($LANG) ?>">
+        <div class="free-select-block">
+          <label class="free-label" for="fkSelect"><?= h($L['lbl_game']) ?></label>
+          <div class="free-select-wrap">
+            <select class="free-select" name="t" id="fkSelect">
+              <?php foreach ($fkList as $opt): ?>
+                <option value="<?= h($opt['claim_token']) ?>" data-days="<?= (int)$opt['days'] ?>" <?= $opt['id'] === $fk['id'] ? 'selected' : '' ?>>
+                  <?= h($opt['game_name']) ?> · <?= (int)$opt['days'] ?> <?= h($L['days']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
         <button type="submit" class="free-btn" id="claimBtn">
           <?= gkSvg('arrow') ?>
           <div class="free-spinner"></div>
@@ -324,6 +329,19 @@ function renderForm($fk, $L, $LANG) {
       </form>
       <div class="free-timer"><?= h($L['reset_daily']) ?></div>
     </div>
+    <script>
+    (function(){
+      var sel = document.getElementById('fkSelect');
+      var daysEl = document.getElementById('fkDays');
+      if(sel && daysEl){
+        sel.addEventListener('change', function(){
+          var opt = sel.options[sel.selectedIndex];
+          var d = opt.getAttribute('data-days');
+          if(d) daysEl.textContent = d;
+        });
+      }
+    })();
+    </script>
     <?php
 }
 
@@ -383,13 +401,27 @@ function renderError($titleKey, $msgKey, $L) {
 }
 
 // =============================================
-// LOAD free_key
+// LOAD free_keys
+// =============================================
+// $fkList: pool tất cả free_key đang active còn hạn → render dropdown để user chọn.
+// $fk: free_key đang "trỏ tới" — quyết định bằng:
+//   - GET ?t=<token> → fetch theo token
+//   - POST t=<token>  → fetch theo token user vừa chọn
+//   - Default       → free_key mới nhất trong pool
 // =============================================
 $db = getDB();
 $t  = $_GET['t'] ?? '';
 $fk = null;
 
+$fkList = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+    FROM free_keys fk
+    JOIN games g    ON fk.game_id    = g.id
+    JOIN packages p ON fk.package_id = p.id
+    WHERE fk.is_active = 1 AND fk.expire_at > NOW()
+    ORDER BY fk.created_at DESC")->fetchAll();
+
 if ($t) {
+    // Có ?t= → fetch chính xác (kể cả free_key đã hết hạn, để show 'expired')
     $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
         FROM free_keys fk
         JOIN games g    ON fk.game_id    = g.id
@@ -397,15 +429,15 @@ if ($t) {
         WHERE fk.claim_token = ?");
     $stmt->execute([$t]);
     $fk = $stmt->fetch();
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['t'])) {
+    // POST: user chọn game từ dropdown
+    $postT = $_POST['t'];
+    foreach ($fkList as $row) {
+        if ($row['claim_token'] === $postT) { $fk = $row; break; }
+    }
+    if (!$fk) $fk = $fkList[0] ?? null;  // token POST không khớp pool → fallback mới nhất
 } else {
-    $stmt = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
-        FROM free_keys fk
-        JOIN games g    ON fk.game_id    = g.id
-        JOIN packages p ON fk.package_id = p.id
-        WHERE fk.is_active = 1 AND fk.expire_at > NOW()
-        ORDER BY fk.created_at DESC
-        LIMIT 1");
-    $fk = $stmt->fetch();
+    $fk = $fkList[0] ?? null;
 }
 
 $ip     = getClientIp();
@@ -521,5 +553,5 @@ if ($claimedRow) {
     shellClose();
 }
 
-renderForm($fk, $L, $LANG);
+renderForm($fk, $fkList, $L, $LANG);
 shellClose();
