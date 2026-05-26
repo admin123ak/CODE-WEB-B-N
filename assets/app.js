@@ -1172,15 +1172,25 @@ async function claimDailyFree(){
         freeKeyLoaded = false;
         loadFreeKey();
       } else if(res.claim_url){
+        var claimUrl = safeUrl(res.claim_url);
+        // Auto mở link claim luôn — bỏ step "Open" manual.
+        // Telegram WebApp dùng openLink để bung browser ngoài, ngoài WebApp dùng location.href.
         var area = document.getElementById('claimLinkArea');
         if(area){
           area.style.display = 'flex';
-          var claimUrl = safeUrl(res.claim_url);
           area.innerHTML = '<span class="free-result-key">'+escapeHtml(claimUrl)+'</span>'
-            +'<button class="free-copy-btn" onclick="copyText('+jsAttr(claimUrl)+','+jsAttr(T.freeCopiedLink)+')">Copy</button>'
-            +'<button class="free-copy-btn" style="background:rgba(124,111,224,.18)" onclick="window.open('+jsAttr(claimUrl)+',\'_blank\')">Open</button>';
+            +'<button class="free-copy-btn" onclick="copyText('+jsAttr(claimUrl)+','+jsAttr(T.freeCopiedLink)+')">Copy</button>';
         }
         if(btn){ btn.classList.remove('loading'); btn.disabled=true; if(txt) txt.textContent=T.freeLinkCreated; }
+        setTimeout(function(){
+          try{
+            if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){
+              window.Telegram.WebApp.openLink(claimUrl);
+            } else {
+              window.location.href = claimUrl;
+            }
+          }catch(e){ window.location.href = claimUrl; }
+        },120);
       } else {
         toast(res.message || T.freeClaimOk,'success');
         freeKeyLoaded = false;
