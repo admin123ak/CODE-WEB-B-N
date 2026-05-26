@@ -281,6 +281,10 @@ function renderKeyBox($keyCode, $gameName, $days, $siteUrl, array $L) {
 // =============================================
 // Load free_key
 // =============================================
+// 2 mode:
+//  - Có ?t=<token>: nhận đúng free_key được chỉ định (tương thích link cũ).
+//  - Không token: server tự pick free_key mới nhất đang active còn hạn.
+// =============================================
 $db = getDB();
 $t  = $_GET['t'] ?? '';
 $fk = null;
@@ -292,6 +296,15 @@ if ($t) {
         JOIN packages p ON fk.package_id = p.id
         WHERE fk.claim_token = ?");
     $stmt->execute([$t]);
+    $fk = $stmt->fetch();
+} else {
+    $stmt = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+        FROM free_keys fk
+        JOIN games g    ON fk.game_id    = g.id
+        JOIN packages p ON fk.package_id = p.id
+        WHERE fk.is_active = 1 AND fk.expire_at > NOW()
+        ORDER BY fk.created_at DESC
+        LIMIT 1");
     $fk = $stmt->fetch();
 }
 
