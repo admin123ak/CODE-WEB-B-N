@@ -302,6 +302,26 @@ CREATE TABLE `free_key_claims` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
+-- TABLE: free_key_web_claims
+-- Track claim từ getkey.php (web, không cần Telegram).
+-- Dedupe theo IP hash: 1 free key/IP/ngày.
+-- =============================================
+DROP TABLE IF EXISTS `free_key_web_claims`;
+CREATE TABLE `free_key_web_claims` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `free_key_id` INT(11) NOT NULL,
+  `ip_hash` CHAR(64) NOT NULL,
+  `key_code` VARCHAR(100) NOT NULL,
+  `claim_date` DATE NOT NULL,
+  `claimed_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_webclaim_freekey_ip` (`free_key_id`, `ip_hash`),
+  UNIQUE KEY `uniq_webclaim_ip_date` (`ip_hash`, `claim_date`),
+  KEY `idx_webclaim_date` (`claim_date`),
+  CONSTRAINT `fk_webclaim_freekey` FOREIGN KEY (`free_key_id`) REFERENCES `free_keys` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
 -- SEED DATA: GAMES + PACKAGES MẶC ĐỊNH
 -- (Có thể sửa qua admin panel sau khi cài)
 -- =============================================
