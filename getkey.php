@@ -293,8 +293,8 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-famil
 ';
 }
 
-// Render card khi chưa claim — dropdown chứa tất cả game active để user chọn
-function renderForm($fk, $fkList, $L, $LANG) {
+// Render card khi chưa claim — dropdown unique game, server tự pick free_key mới nhất
+function renderForm($fk, $gameList, $L, $LANG) {
     $days = (int)$fk['days'];
     ?>
     <div class="free-card">
@@ -312,10 +312,10 @@ function renderForm($fk, $fkList, $L, $LANG) {
         <div class="free-select-block">
           <label class="free-label" for="fkSelect"><?= h($L['lbl_game']) ?></label>
           <div class="free-select-wrap">
-            <select class="free-select" name="t" id="fkSelect">
-              <?php foreach ($fkList as $opt): ?>
-                <option value="<?= h($opt['claim_token']) ?>" data-days="<?= (int)$opt['days'] ?>" <?= $opt['id'] === $fk['id'] ? 'selected' : '' ?>>
-                  <?= h($opt['game_name']) ?> · <?= (int)$opt['days'] ?> <?= h($L['days']) ?>
+            <select class="free-select" name="game_id" id="fkSelect">
+              <?php foreach ($gameList as $g): ?>
+                <option value="<?= (int)$g['game_id'] ?>" data-days="<?= (int)$g['days'] ?>" <?= (int)$g['game_id'] === (int)$fk['game_id'] ? 'selected' : '' ?>>
+                  <?= h($g['game_name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -403,25 +403,39 @@ function renderError($titleKey, $msgKey, $L) {
 // =============================================
 // LOAD free_keys
 // =============================================
-// $fkList: pool tất cả free_key đang active còn hạn → render dropdown để user chọn.
+// Dropdown chỉ hiện UNIQUE game (mỗi game 1 dòng).
+// User chọn game → server tự pick free_key MỚI NHẤT còn hạn của game đó
+// → mỗi free_key có short_url riêng nên 2 free_key cùng game vẫn vượt link khác nhau.
 // $fk: free_key đang "trỏ tới" — quyết định bằng:
-//   - GET ?t=<token> → fetch theo token
-//   - POST t=<token>  → fetch theo token user vừa chọn
-//   - Default       → free_key mới nhất trong pool
+//   - GET ?t=<token>      → fetch theo token (sau khi vượt link về)
+//   - POST game_id=<id>   → free_key mới nhất của game đó
+//   - Default            → free_key mới nhất trong pool
 // =============================================
 $db = getDB();
 $t  = $_GET['t'] ?? '';
 $fk = null;
 
-$fkList = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+// Pool tất cả free_keys active để pick + render dropdown unique game
+$pool = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
     FROM free_keys fk
     JOIN games g    ON fk.game_id    = g.id
     JOIN packages p ON fk.package_id = p.id
     WHERE fk.is_active = 1 AND fk.expire_at > NOW()
     ORDER BY fk.created_at DESC")->fetchAll();
 
+// Dedupe theo game_id → giữ free_key mới nhất mỗi game (cho dropdown)
+$gameList = [];
+$latestByGame = [];
+foreach ($pool as $row) {
+    $gid = (int)$row['game_id'];
+    if (!isset($latestByGame[$gid])) {
+        $latestByGame[$gid] = $row;
+        $gameList[] = ['game_id' => $gid, 'game_name' => $row['game_name'], 'days' => (int)$row['days']];
+    }
+}
+
 if ($t) {
-    // Có ?t= → fetch chính xác (kể cả free_key đã hết hạn, để show 'expired')
+    // GET có ?t= → fetch chính xác theo token (kể cả expired để show 'expired')
     $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
         FROM free_keys fk
         JOIN games g    ON fk.game_id    = g.id
@@ -429,15 +443,11 @@ if ($t) {
         WHERE fk.claim_token = ?");
     $stmt->execute([$t]);
     $fk = $stmt->fetch();
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['t'])) {
-    // POST: user chọn game từ dropdown
-    $postT = $_POST['t'];
-    foreach ($fkList as $row) {
-        if ($row['claim_token'] === $postT) { $fk = $row; break; }
-    }
-    if (!$fk) $fk = $fkList[0] ?? null;  // token POST không khớp pool → fallback mới nhất
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['game_id'])) {
+    $pickGid = (int)$_POST['game_id'];
+    $fk = $latestByGame[$pickGid] ?? ($pool[0] ?? null);
 } else {
-    $fk = $fkList[0] ?? null;
+    $fk = $pool[0] ?? null;
 }
 
 $ip     = getClientIp();
@@ -553,5 +563,5 @@ if ($claimedRow) {
     shellClose();
 }
 
-renderForm($fk, $fkList, $L, $LANG);
+renderForm($fk, $gameList, $L, $LANG);
 shellClose();
