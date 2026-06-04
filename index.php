@@ -265,9 +265,19 @@
       </div>
 
       <div class="card">
-        <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn loại acc</span></div>
+        <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn game & loại acc</span></div>
+        <div style="padding:0 12px 4px">
+          <div class="game-btn" id="accGameBtnEl" onclick="openAccGameModal()">
+            <div class="game-emoji" id="accGIcon">&#x1F3AE;</div>
+            <div style="flex:1">
+              <div class="game-title" id="accGName">Nhấn chọn game</div>
+              <div class="game-pkgname" id="accGPkg">Chưa chọn game</div>
+            </div>
+            <div class="chev">&#x203A;</div>
+          </div>
+        </div>
         <div id="accTypeList" class="pkg-list">
-          <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Ch&#x1ECD;n game &#x1EDF; tab Mua Key</div>
+          <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
         </div>
         <div class="action-bar">
           <div style="width:50px"></div>

@@ -271,7 +271,6 @@ function pickGame(gid){
   document.getElementById('gameBtnEl').classList.add('chosen');
   updPlayBtn();
   updBuyBtn(); loadPkgs(selGame.id);
-  selAccType=null; hideAccSection(); loadAccTypes();
 }
 
 async function loadPkgs(gid){
@@ -1302,19 +1301,56 @@ async function loadProfile(){
 // =============================================
 // ACC SELLING
 // =============================================
-var selAccType=null, accTypes=[], accOrdering=false;
+var selAccGame=null, selAccType=null, accTypes=[], accOrdering=false;
 
 function hideAccSection(){
   var el=document.getElementById('accTypeList');
   if(el) el.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Ch&#x1ECD;n game tr&#x1B0;&#x1EDB;c</div>';
 }
 
+function openAccGameModal(){
+  if(!gCache.length){
+    toast('Chưa tải danh sách game','error');
+    return;
+  }
+  document.getElementById('gameModal').classList.add('show');
+  var html='';
+  gCache.forEach(function(g){
+    var iconUrl=safeUrl(g.icon_url);
+    var pkg=safePackageName(g.package_name);
+    var ic=iconUrl?'<img src="'+escapeHtml(iconUrl)+'" alt="">':(ICONS[pkg]||'🎮');
+    var tag=g.type==='VIP'?'<span class="vip-tag">⭐ VIP</span>':'<span class="normal-tag">NORMAL</span>';
+    var sel=(selAccGame&&selAccGame.id==g.id)?' on':'';
+    html+='<div class="mgame'+sel+'" onclick="pickAccGame('+(parseInt(g.id,10)||0)+')">'
+      +'<div class="game-emoji">'+ic+'</div>'
+      +'<div style="flex:1"><div class="game-title">'+escapeHtml(g.name)+tag+'</div>'
+      +'<div class="game-pkgname">'+escapeHtml(pkg)+'</div>'
+      +'<div class="game-roottype">'+escapeHtml(g.root_type)+'</div></div>'
+      +'<div class="chev">&#x203A;</div></div>';
+  });
+  document.getElementById('gameList').innerHTML=html||'<div class="loading">'+T.dangTaiGame+'</div>';
+  initMotion();
+}
+function pickAccGame(gid){
+  gCache.forEach(function(g){ if(g.id==gid) selAccGame=g; });
+  if(!selAccGame)return;
+  closeModal('gameModal');
+  if(selAccGame.icon_url){ document.getElementById('accGIcon').innerHTML='<img src="'+escapeHtml(safeUrl(selAccGame.icon_url))+'" alt="">'; }
+  else { document.getElementById('accGIcon').textContent=ICONS[selAccGame.package_name]||'🎮'; }
+  document.getElementById('accGName').textContent=selAccGame.name;
+  document.getElementById('accGPkg').textContent=selAccGame.package_name;
+  document.getElementById('accGameBtnEl').classList.add('chosen');
+  selAccType=null;
+  loadAccTypes();
+  updAccBuyBtn();
+}
+
 async function loadAccTypes(){
-  if(!selGame) return;
+  if(!selAccGame) return;
   var el=document.getElementById('accTypeList');
   el.innerHTML='<div class="loading"><div class="spin" style="width:22px;height:22px;border-width:2px"></div></div>';
   try{
-    var res=await api('account_types&game_id='+selGame.id);
+    var res=await api('account_types&game_id='+selAccGame.id);
     if(res.success && res.account_types && res.account_types.length){
       accTypes=res.account_types;
       var html='';
@@ -1345,7 +1381,7 @@ function pickAccType(tid,el){
 function updAccBuyBtn(){
   var btn=document.getElementById('accBuyBtn');
   var sub=document.getElementById('accBuySub');
-  if(selGame && selAccType && parseInt(selAccType.stock)>0){
+  if(selAccGame && selAccType && parseInt(selAccType.stock)>0){
     btn.classList.add('go');
     sub.textContent=escapeHtml(selAccType.name)+' | '+fmtMoney(selAccType.price)+'&#x111;';
   } else {
@@ -1354,7 +1390,7 @@ function updAccBuyBtn(){
   }
 }
 async function doAccOrder(){
-  if(!selGame||!selAccType||accOrdering) return;
+  if(!selAccGame||!selAccType||accOrdering) return;
   var avail=parseInt(selAccType.stock)||0;
   if(avail<1){ toast('H&#x1EBF;t acc lo&#x1EA1;i n&#xE0;y','error'); return; }
   await fetchPaymentOptions();
@@ -1390,19 +1426,19 @@ function showAccConfirm(){
   document.querySelector('#confirmModal .confirm-btn.cancel').textContent='Hu&#x1EF7;y';
   document.querySelector('#confirmModal .confirm-btn.ok').textContent='&#x110;&#x1ED3;ng &#xFD;';
   var accName=selAccType?selAccType.name:'';
-  var gameName=selGame?selGame.name:'';
+  var gameName=selAccGame?selAccGame.name:'';
   document.getElementById('confirmContent').innerHTML='B&#x1EA1;n &#x111;ang mua: <b>'+escapeHtml(accName)+'</b> cho game <b>'+escapeHtml(gameName)+'</b>, gi&#xE1; <b>'+fmtMoney(selAccType?selAccType.price:0)+'&#x111;</b>.';
   document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmAccOrder;
   document.getElementById('confirmModal').classList.add('show');
 }
 async function confirmAccOrder(){
-  if(!selGame||!selAccType||accOrdering)return;
+  if(!selAccGame||!selAccType||accOrdering)return;
   closeModal('confirmModal');
   accOrdering=true;
   var btn=document.getElementById('accBuyBtn');
   btn.innerHTML='<div class="spin" style="width:20px;height:20px;border-width:2px;margin:0"></div>';
   btn.classList.remove('go');
-  var res=await api('create_account_order','POST',{game_id:selGame.id,account_type_id:selAccType.id,payment_method:selectedPaymentMethod});
+  var res=await api('create_account_order','POST',{game_id:selAccGame.id,account_type_id:selAccType.id,payment_method:selectedPaymentMethod});
   accOrdering=false;
   btn.classList.add('go');
   updAccBuyBtn();
