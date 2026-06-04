@@ -162,6 +162,31 @@
       <div class="note-txt">&#x26A0;&#xFE0F; Kh&#xF4;ng nh&#x1EAD;n card: N&#x1EBF;u kh&#xF4;ng c&#xF3; t&#xE0;i kho&#x1EA3;n ng&#xE2;n h&#xE0;ng, t&#x1EA1;o m&#xE3; QR v&#xE0; nh&#x1EDD; ng&#x01B0;&#x1EDD;i kh&#xE1;c qu&#xE9;t h&#x1ED9; &#x111;&#x1EC3; nh&#x1EAD;n key.</div>
     </div>
 
+    <!-- Mua Acc section -->
+    <div class="sec-head">
+      <div class="sec-icon" style="background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(139,92,246,.08));border-color:rgba(168,85,247,.35);box-shadow:0 0 24px rgba(168,85,247,.25)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div>
+        <div class="sec-title" style="background:linear-gradient(135deg,#fff 0%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Mua Acc</div>
+        <div class="sec-sub">Chọn loại acc (Google, Facebook...)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn loại acc</span></div>
+      <div id="accTypeList" class="pkg-list">
+        <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
+      </div>
+      <div class="action-bar">
+        <div style="width:50px"></div>
+        <div style="width:50px"></div>
+        <button class="buy-btn" id="accBuyBtn" onclick="doAccOrder()">
+          <span>Mua Acc</span>
+          <span class="buy-sub" id="accBuySub">Chưa chọn loại acc</span>
+        </button>
+      </div>
+      <div class="note-txt">&#x26A0;&#xFE0F; Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.</div>
+    </div>
+
     <div class="key-head">
       <div class="key-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-2 2-3 3"/><circle cx="8" cy="16" r="5"/><path d="M10.8 13.2L21 3"/></svg></div>
       <div>

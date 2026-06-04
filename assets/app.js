@@ -271,6 +271,7 @@ function pickGame(gid){
   document.getElementById('gameBtnEl').classList.add('chosen');
   updPlayBtn();
   updBuyBtn(); loadPkgs(selGame.id);
+  selAccType=null; hideAccSection(); loadAccTypes();
 }
 
 async function loadPkgs(gid){
@@ -591,6 +592,7 @@ function showOrderConfirm(){
     ? '<div style="margin-top:8px;font-size:12px;color:#fbbf24">'+T.payViaBnb+'</div>'
     : '<div style="margin-top:8px;font-size:12px;color:#67e8f9">'+T.payViaMbb+'</div>';
   document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame + qtyTag + payTag;
+  document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmCreateOrder;
   document.getElementById('confirmModal').classList.add('show');
 }
 function cancelOrderConfirm(){
@@ -968,6 +970,22 @@ async function loadKeys(filter){
   animNum('stExpired',s.expired||0);
   document.getElementById('keyCntLbl').textContent=(s.total||0)+' key';
   renderKeys(allKeys);
+
+  // Load accounts too
+  try {
+    var accRes=await api('my_accounts');
+    if(accRes.success && accRes.accounts && accRes.accounts.length){
+      accRes.accounts.forEach(function(acc){
+        var card=document.createElement('div');
+        card.className='kcard is-active';
+        card.innerHTML='<div class="kc-head"><div class="kc-gt"><div class="kt-tag" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));color:var(--purple2)">ACC</div><div class="kc-gn">'+escapeHtml(acc.game_name)+'</div></div><span class="kc-st st-active">&#x1F49A; &#x110;&#xE3; nh&#x1EAD;n</span></div>'
+          +'<div class="kc-body"><div class="kc-row"><span class="kc-l">T&#xE0;i kho&#x1EA3;n</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.username)+',\'&#x110;&#xE3; copy tk!\')">'+escapeHtml(acc.username)+' &#x1F4CB;</span></div>'
+          +'<div class="kc-row"><span class="kc-l">M&#x1EAD;t kh&#x1EA9;u</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.password)+',\'&#x110;&#xE3; copy mk!\')">'+escapeHtml(acc.password)+' &#x1F4CB;</span></div>'
+          +'<div class="kc-row"><span class="kc-l">Lo&#x1EA1;i</span><span class="kc-v">'+escapeHtml(acc.type_name)+'</span></div></div>';
+        wrap.insertBefore(card, wrap.firstChild);
+      });
+    }
+  } catch(e){}
 }
 function animNum(id,val){
   var el=document.getElementById(id),cur=0,step=Math.ceil((val||1)/20);
@@ -1295,6 +1313,124 @@ async function loadProfile(){
     }
   } catch(e){}
 }
+
+// =============================================
+// ACC SELLING
+// =============================================
+var selAccType=null, accTypes=[], accOrdering=false;
+
+function hideAccSection(){
+  var el=document.getElementById('accTypeList');
+  if(el) el.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Ch&#x1ECD;n game tr&#x1B0;&#x1EDB;c</div>';
+}
+
+async function loadAccTypes(){
+  if(!selGame) return;
+  var el=document.getElementById('accTypeList');
+  el.innerHTML='<div class="loading"><div class="spin" style="width:22px;height:22px;border-width:2px"></div></div>';
+  try{
+    var res=await api('account_types&game_id='+selGame.id);
+    if(res.success && res.account_types && res.account_types.length){
+      accTypes=res.account_types;
+      var html='';
+      accTypes.forEach(function(t){
+        var avail=parseInt(t.stock)||0;
+        var stockTag=avail>0?' <span style="color:var(--green2);font-weight:800;font-size:11px">('+avail+' c&#xF2;n)</span>':' <span style="color:var(--red2);font-weight:800;font-size:11px">(H&#x1EBF;t)</span>';
+        var sel=(selAccType&&selAccType.id==t.id)?' on':'';
+        html+='<div class="pkg-row'+sel+'" onclick="pickAccType('+t.id+',this)">'
+          +'<div><div class="pkg-days">'+escapeHtml(t.name)+'</div>'
+          +'<div class="pkg-mode" style="font-size:11px;color:var(--text2)">Acc '+escapeHtml(t.name)+stockTag+'</div></div>'
+          +'<div class="pkg-cost">'+fmtMoney(t.price)+'&#x111;</div></div>';
+      });
+      el.innerHTML=html;
+    } else {
+      el.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px;font-size:13px">Ch&#x1B0;a c&#xF3; lo&#x1EA1;i acc n&#xE0;o</div>';
+    }
+  }catch(e){
+    el.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px;font-size:13px">L&#x1ED7;i t&#x1EA3;i lo&#x1EA1;i acc</div>';
+  }
+}
+function pickAccType(tid,el){
+  accTypes.forEach(function(t){ if(t.id==tid) selAccType=t; });
+  if(!selAccType)return;
+  document.querySelectorAll('#accTypeList .pkg-row').forEach(function(e){ e.classList.remove('on'); });
+  el.classList.add('on');
+  updAccBuyBtn();
+}
+function updAccBuyBtn(){
+  var btn=document.getElementById('accBuyBtn');
+  var sub=document.getElementById('accBuySub');
+  if(selGame && selAccType && parseInt(selAccType.stock)>0){
+    btn.classList.add('go');
+    sub.textContent=escapeHtml(selAccType.name)+' | '+fmtMoney(selAccType.price)+'&#x111;';
+  } else {
+    btn.classList.remove('go');
+    sub.textContent='Ch&#x1B0;a ch&#x1ECD;n lo&#x1EA1;i acc';
+  }
+}
+async function doAccOrder(){
+  if(!selGame||!selAccType||accOrdering) return;
+  var avail=parseInt(selAccType.stock)||0;
+  if(avail<1){ toast('H&#x1EBF;t acc lo&#x1EA1;i n&#xE0;y','error'); return; }
+  await fetchPaymentOptions();
+  var nOn=(paymentOptions.mbbank?1:0)+(paymentOptions.binance?1:0)+(paymentOptions.card?1:0);
+  if(nOn>=2){ showAccPaymentPicker(); return; }
+  if(paymentOptions.binance){ selectedPaymentMethod='binance'; showAccConfirm(); return; }
+  if(paymentOptions.card){ selectedPaymentMethod='card'; openCardForOrder(); return; }
+  selectedPaymentMethod='mbbank';
+  showAccConfirm();
+}
+function showAccPaymentPicker(){
+  document.querySelector('#confirmModal .mtitle').textContent='&#x1F4B3; Ch&#x1ECD;n ph&#x1B0;&#x1EDD;ng th&#x1EE9;c thanh to&#xE1;n';
+  var btnBase='display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:14px;text-align:left;cursor:pointer;font-family:inherit';
+  var html='<div style="display:flex;flex-direction:column;gap:10px;margin:4px 0">';
+  if(paymentOptions.mbbank){
+    html+='<button onclick="pickAccPayment(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">&#x1F3E6;</span><span><b>MBBank</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Chuy&#x1EC3;n kho&#x1EA3;n VietQR &#xB7; T&#x1EF1; duy&#x1EC7;t 1 ph&#xFA;t</div></span></button>';
+  }
+  if(paymentOptions.binance){
+    html+='<button onclick="pickAccPayment(\'binance\')" style="'+btnBase+';border-color:rgba(240,185,11,.4);background:linear-gradient(135deg,rgba(240,185,11,.14),rgba(243,186,47,.06))"><span style="font-size:24px">&#x1FA99;</span><span><b>Binance USDT (TRC20)</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Crypto &#xB7; Auto detect on-chain</div></span></button>';
+  }
+  html+='</div>';
+  document.getElementById('confirmContent').innerHTML=html;
+  document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='none';
+  document.getElementById('confirmModal').classList.add('show');
+}
+function pickAccPayment(method){
+  selectedPaymentMethod=method;
+  document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
+  showAccConfirm();
+}
+function showAccConfirm(){
+  document.querySelector('#confirmModal .mtitle').textContent='X&#xE1;c nh&#x1EAD;n';
+  document.querySelector('#confirmModal .confirm-btn.cancel').textContent='Hu&#x1EF7;y';
+  document.querySelector('#confirmModal .confirm-btn.ok').textContent='&#x110;&#x1ED3;ng &#xFD;';
+  var accName=selAccType?selAccType.name:'';
+  var gameName=selGame?selGame.name:'';
+  document.getElementById('confirmContent').innerHTML='B&#x1EA1;n &#x111;ang mua: <b>'+escapeHtml(accName)+'</b> cho game <b>'+escapeHtml(gameName)+'</b>, gi&#xE1; <b>'+fmtMoney(selAccType?selAccType.price:0)+'&#x111;</b>.';
+  document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmAccOrder;
+  document.getElementById('confirmModal').classList.add('show');
+}
+async function confirmAccOrder(){
+  if(!selGame||!selAccType||accOrdering)return;
+  closeModal('confirmModal');
+  accOrdering=true;
+  var btn=document.getElementById('accBuyBtn');
+  btn.innerHTML='<div class="spin" style="width:20px;height:20px;border-width:2px;margin:0"></div>';
+  btn.classList.remove('go');
+  var res=await api('create_account_order','POST',{game_id:selGame.id,account_type_id:selAccType.id,payment_method:selectedPaymentMethod});
+  accOrdering=false;
+  btn.classList.add('go');
+  updAccBuyBtn();
+  if(res.success){
+    showPay(res);
+    loadAccTypes();
+  } else {
+    toast(res.error||'L&#x1ED7;i t&#x1EA1;o &#x111;&#x1EDD;n','error');
+  }
+}
+// (cancelOrderConfirm + confirmCreateOrder kept at original location above, do not duplicate)
+
+// END ACC SELLING
 
 var scrollTick=false;
 document.addEventListener('DOMContentLoaded',function(){

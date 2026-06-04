@@ -354,27 +354,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'approve_order') {
         $order_code = $_POST['order_code'] ?? '';
         if (!$order_code) { header("Location: ?tab=orders&err=".urlencode('Thiếu order_code')); exit; }
-        $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
-        $stmt->execute([$order_code]);
-        $order = $stmt->fetch();
-        if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
-        $db->beginTransaction();
-        try {
-            $now = date('Y-m-d H:i:s');
-            $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
-            // Atomic: chỉ approve nếu vẫn pending - kiểm tra rowCount
-            $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=? AND status='pending'");
-            $upOrder->execute([$order_code]);
-            if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
-            $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
-               ->execute([$now, $expire, $order['id']]);
-            $db->commit();
-            logInfo('Admin approved order', ['order' => $order_code]);
-            if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
-        } catch (Exception $e) {
-            if ($db->inTransaction()) $db->rollBack();
-            logError('Admin approve fail', ['order' => $order_code, 'err' => $e->getMessage()]);
-            header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit;
+        // Xác định loại đơn (key hay account)
+        $otStmt = $db->prepare("SELECT order_type FROM orders WHERE order_code=? AND status='pending'");
+        $otStmt->execute([$order_code]);
+        $otRow = $otStmt->fetch();
+        if (!$otRow) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
+        $isAcc = ($otRow['order_type'] === 'account');
+
+        if ($isAcc) {
+            // Đơn acc
+            $stmt = $db->prepare("SELECT o.*, u.telegram_id, g.name as game_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id WHERE o.order_code=? AND o.status='pending'");
+            $stmt->execute([$order_code]);
+            $order = $stmt->fetch();
+            if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
+            $db->beginTransaction();
+            try {
+                $accStmt = $db->prepare("SELECT id, username, `password` FROM accounts WHERE order_id=? AND status='pending' LIMIT 1");
+                $accStmt->execute([$order['id']]);
+                $acc = $accStmt->fetch();
+                if (!$acc) throw new Exception('Không tìm thấy acc pending');
+
+                $now = date('Y-m-d H:i:s');
+                $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=? AND status='pending'");
+                $upOrder->execute([$order_code]);
+                if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
+
+                $db->prepare("UPDATE accounts SET status='sold', sold_at=? WHERE id=? AND status='pending'")
+                   ->execute([$now, $acc['id']]);
+                $db->commit();
+                logInfo('Admin approved account order', ['order' => $order_code]);
+                if ($order['telegram_id']) sendTelegram($order['telegram_id'],
+                    "✅ <b>Đơn Acc #" . h($order_code) . " đã được admin duyệt!</b>\n\n" .
+                    "🎮 " . h($order['game_name']) . "\n" .
+                    "👤 Tài khoản: <code>" . h($acc['username']) . "</code>\n" .
+                    "🔑 Mật khẩu: <code>" . h($acc['password']) . "</code>\n\n" .
+                    "⚠️ Vào game kiểm tra ngay. Đổi mật khẩu sau khi đăng nhập.");
+            } catch (Exception $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                logError('Admin approve acc fail', ['order' => $order_code, 'err' => $e->getMessage()]);
+                header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit;
+            }
+        } else {
+            // Đơn key (logic cũ)
+            $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+            $stmt->execute([$order_code]);
+            $order = $stmt->fetch();
+            if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
+            $db->beginTransaction();
+            try {
+                $now = date('Y-m-d H:i:s');
+                $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
+                $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=? AND status='pending'");
+                $upOrder->execute([$order_code]);
+                if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
+                $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
+                   ->execute([$now, $expire, $order['id']]);
+                $db->commit();
+                logInfo('Admin approved order', ['order' => $order_code]);
+                if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
+            } catch (Exception $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                logError('Admin approve fail', ['order' => $order_code, 'err' => $e->getMessage()]);
+                header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit;
+            }
         }
         header("Location: ?tab=orders&ok=1"); exit;
     }
@@ -382,6 +424,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'reject_order') {
         $order_code = $_POST['order_code'] ?? '';
         if (!$order_code) { header("Location: ?tab=orders&err=".urlencode('Thiếu order_code')); exit; }
+        $otStmt = $db->prepare("SELECT order_type FROM orders WHERE order_code=? AND status='pending'");
+        $otStmt->execute([$order_code]);
+        $otRow = $otStmt->fetch();
+        $isAcc = ($otRow && $otRow['order_type'] === 'account');
+
         $stmt = $db->prepare("SELECT o.id, u.telegram_id FROM orders o JOIN users u ON o.user_id=u.id WHERE o.order_code=? AND o.status='pending'");
         $stmt->execute([$order_code]);
         $order = $stmt->fetch();
@@ -391,10 +438,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $upOrder = $db->prepare("UPDATE orders SET status='rejected', approved_by='web_admin' WHERE order_code=? AND status='pending'");
             $upOrder->execute([$order_code]);
             if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
-            $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
-               ->execute([$order['id']]);
+
+            if ($isAcc) {
+                $db->prepare("UPDATE accounts SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+                   ->execute([$order['id']]);
+            } else {
+                $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status='pending'")
+                   ->execute([$order['id']]);
+            }
             $db->commit();
-            logInfo('Admin rejected order', ['order' => $order_code]);
+            logInfo('Admin rejected order', ['order' => $order_code, 'type' => $isAcc ? 'account' : 'key']);
             if ($order) sendTelegram($order['telegram_id'], "❌ <b>Đơn #{$order_code} bị từ chối.</b>\nVui lòng liên hệ admin để được hỗ trợ.");
         } catch (Exception $e) { $db->rollBack(); header("Location: ?tab=orders&err=".urlencode($e->getMessage())); exit; }
         header("Location: ?tab=orders"); exit;
@@ -434,6 +487,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $count++;
         }
         header("Location: ?tab=keys&ok=1&added=" . $count); exit;
+    }
+
+    // ===== ACC =====
+    if ($act === 'add_acc_type') {
+        $db->prepare("INSERT INTO account_types (game_id, name, price, description, sort_order) VALUES (?,?,?,?,?)")
+           ->execute([$_POST['game_id'], $_POST['name'], $_POST['price'], $_POST['description']??'', (int)($_POST['sort']??0)]);
+        header("Location: ?tab=accounts&ok=1"); exit;
+    }
+    if ($act === 'edit_acc_type') {
+        $db->prepare("UPDATE account_types SET game_id=?, name=?, price=?, description=?, sort_order=?, is_active=? WHERE id=?")
+           ->execute([$_POST['game_id'], $_POST['name'], $_POST['price'], $_POST['description']??'', (int)($_POST['sort']??0), (int)($_POST['is_active']??1), $_POST['id']]);
+        header("Location: ?tab=accounts&ok=1"); exit;
+    }
+    if ($act === 'toggle_acc_type') {
+        $db->prepare("UPDATE account_types SET is_active=1-is_active WHERE id=?")->execute([$_POST['id']]);
+        header("Location: ?tab=accounts&ok=1"); exit;
+    }
+    if ($act === 'del_acc_type') {
+        $db->prepare("DELETE FROM account_types WHERE id=?")->execute([$_POST['id']]);
+        header("Location: ?tab=accounts"); exit;
+    }
+    if ($act === 'import_accounts') {
+        $accLines = explode("\n", trim($_POST['accounts']));
+        $gameId = (int)($_POST['acc_game_id'] ?? 0);
+        $typeId = (int)($_POST['acc_type_id'] ?? 0);
+        $count = 0;
+        foreach ($accLines as $line) {
+            $line = trim($line);
+            if (!$line) continue;
+            // Định dạng: username:password hoặc username|password
+            $parts = preg_split('/[:|]/', $line, 2);
+            if (count($parts) < 2) continue;
+            $username = trim($parts[0]); $password = trim($parts[1]);
+            if (!$username || !$password) continue;
+            $db->prepare("INSERT INTO accounts (game_id, account_type_id, username, `password`, status) VALUES (?,?,?,?,'available')")
+               ->execute([$gameId, $typeId, $username, $password]);
+            $count++;
+        }
+        header("Location: ?tab=accounts&ok=1&added=" . $count); exit;
+    }
+    if ($act === 'delete_account') {
+        $db->prepare("DELETE FROM accounts WHERE id=? AND status='available'")->execute([$_POST['acc_id']]);
+        header("Location: ?tab=accounts"); exit;
     }
 }
 
@@ -481,7 +577,8 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
   <div class="nav-section">Sản phẩm</div>
   <div class="nav-sub">
     <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games">🎮 Games</a>
-    <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages">📦 Gói</a>
+    <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages">📦 Gói Key</a>
+    <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts">🏪 Accounts</a>
   </div>
   <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys">🎁 GetKey Free</a>
 
@@ -1031,6 +1128,101 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </tr>
 <?php endforeach ?>
 </table>
+
+
+<?php elseif($tab==='accounts'): ?>
+<h1>🏪 Quản lý Accounts</h1>
+
+<?php $gamesAll=$db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
+<?php $typesAll=$db->query("SELECT at.*,g.name game_name FROM account_types at JOIN games g ON at.game_id=g.id ORDER BY g.sort_order, at.sort_order")->fetchAll(); ?>
+
+<div class="form-card">
+<h3>➕ Thêm loại acc mới</h3>
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+<input type="hidden" name="act" value="add_acc_type">
+<div class="form-row">
+  <div><label>Game</label><select name="game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Tên loại acc</label><input name="name" required placeholder="Google, Facebook, Apple..." style="width:150px"></div>
+  <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="50000" style="width:120px"></div>
+  <div><label>Mô tả</label><input name="description" placeholder="Mô tả thêm (tùy chọn)" style="width:200px"></div>
+  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
+</div>
+</form>
+</div>
+
+<div class="form-card">
+<h3>📥 Import acc (tk:mk)</h3>
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+<input type="hidden" name="act" value="import_accounts">
+<div class="form-row">
+  <div><label>Game</label><select name="acc_game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Loại acc</label><select name="acc_type_id"><?php foreach($typesAll as $t):?><option value="<?=$t['id']?>"><?=h($t["name"])?> (<?=h($t["game_name"])?>)</option><?php endforeach?></select></div>
+  <div style="flex:1"><label>Danh sách acc (mỗi dòng: tk:mk hoặc tk|mk)</label>
+    <textarea name="accounts" rows="6" placeholder="user1@gmail.com:pass123&#10;user2@gmail.com:pass456&#10;user3|pass789" style="width:100%;max-width:100%;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px;font-family:monospace;font-size:13px"></textarea>
+  </div>
+  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">📥 Import</button></div>
+</div>
+</form>
+</div>
+
+<?php if($typesAll): ?>
+<h2>📋 Loại acc</h2>
+<table>
+<tr><th>#</th><th>Game</th><th>Tên loại</th><th>Giá</th><th>Stock</th><th>Active</th><th>Thao tác</th></tr>
+<?php foreach($typesAll as $t):
+  $stock = $db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
+  $stock->execute([$t['id']]);
+  $availCount = (int)$stock->fetchColumn();
+?>
+<tr>
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+  <input type="hidden" name="act" value="edit_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>">
+  <td><?=$t['id']?></td>
+  <td><select name="game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>" <?=$t['game_id']==$g['id']?'selected':''?>><?=h($g["name"])?></option><?php endforeach?></select></td>
+  <td><input name="name" value="<?=htmlspecialchars($t['name'])?>" required style="width:130px"></td>
+  <td><input name="price" type="number" value="<?=$t['price']?>" required style="width:100px"></td>
+  <td><b style="color:<?=$availCount>0?'#4ade80':'#f85149'?>"><?=$availCount?></b></td>
+  <td><select name="is_active"><option value="1" <?=$t['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$t['is_active']?'selected':''?>>Tắt</option></select></td>
+  <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
+</form>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-gray"><?=$t['is_active']?'Tắt':'Bật'?></button></form>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá loại acc này? Các acc thuộc loại sẽ mất.')">🗑</button></form></td>
+</tr>
+<?php endforeach ?>
+</table>
+<?php endif ?>
+
+<?php
+$accs = $db->query("SELECT a.*, g.name game_name, at.name type_name FROM accounts a JOIN games g ON a.game_id=g.id JOIN account_types at ON a.account_type_id=at.id ORDER BY a.id DESC LIMIT 200")->fetchAll();
+if($accs):
+?>
+<h2 style="margin-top:24px">📦 Danh sách Acc (200 gần nhất)</h2>
+<table>
+<tr><th>#</th><th>Game</th><th>Loại</th><th>Tài khoản</th><th>Mật khẩu</th><th>Trạng thái</th><th>Ngày</th><th>Thao tác</th></tr>
+<?php foreach($accs as $a): ?>
+<tr>
+<td><?=$a['id']?></td>
+<td><?=h($a['game_name'])?></td>
+<td><span class="badge blue"><?=h($a['type_name'])?></span></td>
+<td style="font-family:monospace"><?=h($a['username'])?></td>
+<td style="font-family:monospace"><?=h($a['password'])?></td>
+<td>
+<?php if($a['status']=='available'): ?><span class="badge green">Có sẵn</span>
+<?php elseif($a['status']=='pending'): ?><span class="badge orange">Đang chờ</span>
+<?php else: ?><span class="badge gray">Đã bán</span>
+<?php endif; ?>
+</td>
+<td><?=h($a['created_at'])?></td>
+<td>
+<?php if($a['status']=='available'): ?>
+<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_account"><input type="hidden" name="acc_id" value="<?=$a['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá acc này?')" style="padding:5px 8px">🗑</button></form>
+<?php endif; ?>
+</td>
+</tr>
+<?php endforeach ?>
+</table>
+<?php endif; ?>
 
 
 <?php elseif($tab==='freekeys'): ?>

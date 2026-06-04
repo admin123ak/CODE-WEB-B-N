@@ -122,6 +122,18 @@ wget -q -O - "https://your-domain.com/cron/run.php?token=TOKEN&job=mbbank" >/dev
 
 ---
 
+## 🆕 MIGRATION (khi cập nhật code cũ lên version mới)
+
+Sau khi git pull code mới, nếu có file SQL mới trong `migrations/`, chạy thủ công:
+
+```bash
+# Cách 1: Import vào database qua phpMyAdmin
+# Cách 2: Dùng command line
+mysql -u USER -p DATABASE_NAME < migrations/001_add_accounts.sql
+```
+
+> ⚠️ File migration sẽ tự động bỏ qua cột đã tồn tại (IF NOT EXISTS / IF NOT COLUMN).
+
 ## 🔄 UPDATE CODE SAU NÀY
 
 Khi có version mới:

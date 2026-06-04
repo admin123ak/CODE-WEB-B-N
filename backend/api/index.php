@@ -126,6 +126,20 @@ switch ($action) {
         }
         jsonResponse(['success' => true, 'packages' => $packages, 'usdt_vnd_rate' => $usdtVndRate]);
 
+    // ===== LOẠI ACC THEO GAME =====
+    case 'account_types':
+        $game_id = $_GET['game_id'] ?? 0;
+        $atStmt = $db->prepare("SELECT at.*, (SELECT COUNT(*) FROM accounts WHERE account_type_id=at.id AND status='available') as stock FROM account_types at WHERE at.game_id=? AND at.is_active=1 ORDER BY at.sort_order, at.id");
+        $atStmt->execute([$game_id]);
+        jsonResponse(['success' => true, 'account_types' => $atStmt->fetchAll()]);
+
+    // ===== ACC ĐÃ MUA =====
+    case 'my_accounts':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $accStmt = $db->prepare("SELECT a.*, at.name as type_name, g.name as game_name FROM accounts a JOIN account_types at ON a.account_type_id=at.id JOIN games g ON a.game_id=g.id WHERE a.user_id=? AND a.status='sold' ORDER BY a.created_at DESC LIMIT 100");
+        $accStmt->execute([$user['id']]);
+        jsonResponse(['success' => true, 'accounts' => $accStmt->fetchAll()]);
+
     // ===== DANH SÁCH PHƯƠNG THỨC THANH TOÁN KHẢ DỤNG =====
     // Frontend gọi endpoint này để biết nên hiện option Binance hay không.
     // Binance chỉ available khi admin đã bật cờ + nhập địa chỉ ví.
@@ -551,6 +565,132 @@ switch ($action) {
             $response['vietqr_url']       = buildVietQrUrl($total_amount, $order_code);
         } else {
             // Binance
+            $response['crypto_amount']   = (float)$cryptoData['usdt'];
+            $response['crypto_address']  = USDT_TRC20_ADDRESS;
+            $response['crypto_network']  = 'TRC20 (TRON)';
+            $response['crypto_qr_url']   = cryptoBuildQrUrl(USDT_TRC20_ADDRESS, (float)$cryptoData['usdt']);
+            $response['usdt_vnd_rate']   = (float)$cryptoData['rate'];
+            $response['rate_source']     = $cryptoData['rate_source'] ?? 'cache';
+        }
+        jsonResponse($response);
+
+
+
+    // ===== TẠO ĐƠN HÀNG ACC =====
+    case 'create_account_order':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $game_id = (int)($_POST['game_id'] ?? 0);
+        $account_type_id = (int)($_POST['account_type_id'] ?? 0);
+        $payment_method = $_POST['payment_method'] ?? 'mbbank';
+        if (!in_array($payment_method, ['mbbank', 'binance'], true)) {
+            jsonResponse(['error' => 'Phương thức thanh toán không hợp lệ'], 400);
+        }
+        if ($payment_method === 'binance') {
+            if (!defined('CRYPTO_AUTO_APPROVE_ENABLED') || !CRYPTO_AUTO_APPROVE_ENABLED
+                || !defined('USDT_TRC20_ADDRESS') || USDT_TRC20_ADDRESS === '') {
+                jsonResponse(['error' => 'Thanh toán Binance USDT đang tạm khoá. Vui lòng chọn MBBank.'], 400);
+            }
+        }
+
+        // Lấy loại acc
+        $atStmt = $db->prepare("SELECT at.*, g.name as game_name FROM account_types at JOIN games g ON at.game_id=g.id WHERE at.id=? AND at.game_id=? AND at.is_active=1 AND g.is_active=1");
+        $atStmt->execute([$account_type_id, $game_id]);
+        $accType = $atStmt->fetch();
+        if (!$accType) jsonResponse(['error' => 'Loại acc không tồn tại'], 404);
+
+        // Chống spam
+        $recent = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 SECOND)");
+        $recent->execute([$user['id']]);
+        if ((int)$recent->fetchColumn() >= 1) {
+            jsonResponse(['error' => 'Bạn thao tác quá nhanh, vui lòng chờ 30 giây rồi thử lại'], 429);
+        }
+        $pending_count = $db->prepare("SELECT COUNT(*) FROM orders WHERE user_id=? AND status='pending'");
+        $pending_count->execute([$user['id']]);
+        if ((int)$pending_count->fetchColumn() >= 3) {
+            jsonResponse(['error' => 'Bạn đang có quá nhiều đơn chờ thanh toán'], 429);
+        }
+
+        // Kiểm tra pool có đủ acc
+        $availStmt = $db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
+        $availStmt->execute([$account_type_id]);
+        $available = (int)$availStmt->fetchColumn();
+        if ($available < 1) {
+            jsonResponse(['error' => 'Hết acc cho loại này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
+        }
+
+        $order_code = generateOrderCode();
+        $db->beginTransaction();
+        try {
+            // Reserve 1 acc từ pool (mỗi đơn = 1 acc, muốn mua nhiều thì tạo nhiều đơn)
+            $accStmt = $db->prepare("SELECT id, username, `password` FROM accounts WHERE account_type_id=? AND status='available' ORDER BY id ASC LIMIT 1 FOR UPDATE");
+            $accStmt->execute([$account_type_id]);
+            $poolAcc = $accStmt->fetch();
+            if (!$poolAcc) {
+                $db->rollBack();
+                jsonResponse(['error' => 'Hết acc cho loại này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
+            }
+
+            // Tạo đơn hàng
+            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, order_type, amount, payment_method, status) VALUES (?,?,?,?,?,'pending')")
+               ->execute([$order_code, $user['id'], $game_id, 0, 'account', (int)$accType['price'], $payment_method]);
+            $order_id = (int)$db->lastInsertId();
+
+            // Gán acc từ pool vào đơn hàng
+            $db->prepare("UPDATE accounts SET status='pending', user_id=?, order_id=? WHERE id=?")
+               ->execute([$user['id'], $order_id, $poolAcc['id']]);
+
+            // Nếu Binance: convert VND→USDT
+            $cryptoData = null;
+            if ($payment_method === 'binance') {
+                try {
+                    $cryptoData = cryptoConvertVndToUsdt((int)$accType['price'], $order_id);
+                    $db->prepare("UPDATE orders SET crypto_amount=?, usdt_vnd_rate=? WHERE id=?")
+                       ->execute([$cryptoData['usdt'], $cryptoData['rate'], $order_id]);
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    error_log('[CREATE_ACC_ORDER_CRYPTO] ' . $e->getMessage());
+                    jsonResponse(['error' => 'Không lấy được tỉ giá USDT, vui lòng thử lại sau ít phút.'], 500);
+                }
+            }
+
+            $db->commit();
+        } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            jsonResponse(['error' => 'Lỗi tạo đơn hàng: ' . $e->getMessage()], 500);
+        }
+
+        // Thông báo admin qua Telegram
+        $amt = number_format((int)$accType['price'], 0, ',', '.');
+        $username = $user['telegram_username'] ?? $user['full_name'];
+        $payLabel = $payment_method === 'binance' ? '🪙 Binance USDT TRC20' : '🏦 MBBank';
+        $payDetail = '';
+        if ($payment_method === 'binance' && $cryptoData) {
+            $usdtStr = rtrim(rtrim(number_format($cryptoData['usdt'], 6, '.', ''), '0'), '.');
+            $rateStr = number_format($cryptoData['rate'], 0, ',', '.');
+            $payDetail = "\n💵 Chờ nhận: <b>{$usdtStr} USDT</b> (rate {$rateStr})";
+        }
+        $msg = "🔔 <b>ĐƠN ACC MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$accType['game_name']}\n📦 Loại: {$accType['name']}\n💰 Giá: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
+        $markup = ['inline_keyboard' => [
+            [['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $order_code], ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $order_code]]
+        ]];
+        sendTelegram(ADMIN_CHAT_ID, $msg, $markup);
+
+        $response = [
+            'success' => true,
+            'order_code' => $order_code,
+            'amount' => (int)$accType['price'],
+            'payment_method' => $payment_method,
+            'created_at' => date('Y-m-d H:i:s'),
+            'pay_expires_at' => date('Y-m-d H:i:s', time()+900),
+            'server_time' => date('Y-m-d H:i:s'),
+        ];
+        if ($payment_method === 'mbbank') {
+            $response['bank_account']     = BANK_ACCOUNT;
+            $response['bank_name']        = BANK_NAME;
+            $response['bank_owner']       = BANK_OWNER;
+            $response['transfer_content'] = $order_code;
+            $response['vietqr_url']       = buildVietQrUrl((int)$accType['price'], $order_code);
+        } else {
             $response['crypto_amount']   = (float)$cryptoData['usdt'];
             $response['crypto_address']  = USDT_TRC20_ADDRESS;
             $response['crypto_network']  = 'TRC20 (TRON)';
