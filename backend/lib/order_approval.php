@@ -52,16 +52,22 @@ function approvePaidOrder(
 
     $db->beginTransaction();
     try {
-        $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE order_id = ? AND status = 'pending' LIMIT 1 FOR UPDATE");
+        // Lấy TẤT CẢ key pending trong order (hỗ trợ mua số lượng >1)
+        $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE order_id = ? AND status = 'pending' FOR UPDATE");
         $keyStmt->execute([$order['id']]);
-        $key = $keyStmt->fetch();
-        if (!$key) throw new Exception('Không tìm thấy key pending');
+        $allKeys = $keyStmt->fetchAll();
+        if (empty($allKeys)) throw new Exception('Không tìm thấy key pending');
 
         $start  = date('Y-m-d H:i:s');
         $expire = date('Y-m-d H:i:s', strtotime('+' . ((int)$order['days']) . ' days'));
         $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
-        $upKey->execute([$start, $expire, $key['id']]);
-        if ($upKey->rowCount() !== 1) throw new Exception('Key đã bị thay đổi trạng thái (race condition)');
+
+        $activatedCount = 0;
+        foreach ($allKeys as $k) {
+            $upKey->execute([$start, $expire, $k['id']]);
+            if ($upKey->rowCount() === 1) $activatedCount++;
+        }
+        if ($activatedCount === 0) throw new Exception('Không có key nào được kích hoạt');
 
         $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=? AND status='pending'");
         $upOrder->execute([$approvedBy, $order['id']]);
@@ -76,11 +82,16 @@ function approvePaidOrder(
         $shortOrder  = preg_replace('/^ORD/i', '', $orderCode);
         $packageName = $order['package_name'] ?: $order['game_name'];
         $type        = strtoupper($order['key_type'] ?: 'Normal') === 'VIP' ? 'VIP' : 'Normal';
+        $qtyLabel    = $activatedCount > 1 ? " ({$activatedCount} keys)" : '';
+        $keyListStr  = '';
+        foreach ($allKeys as $k) {
+            $keyListStr .= "• License : <code>{$k['key_code']}</code>\n";
+        }
         $userMsg = "✅ <b>Key Purchase Successful!</b>\n\n" .
             "• Order code : <code>{$shortOrder}</code>\n" .
-            "• License : <code>{$key['key_code']}</code>\n" .
+            $keyListStr .
             "• Package : <code>{$packageName}</code>\n" .
-            "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ\n\n" .
+            "• Type : {$type} — {$order['days']} days / " . number_format((float)$order['price'], 0, ',', '.') . "đ{$qtyLabel}\n\n" .
             "Duration will start when license login.\n\n" .
             "<b>Lưu ý:</b> để sử dụng an toàn, không dùng song song mod khác hoặc ứng dụng lạ.";
         if ($extraUserNote !== '') {
@@ -88,11 +99,13 @@ function approvePaidOrder(
         }
         sendTelegram($order['telegram_id'], $userMsg);
 
+        $keyFirst = $allKeys[0]['key_code'];
+        $keyExtra = $activatedCount > 1 ? " (+" . ($activatedCount - 1) . " keys)" : "";
         sendTelegram(ADMIN_CHAT_ID,
             "🤖 <b>AUTO {$adminLabel} DUYỆT ĐƠN</b>\n" .
             "#{$orderCode}\n" .
             "💰 Nhận: " . $amountFormat($amount) . "\n" .
-            "🔑 <code>{$key['key_code']}</code>");
+            "🔑 <code>{$keyFirst}</code>{$keyExtra}");
 
         return ['status' => 'approved', 'note' => 'OK'];
     } catch (Exception $e) {

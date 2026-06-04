@@ -334,6 +334,7 @@ switch ($action) {
 
         $game_id = (int)($_POST['game_id'] ?? 0);
         $package_id = (int)($_POST['package_id'] ?? 0);
+        $quantity = max(1, min(10, (int)($_POST['quantity'] ?? 1)));
 
         $pkg = $db->prepare("SELECT p.*, g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id WHERE p.id=? AND p.game_id=? AND p.is_active=1 AND g.is_active=1");
         $pkg->execute([$package_id, $game_id]);
@@ -341,33 +342,45 @@ switch ($action) {
         if (!$package) jsonResponse(['error' => 'Gói không tồn tại'], 404);
 
         $price = (float)$package['price'];
+        $total_price = $price * $quantity;
         $curBal = balanceGet($db, (int)$user['id']);
-        if ($curBal < $price) {
-            jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($price) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
+        if ($curBal < $total_price) {
+            jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($total_price) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
         }
 
-        // Reserve key + tạo order + debit ví trong cùng transaction-ish:
-        // balanceDebit có tx riêng — ta gọi balanceDebit TRƯỚC, nếu fail throws,
-        // không tốn key. Sau đó tạo order + assign key.
+        // Kiểm tra pool có đủ key
+        $availStmt = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE status='available' AND game_id=? AND package_id=?");
+        $availStmt->execute([$game_id, $package_id]);
+        $available = (int)$availStmt->fetchColumn();
+        if ($available < $quantity) {
+            jsonResponse(['error' => "Chỉ còn $available key cho gói này, không đủ $quantity."], 400);
+        }
+
         $order_code = generateOrderCode();
         $db->beginTransaction();
         try {
-            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT 1 FOR UPDATE");
-            $keyStmt->execute([$game_id, $package_id]);
-            $poolKey = $keyStmt->fetch();
-            if (!$poolKey) {
+            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT ? FOR UPDATE");
+            $keyStmt->bindValue(1, $game_id);
+            $keyStmt->bindValue(2, $package_id);
+            $keyStmt->bindValue(3, $quantity, PDO::PARAM_INT);
+            $keyStmt->execute();
+            $poolKeys = $keyStmt->fetchAll();
+            if (count($poolKeys) < $quantity) {
                 $db->rollBack();
                 jsonResponse(['error' => 'Hết key cho gói này'], 400);
             }
 
             $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, payment_method, status, approved_at, approved_by) VALUES (?,?,?,?,?,?,'approved', NOW(), 'balance')")
-               ->execute([$order_code, $user['id'], $game_id, $package_id, $price, 'balance']);
+               ->execute([$order_code, $user['id'], $game_id, $package_id, $total_price, 'balance']);
             $order_id = (int)$db->lastInsertId();
 
             $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$package['days'] . ' days'));
-            $db->prepare("UPDATE `keys` SET status='active', user_id=?, order_id=?, days=?, start_at=NOW(), expire_at=? WHERE id=?")
-               ->execute([$user['id'], $order_id, $package['days'], $expire, $poolKey['id']]);
-            $key_code = $poolKey['key_code'];
+            $upKey = $db->prepare("UPDATE `keys` SET status='active', user_id=?, order_id=?, days=?, start_at=NOW(), expire_at=? WHERE id=?");
+            $key_codes = [];
+            foreach ($poolKeys as $pk) {
+                $upKey->execute([$user['id'], $order_id, $package['days'], $expire, $pk['id']]);
+                $key_codes[] = $pk['key_code'];
+            }
 
             $db->commit();
         } catch (Throwable $e) {
@@ -377,13 +390,13 @@ switch ($action) {
 
         // Debit ví (atomic, riêng tx). Nếu fail thì refund key.
         try {
-            $debit = balanceDebit($db, (int)$user['id'], $price, 'purchase', 'order', $order_id, 'Mua key gói #' . $package_id);
+            $debit = balanceDebit($db, (int)$user['id'], $total_price, 'purchase', 'order', $order_id, 'Mua key gói #' . $package_id . ' x' . $quantity);
         } catch (Throwable $e) {
             // Rollback: huỷ order, trả key về pool
             try {
                 $db->beginTransaction();
-                $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL, start_at=NULL, expire_at=NULL WHERE id=?")
-                   ->execute([$poolKey['id']]);
+                $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL, start_at=NULL, expire_at=NULL WHERE order_id=?")
+                   ->execute([$order_id]);
                 $db->prepare("UPDATE orders SET status='cancelled', admin_note=? WHERE id=?")
                    ->execute(['Trừ ví fail: ' . $e->getMessage(), $order_id]);
                 $db->commit();
@@ -394,9 +407,11 @@ switch ($action) {
         jsonResponse([
             'success'       => true,
             'order_code'    => $order_code,
-            'key_code'      => $key_code,
+            'key_code'      => $key_codes[0],
+            'key_codes'     => $key_codes,
+            'quantity'      => $quantity,
             'balance_after' => $debit['balance_after'],
-            'package'       => ['name' => $package['name'], 'days' => $package['days'], 'price' => $price],
+            'package'       => ['name' => $package['name'], 'days' => $package['days'], 'price' => $price, 'quantity' => $quantity],
         ]);
 
     // ===== TẠO ĐƠN HÀNG =====
@@ -404,6 +419,7 @@ switch ($action) {
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $game_id = $_POST['game_id'] ?? 0;
         $package_id = $_POST['package_id'] ?? 0;
+        $quantity = max(1, min(10, (int)($_POST['quantity'] ?? 1)));
         $payment_method = $_POST['payment_method'] ?? 'mbbank';
         if (!in_array($payment_method, ['mbbank', 'binance'], true)) {
             jsonResponse(['error' => 'Phương thức thanh toán không hợp lệ'], 400);
@@ -440,34 +456,49 @@ switch ($action) {
             jsonResponse(['error' => 'Bạn đang có quá nhiều đơn chờ thanh toán, vui lòng hoàn tất hoặc chờ đơn cũ hết hiệu lực'], 429);
         }
 
+        // Kiểm tra pool có đủ key
+        $availStmt = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE status='available' AND game_id=? AND package_id=?");
+        $availStmt->execute([$game_id, $package_id]);
+        $available = (int)$availStmt->fetchColumn();
+        if ($available < $quantity) {
+            jsonResponse(['error' => "Chỉ còn $available key cho gói này, không đủ $quantity."], 400);
+        }
+
         $order_code = generateOrderCode();
+        $total_amount = (int)$package['price'] * $quantity;
         $db->beginTransaction();
         try {
-            // Lấy key có sẵn từ pool theo game + package
-            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT 1 FOR UPDATE");
-            $keyStmt->execute([$game_id, $package_id]);
-            $poolKey = $keyStmt->fetch();
+            // Lấy N keys từ pool
+            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT ? FOR UPDATE");
+            $keyStmt->bindValue(1, $game_id);
+            $keyStmt->bindValue(2, $package_id);
+            $keyStmt->bindValue(3, $quantity, PDO::PARAM_INT);
+            $keyStmt->execute();
+            $poolKeys = $keyStmt->fetchAll();
 
-            if (!$poolKey) {
+            if (count($poolKeys) < $quantity) {
                 $db->rollBack();
                 jsonResponse(['error' => 'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
             }
 
-            // Tạo đơn hàng (payment_method ghi luôn để crypto_poll có thể match)
+            // Tạo đơn hàng với tổng tiền = đơn giá × số lượng
             $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, payment_method, status) VALUES (?,?,?,?,?,?,'pending')")
-               ->execute([$order_code, $user['id'], $game_id, $package_id, $package['price'], $payment_method]);
+               ->execute([$order_code, $user['id'], $game_id, $package_id, $total_amount, $payment_method]);
             $order_id = $db->lastInsertId();
 
-            // Gán key từ pool vào đơn hàng
-            $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
-               ->execute([$user['id'], $order_id, $package['days'], $poolKey['id']]);
-            $key_code = $poolKey['key_code'];
+            // Gán N keys từ pool vào đơn hàng
+            $key_codes = [];
+            foreach ($poolKeys as $pk) {
+                $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
+                   ->execute([$user['id'], $order_id, $package['days'], $pk['id']]);
+                $key_codes[] = $pk['key_code'];
+            }
 
             // Nếu Binance: convert VND→USDT với unique decimal trick rồi cập nhật orders
             $cryptoData = null;
             if ($payment_method === 'binance') {
                 try {
-                    $cryptoData = cryptoConvertVndToUsdt((int)$package['price'], (int)$order_id);
+                    $cryptoData = cryptoConvertVndToUsdt($total_amount, (int)$order_id);
                     $db->prepare("UPDATE orders SET crypto_amount=?, usdt_vnd_rate=? WHERE id=?")
                        ->execute([$cryptoData['usdt'], $cryptoData['rate'], $order_id]);
                 } catch (Exception $e) {
@@ -484,7 +515,7 @@ switch ($action) {
         }
 
         // Thông báo admin qua Telegram
-        $amt = number_format($package['price'], 0, ',', '.');
+        $amt = number_format($total_amount, 0, ',', '.');
         $username = $user['telegram_username'] ?? $user['full_name'];
         $payLabel = $payment_method === 'binance' ? '🪙 Binance USDT TRC20' : '🏦 MBBank';
         $payDetail = '';
@@ -493,7 +524,9 @@ switch ($action) {
             $rateStr = number_format($cryptoData['rate'], 0, ',', '.');
             $payDetail = "\n💵 Chờ nhận: <b>{$usdtStr} USDT</b> (rate {$rateStr})";
         }
-        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$package['days']} ngày)\n🔑 Key: <code>{$key_code}</code>\n💰 Số tiền: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
+        $qtyNote = $quantity > 1 ? "\n📦 Số lượng: <b>{$quantity} key</b>" : '';
+        $keyDisplay = implode("\n", array_map(function($k) { return "   • <code>{$k}</code>"; }, $key_codes));
+        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$package['days']} ngày){$qtyNote}\n🔑 Key:\n{$keyDisplay}\n💰 Tổng: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
         $markup = ['inline_keyboard' => [
             [['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $order_code], ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $order_code]]
         ]];
@@ -502,7 +535,9 @@ switch ($action) {
         $response = [
             'success' => true,
             'order_code' => $order_code,
-            'amount' => $package['price'],
+            'amount' => $total_amount,
+            'quantity' => $quantity,
+            'unit_price' => (int)$package['price'],
             'payment_method' => $payment_method,
             'created_at' => date('Y-m-d H:i:s'),
             'pay_expires_at' => date('Y-m-d H:i:s', time()+900),
@@ -513,7 +548,7 @@ switch ($action) {
             $response['bank_name']        = BANK_NAME;
             $response['bank_owner']       = BANK_OWNER;
             $response['transfer_content'] = $order_code;
-            $response['vietqr_url']       = buildVietQrUrl($package['price'], $order_code);
+            $response['vietqr_url']       = buildVietQrUrl($total_amount, $order_code);
         } else {
             // Binance
             $response['crypto_amount']   = (float)$cryptoData['usdt'];

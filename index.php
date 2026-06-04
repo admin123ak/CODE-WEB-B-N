@@ -135,6 +135,18 @@
       <div id="pkgList" class="pkg-list">
         <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Danh s&#xE1;ch tr&#x1ED1;ng</div>
       </div>
+
+      <!-- Quantity Selector -->
+      <div id="qtySelector" style="display:none;padding:0 16px 10px">
+        <div class="qty-label" data-i18n="soLuongKey">Số lượng key</div>
+        <div class="qty-row">
+          <div class="qty-btn minus" onclick="changeQty(-1)">−</div>
+          <input type="number" class="qty-input" id="qtyInput" value="1" min="1" max="10" readonly>
+          <div class="qty-btn plus" onclick="changeQty(1)">+</div>
+        </div>
+        <div class="qty-total" id="qtyTotal"></div>
+      </div>
+
       <div class="action-bar">
         <a class="ic-btn tg" href="https://t.me/hclouserverfile" target="_blank" rel="noopener" title="Tải file" aria-label="Tải file">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
