@@ -162,31 +162,6 @@
       <div class="note-txt">&#x26A0;&#xFE0F; Kh&#xF4;ng nh&#x1EAD;n card: N&#x1EBF;u kh&#xF4;ng c&#xF3; t&#xE0;i kho&#x1EA3;n ng&#xE2;n h&#xE0;ng, t&#x1EA1;o m&#xE3; QR v&#xE0; nh&#x1EDD; ng&#x01B0;&#x1EDD;i kh&#xE1;c qu&#xE9;t h&#x1ED9; &#x111;&#x1EC3; nh&#x1EAD;n key.</div>
     </div>
 
-    <!-- Mua Acc section -->
-    <div class="sec-head">
-      <div class="sec-icon" style="background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(139,92,246,.08));border-color:rgba(168,85,247,.35);box-shadow:0 0 24px rgba(168,85,247,.25)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-      <div>
-        <div class="sec-title" style="background:linear-gradient(135deg,#fff 0%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Mua Acc</div>
-        <div class="sec-sub">Chọn loại acc (Google, Facebook...)</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn loại acc</span></div>
-      <div id="accTypeList" class="pkg-list">
-        <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
-      </div>
-      <div class="action-bar">
-        <div style="width:50px"></div>
-        <div style="width:50px"></div>
-        <button class="buy-btn" id="accBuyBtn" onclick="doAccOrder()">
-          <span>Mua Acc</span>
-          <span class="buy-sub" id="accBuySub">Chưa chọn loại acc</span>
-        </button>
-      </div>
-      <div class="note-txt">&#x26A0;&#xFE0F; Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.</div>
-    </div>
-
     <div class="key-head">
       <div class="key-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-2 2-3 3"/><circle cx="8" cy="16" r="5"/><path d="M10.8 13.2L21 3"/></svg></div>
       <div>
@@ -279,6 +254,44 @@
       </div>
     </div>
 
+    <!-- TAB: Mua Acc -->
+    <div id="tab-buyacc" class="tab-content">
+      <div class="sec-head">
+        <div class="sec-icon" style="background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(139,92,246,.08));border-color:rgba(168,85,247,.35);box-shadow:0 0 24px rgba(168,85,247,.25)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div>
+          <div class="sec-title" style="background:linear-gradient(135deg,#fff 0%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Mua Acc</div>
+          <div class="sec-sub">Chọn loại acc (Google, Facebook...)</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn loại acc</span></div>
+        <div id="accTypeList" class="pkg-list">
+          <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Ch&#x1ECD;n game &#x1EDF; tab Mua Key</div>
+        </div>
+        <div class="action-bar">
+          <div style="width:50px"></div>
+          <div style="width:50px"></div>
+          <button class="buy-btn" id="accBuyBtn" onclick="doAccOrder()">
+            <span>Mua Acc</span>
+            <span class="buy-sub" id="accBuySub">Chưa chọn loại acc</span>
+          </button>
+        </div>
+        <div class="note-txt">&#x26A0;&#xFE0F; Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.</div>
+      </div>
+
+      <div class="key-head">
+        <div class="key-head-icon" style="color:var(--purple2);background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));border-color:rgba(168,85,247,.3)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3H8l-1 4h10L16 3z"/></svg></div>
+        <div>
+          <div class="sec-title">Acc của tôi</div>
+          <div class="key-count-lbl" id="accCntLbl">0 acc</div>
+        </div>
+      </div>
+      <div id="accMyList" style="padding:0 16px 20px">
+        <div style="text-align:center;color:var(--text2);padding:24px 0;font-size:13px;font-weight:600">Chưa có acc nào</div>
+      </div>
+    </div>
+
     <!-- TAB: Lịch sử đơn hàng -->
     <div id="tab-history" class="tab-content">
       <h2 style="font-size:16px;padding:18px 16px 8px;font-weight:900" data-i18n="historyTitle">📜 Lịch sử đơn hàng</h2>
@@ -365,6 +378,10 @@
     <div class="nav-tab active" onclick="switchTab('buykey')" id="nav-buykey">
       <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       <span class="nav-lbl" data-i18n="navBuy">Mua Key</span>
+    </div>
+    <div class="nav-tab" onclick="switchTab('buyacc')" id="nav-buyacc">
+      <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="nav-lbl">Mua Acc</span>
     </div>
     <div class="nav-tab" onclick="switchTab('freekey')" id="nav-freekey">
       <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>

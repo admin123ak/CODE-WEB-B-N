@@ -970,22 +970,6 @@ async function loadKeys(filter){
   animNum('stExpired',s.expired||0);
   document.getElementById('keyCntLbl').textContent=(s.total||0)+' key';
   renderKeys(allKeys);
-
-  // Load accounts too
-  try {
-    var accRes=await api('my_accounts');
-    if(accRes.success && accRes.accounts && accRes.accounts.length){
-      accRes.accounts.forEach(function(acc){
-        var card=document.createElement('div');
-        card.className='kcard is-active';
-        card.innerHTML='<div class="kc-head"><div class="kc-gt"><div class="kt-tag" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));color:var(--purple2)">ACC</div><div class="kc-gn">'+escapeHtml(acc.game_name)+'</div></div><span class="kc-st st-active">&#x1F49A; &#x110;&#xE3; nh&#x1EAD;n</span></div>'
-          +'<div class="kc-body"><div class="kc-row"><span class="kc-l">T&#xE0;i kho&#x1EA3;n</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.username)+',\'&#x110;&#xE3; copy tk!\')">'+escapeHtml(acc.username)+' &#x1F4CB;</span></div>'
-          +'<div class="kc-row"><span class="kc-l">M&#x1EAD;t kh&#x1EA9;u</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.password)+',\'&#x110;&#xE3; copy mk!\')">'+escapeHtml(acc.password)+' &#x1F4CB;</span></div>'
-          +'<div class="kc-row"><span class="kc-l">Lo&#x1EA1;i</span><span class="kc-v">'+escapeHtml(acc.type_name)+'</span></div></div>';
-        wrap.insertBefore(card, wrap.firstChild);
-      });
-    }
-  } catch(e){}
 }
 function animNum(id,val){
   var el=document.getElementById(id),cur=0,step=Math.ceil((val||1)/20);
@@ -1142,6 +1126,7 @@ function switchTab(tab){
   if(tab==='history') loadHistory();
   if(tab==='profile') loadProfile();
   if(tab==='freekey' && !freeKeyLoaded) loadFreeKey();
+  if(tab==='buyacc'){ loadAccTypes(); loadMyAccs(); }
   // Scroll to top
   var sc = document.querySelector('.scroll-area');
   if(sc) sc.scrollTop = 0;
@@ -1428,7 +1413,30 @@ async function confirmAccOrder(){
     toast(res.error||'L&#x1ED7;i t&#x1EA1;o &#x111;&#x1EDD;n','error');
   }
 }
-// (cancelOrderConfirm + confirmCreateOrder kept at original location above, do not duplicate)
+// Load purchased accounts for "Mua Acc" tab
+async function loadMyAccs(){
+  try{
+    var res=await api('my_accounts');
+    var wrap=document.getElementById('accMyList');
+    if(res.success && res.accounts && res.accounts.length){
+      var count=res.accounts.length;
+      document.getElementById('accCntLbl').textContent=count+' acc';
+      var html='';
+      res.accounts.forEach(function(acc){
+        html+='<div class="kcard is-active" style="margin:0 0 10px">'
+          +'<div class="kc-head"><div class="kc-gt"><div class="kt-tag" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));color:var(--purple2)">ACC</div><div class="kc-gn">'+escapeHtml(acc.game_name)+'</div></div><span class="kc-st st-active">&#x1F49A; &#x110;&#xE3; nh&#x1EAD;n</span></div>'
+          +'<div class="kc-body"><div class="kc-row"><span class="kc-l">T&#xE0;i kho&#x1EA3;n</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.username)+',\'&#x110;&#xE3; copy tk!\')">'+escapeHtml(acc.username)+' &#x1F4CB;</span></div>'
+          +'<div class="kc-row"><span class="kc-l">M&#x1EAD;t kh&#x1EA9;u</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.password)+',\'&#x110;&#xE3; copy mk!\')">'+escapeHtml(acc.password)+' &#x1F4CB;</span></div>'
+          +'<div class="kc-row"><span class="kc-l">Lo&#x1EA1;i</span><span class="kc-v">'+escapeHtml(acc.type_name)+'</span></div></div>'
+          +'</div>';
+      });
+      wrap.innerHTML=html;
+    } else {
+      document.getElementById('accCntLbl').textContent='0 acc';
+      wrap.innerHTML='<div style="text-align:center;color:var(--text2);padding:24px 0;font-size:13px;font-weight:600">Ch&#x1B0;a c&#xF3; acc n&#xE0;o</div>';
+    }
+  }catch(e){}
+}
 
 // END ACC SELLING
 
