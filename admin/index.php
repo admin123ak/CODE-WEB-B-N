@@ -321,18 +321,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'add_acc_game') {
         try {
             $iconUrl = handleGameIconUpload();
-            $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,'account',?,?)")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0]);
+            $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?)")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],'account',$_POST['root'],$_POST['sort']??0]);
             header("Location: ?tab=accounts&ok=1"); exit;
         } catch (Exception $e) {
             header("Location: ?tab=accounts&err=" . urlencode('Lỗi: ' . $e->getMessage())); exit;
         }
-    }
-    if ($act === 'add_acc_game') {
-        $iconUrl = handleGameIconUpload();
-        $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,'account',?,?)")
-           ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0]);
-        header("Location: ?tab=accounts&ok=1"); exit;
     }
     if ($act === 'toggle_game') {
         $db->prepare("UPDATE games SET is_active=1-is_active WHERE id=?")->execute([$_POST['id']]);

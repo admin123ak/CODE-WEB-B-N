@@ -638,7 +638,7 @@ switch ($action) {
             }
 
             // Tạo đơn hàng
-            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, order_type, amount, payment_method, status) VALUES (?,?,?,?,?,'pending')")
+            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, order_type, amount, payment_method, status) VALUES (?,?,?,?,?,?,?,'pending')")
                ->execute([$order_code, $user['id'], $game_id, 0, 'account', (int)$accType['price'], $payment_method]);
             $order_id = (int)$db->lastInsertId();
 
@@ -774,11 +774,13 @@ switch ($action) {
     // ===== ĐƠN CHỜ THANH TOÁN CỦA USER =====
     case 'pending_orders':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $stmt = $db->prepare("SELECT o.order_code,o.amount,o.payment_method,o.crypto_amount,o.usdt_vnd_rate,o.created_at, DATE_ADD(o.created_at, INTERVAL 15 MINUTE) pay_expires_at, GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(o.created_at, INTERVAL 15 MINUTE))) pay_seconds_left, NOW() server_time, g.name game_name,p.name pkg_name,p.days,k.key_code
+        $stmt = $db->prepare("SELECT o.order_code,o.order_type,o.amount,o.payment_method,o.crypto_amount,o.usdt_vnd_rate,o.created_at, DATE_ADD(o.created_at, INTERVAL 15 MINUTE) pay_expires_at, GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(o.created_at, INTERVAL 15 MINUTE))) pay_seconds_left, NOW() server_time, g.name game_name,COALESCE(p.name, at.name, o.order_type) pkg_name,COALESCE(p.days, 0) days,k.key_code, a.username acc_username
             FROM orders o
             JOIN games g ON o.game_id=g.id
-            JOIN packages p ON o.package_id=p.id
+            LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key'
+            LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account'
             LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending'
+            LEFT JOIN accounts a ON a.order_id=o.id AND a.status='pending'
             WHERE o.user_id=? AND o.status='pending' AND o.created_at >= (NOW() - INTERVAL 15 MINUTE)
             ORDER BY o.created_at DESC LIMIT 5");
         $stmt->execute([$user['id']]);
@@ -893,14 +895,14 @@ switch ($action) {
     case 'order_status':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $order_code = $_GET['order_code'] ?? '';
-        $stmt = $db->prepare("SELECT o.*, g.name as game_name, p.name as pkg_name FROM orders o JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.user_id=?");
+        $stmt = $db->prepare("SELECT o.*, g.name as game_name, COALESCE(p.name, at.name, o.order_type) as pkg_name FROM orders o JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' WHERE o.order_code=? AND o.user_id=?");
         $stmt->execute([$order_code, $user['id']]);
         jsonResponse(['success' => true, 'order' => $stmt->fetch()]);
 
     // ===== LỊCH SỬ ĐƠN HÀNG =====
     case 'my_orders':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $stmt = $db->prepare("SELECT o.*, g.name as game_name, p.name as pkg_name, p.days FROM orders o JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100");
+        $stmt = $db->prepare("SELECT o.*, g.name as game_name, COALESCE(p.name, at.name, o.order_type) as pkg_name, COALESCE(p.days, 0) as days FROM orders o JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100");
         $stmt->execute([$user['id']]);
         jsonResponse(['success' => true, 'orders' => $stmt->fetchAll()]);
 
