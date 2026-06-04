@@ -352,15 +352,16 @@ function changeQty(delta){
   updBuyBtn();
 }
 function updateQtyDisplay(){
-  var sel=document.getElementById('qtySelector');
   var input=document.getElementById('qtyInput');
   var total=document.getElementById('qtyTotal');
-  if(!selPkg||selPkg.is_free){ sel.style.display='none'; return; }
-  sel.style.display='block';
   if(input) input.value=selQty;
-  if(total && selPkg){
-    var totalPrice=fmtMoney((parseInt(selPkg.price,10)||0)*selQty);
-    total.textContent='Tổng: '+totalPrice+'đ x '+selQty+' key';
+  if(total){
+    if(selPkg && !selPkg.is_free){
+      var totalPrice=fmtMoney((parseInt(selPkg.price,10)||0)*selQty);
+      total.textContent='Tổng: '+totalPrice+'đ × '+selQty+' key';
+    } else {
+      total.textContent='';
+    }
   }
 }
 function updPlayBtn(){

@@ -136,8 +136,8 @@
         <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Danh s&#xE1;ch tr&#x1ED1;ng</div>
       </div>
 
-      <!-- Quantity Selector -->
-      <div id="qtySelector" style="display:none;padding:0 16px 10px">
+      <!-- Quantity Selector - luôn hiển thị -->
+      <div id="qtySelector" style="padding:0 16px 10px">
         <div class="qty-label" data-i18n="soLuongKey">Số lượng key</div>
         <div class="qty-row">
           <div class="qty-btn minus" onclick="changeQty(-1)">−</div>
@@ -278,6 +278,16 @@
         </div>
         <div id="accTypeList" class="pkg-list">
           <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
+        </div>
+        <!-- Acc qty: luôn 1, hiển thị để đồng bộ UI với tab Mua Key -->
+        <div style="padding:0 16px 10px">
+          <div class="qty-label">Số lượng acc</div>
+          <div class="qty-row">
+            <div class="qty-btn minus" style="opacity:.35;cursor:not-allowed">−</div>
+            <input type="number" class="qty-input" value="1" readonly>
+            <div class="qty-btn plus" style="opacity:.35;cursor:not-allowed">+</div>
+          </div>
+          <div class="qty-total" style="color:var(--text2)">Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận</div>
         </div>
         <div class="action-bar">
           <div style="width:50px"></div>
