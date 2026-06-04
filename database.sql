@@ -112,6 +112,7 @@ CREATE TABLE `orders` (
   `user_id` INT(11) NOT NULL,
   `game_id` INT(11) NOT NULL,
   `package_id` INT(11) NOT NULL,
+  `order_type` ENUM('key','account') DEFAULT 'key',
   `amount` DECIMAL(12,0) NOT NULL,
   `payment_method` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank',
   `crypto_amount` DECIMAL(18,6) DEFAULT NULL,
@@ -254,6 +255,52 @@ CREATE TABLE `balance_logs` (
   KEY `idx_balog_reason` (`reason`, `created_at`),
   KEY `idx_balog_ref` (`ref_type`, `ref_id`),
   CONSTRAINT `fk_balog_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TABLE: account_types
+-- Loại acc: Google, Facebook, Apple, v.v.
+-- =============================================
+DROP TABLE IF EXISTS `account_types`;
+CREATE TABLE `account_types` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `game_id` INT(11) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `price` DECIMAL(12,0) NOT NULL,
+  `description` TEXT DEFAULT NULL,
+  `sort_order` INT(11) DEFAULT 0,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_at_game` (`game_id`, `is_active`),
+  KEY `idx_at_active` (`game_id`, `sort_order`),
+  CONSTRAINT `fk_at_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TABLE: accounts
+-- Lưu tk/mk acc bán cho user
+-- =============================================
+DROP TABLE IF EXISTS `accounts`;
+CREATE TABLE `accounts` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `game_id` INT(11) NOT NULL,
+  `account_type_id` INT(11) NOT NULL,
+  `username` VARCHAR(255) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `extra_data` TEXT DEFAULT NULL,
+  `status` ENUM('available','pending','sold') DEFAULT 'available',
+  `order_id` INT(11) DEFAULT NULL,
+  `user_id` INT(11) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `sold_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_acc_type_status` (`account_type_id`, `status`),
+  KEY `idx_acc_game` (`game_id`),
+  KEY `idx_acc_order` (`order_id`),
+  KEY `idx_acc_user` (`user_id`),
+  CONSTRAINT `fk_acc_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_acc_type` FOREIGN KEY (`account_type_id`) REFERENCES `account_types` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
