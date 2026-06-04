@@ -309,9 +309,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($act === 'add_game') {
         $iconUrl = handleGameIconUpload();
-        $db->prepare("INSERT INTO games (name,package_name,icon_url,type,root_type,sort_order) VALUES (?,?,?,?,?,?)")
-           ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0]);
+        $cat = $_POST['category'] ?? 'key';
+        $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?)")
+           ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0]);
         header("Location: ?tab=games&ok=1"); exit;
+    }
+    if ($act === 'add_acc_game') {
+        $iconUrl = handleGameIconUpload();
+        $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,'account',?,?)")
+           ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0]);
+        header("Location: ?tab=accounts&ok=1"); exit;
     }
     if ($act === 'toggle_game') {
         $db->prepare("UPDATE games SET is_active=1-is_active WHERE id=?")->execute([$_POST['id']]);
@@ -319,12 +326,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($act === 'edit_game') {
         $iconUrl = handleGameIconUpload();
+        $cat = $_POST['category'] ?? 'key';
         if ($iconUrl) {
-            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, type=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         } else {
-            $db->prepare("UPDATE games SET name=?, package_name=?, type=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         }
         header("Location: ?tab=games&ok=1"); exit;
     }
@@ -1061,6 +1069,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <div><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
   <div><label>Package name</label><input name="pkg" required placeholder="com.dts.freefireth" style="width:220px"></div>
   <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
+  <div><label>Loại Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
   <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
   <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
   <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
@@ -1070,7 +1079,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
 <table>
-<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
+<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
 <?php foreach($games as $g): ?>
 <tr>
 <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
@@ -1080,6 +1089,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><input name="name" value="<?=h($g['name'])?>" required style="width:150px"></td>
   <td><input name="pkg" value="<?=h($g['package_name'])?>" required style="width:220px"></td>
   <td><select name="type"><option <?=$g['type']==='NORMAL'?'selected':''?>>NORMAL</option><option <?=$g['type']==='VIP'?'selected':''?>>VIP</option></select></td>
+  <td><select name="category"><option value="key" <?=($g['category']??'key')==='key'?'selected':''?>>Key</option><option value="account" <?=($g['category']??'key')==='account'?'selected':''?>>Acc</option><option value="both" <?=($g['category']??'key')==='both'?'selected':''?>>Both</option></select></td>
   <td><select name="root"><option <?=$g['root_type']==='Only Root'?'selected':''?>>Only Root</option><option <?=$g['root_type']==='Root & NoRoot'?'selected':''?>>Root & NoRoot</option><option <?=$g['root_type']==='NoRoot'?'selected':''?>>NoRoot</option></select></td>
   <td><input name="sort" type="number" value="<?=$g['sort_order']?>" style="width:70px"></td>
   <td><select name="is_active"><option value="1" <?=$g['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$g['is_active']?'selected':''?>>Tắt</option></select></td>
@@ -1134,14 +1144,55 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <h1>🏪 Quản lý Accounts</h1>
 
 <?php $gamesAll=$db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
+<?php $accGames=$db->query("SELECT * FROM games WHERE category IN ('account','both') ORDER BY sort_order")->fetchAll(); ?>
 <?php $typesAll=$db->query("SELECT at.*,g.name game_name FROM account_types at JOIN games g ON at.game_id=g.id ORDER BY g.sort_order, at.sort_order")->fetchAll(); ?>
+
+<div class="form-card">
+<h3>🎮 Thêm game bán Acc</h3>
+<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+<input type="hidden" name="act" value="add_acc_game">
+<div class="form-row">
+  <div><label>Tên game</label><input name="name" required placeholder="Liên Quân Mobile"></div>
+  <div><label>Package name</label><input name="pkg" required placeholder="com.example.game" style="width:220px"></div>
+  <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
+  <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
+  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm game Acc</button></div>
+</div>
+</form>
+</div>
+
+<?php if($accGames): ?>
+<div class="form-card">
+<h3>🎯 Danh sách game Acc</h3>
+<table>
+<tr><th>Game</th><th>Loại acc</th><th>Giá</th><th>Stock</th><th>Active</th><th>Hành động</th></tr>
+<?php foreach($accGames as $ag):
+  $atS=$db->prepare("SELECT id,name,price,is_active FROM account_types WHERE game_id=? ORDER BY sort_order");
+  $atS->execute([$ag['id']]);
+  $accTypesForGame=$atS->fetchAll();
+  if(!$accTypesForGame): ?>
+  <tr><td><?=h($ag['name'])?></td><td colspan="5" style="color:#8b949e">Chưa có loại acc nào — thêm bên dưới</td></tr>
+  <?php else: foreach($accTypesForGame as $atg):
+    $stk=$db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
+    $stk->execute([$atg['id']]); $stkCount=(int)$stk->fetchColumn();
+  ?>
+  <tr><td><?=h($ag['name'])?></td><td><?=h($atg['name'])?></td><td><?=number_format($atg['price'])?>đ</td><td><b style="color:<?=$stkCount>0?'#4ade80':'#f85149'?>"><?=$stkCount?></b></td><td><span class="badge <?=$atg['is_active']?'green':'gray'?>"><?=$atg['is_active']?'Bật':'Tắt'?></span></td>
+  <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-gray">Toggle</button></form>
+  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá?')">🗑</button></form></td></tr>
+  <?php endforeach; endif; ?>
+<?php endforeach; ?>
+</table>
+</div>
+<?php endif; ?>
 
 <div class="form-card">
 <h3>➕ Thêm loại acc mới</h3>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_acc_type">
 <div class="form-row">
-  <div><label>Game</label><select name="game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Game Acc</label><select name="game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
   <div><label>Tên loại acc</label><input name="name" required placeholder="Google, Facebook, Apple..." style="width:150px"></div>
   <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="50000" style="width:120px"></div>
   <div><label>Mô tả</label><input name="description" placeholder="Mô tả thêm (tùy chọn)" style="width:200px"></div>
@@ -1156,7 +1207,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="import_accounts">
 <div class="form-row">
-  <div><label>Game</label><select name="acc_game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Game Acc</label><select name="acc_game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
   <div><label>Loại acc</label><select name="acc_type_id"><?php foreach($typesAll as $t):?><option value="<?=$t['id']?>"><?=h($t["name"])?> (<?=h($t["game_name"])?>)</option><?php endforeach?></select></div>
   <div style="flex:1"><label>Danh sách acc (mỗi dòng: tk:mk hoặc tk|mk)</label>
     <textarea name="accounts" rows="6" placeholder="user1@gmail.com:pass123&#10;user2@gmail.com:pass456&#10;user3|pass789" style="width:100%;max-width:100%;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px;font-family:monospace;font-size:13px"></textarea>

@@ -234,12 +234,23 @@ async function api(action,method,body){
 
 async function openGameModal(){
   document.getElementById('gameModal').classList.add('show');
-  if(gCache.length===0){
-    var res=await api('games');
+  if(true){
+    var res=await api('games&category=key');
+    if(!res.success)return;
+    window._keyGames=res.games;
+  }
+  gCache=window._keyGames||[];
+  buildGameList();
+}
+async function openAccGameModal(){
+  if(true){
+    var res=await api('games&category=account');
     if(!res.success)return;
     gCache=res.games;
   }
-  buildGameList();
+  if(!gCache.length){ toast('Chưa có game bán acc. Liên hệ admin.','error'); return; }
+  document.getElementById('gameModal').classList.add('show');
+  buildAccGameList();
 }
 function buildGameList(){
   var html='';
@@ -1308,29 +1319,7 @@ function hideAccSection(){
   if(el) el.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Ch&#x1ECD;n game tr&#x1B0;&#x1EDB;c</div>';
 }
 
-function openAccGameModal(){
-  if(!gCache.length){
-    toast('Chưa tải danh sách game','error');
-    return;
-  }
-  document.getElementById('gameModal').classList.add('show');
-  var html='';
-  gCache.forEach(function(g){
-    var iconUrl=safeUrl(g.icon_url);
-    var pkg=safePackageName(g.package_name);
-    var ic=iconUrl?'<img src="'+escapeHtml(iconUrl)+'" alt="">':(ICONS[pkg]||'🎮');
-    var tag=g.type==='VIP'?'<span class="vip-tag">⭐ VIP</span>':'<span class="normal-tag">NORMAL</span>';
-    var sel=(selAccGame&&selAccGame.id==g.id)?' on':'';
-    html+='<div class="mgame'+sel+'" onclick="pickAccGame('+(parseInt(g.id,10)||0)+')">'
-      +'<div class="game-emoji">'+ic+'</div>'
-      +'<div style="flex:1"><div class="game-title">'+escapeHtml(g.name)+tag+'</div>'
-      +'<div class="game-pkgname">'+escapeHtml(pkg)+'</div>'
-      +'<div class="game-roottype">'+escapeHtml(g.root_type)+'</div></div>'
-      +'<div class="chev">&#x203A;</div></div>';
-  });
-  document.getElementById('gameList').innerHTML=html||'<div class="loading">'+T.dangTaiGame+'</div>';
-  initMotion();
-}
+// buildAccGameList is defined in openAccGameModal above (line ~245)
 function pickAccGame(gid){
   gCache.forEach(function(g){ if(g.id==gid) selAccGame=g; });
   if(!selAccGame)return;

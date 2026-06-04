@@ -91,7 +91,14 @@ switch ($action) {
 
     // ===== DANH SÁCH GAME =====
     case 'games':
-        $stmt = $db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order ASC");
+        $cat = $_GET['category'] ?? '';
+        if ($cat === 'key') {
+            $stmt = $db->query("SELECT * FROM games WHERE is_active=1 AND (category='key' OR category='both') ORDER BY sort_order ASC");
+        } elseif ($cat === 'account') {
+            $stmt = $db->query("SELECT * FROM games WHERE is_active=1 AND (category='account' OR category='both') ORDER BY sort_order ASC");
+        } else {
+            $stmt = $db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order ASC");
+        }
         jsonResponse(['success' => true, 'games' => $stmt->fetchAll()]);
 
     // ===== GÓI THEO GAME =====

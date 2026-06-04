@@ -76,6 +76,7 @@ CREATE TABLE `games` (
   `package_name` VARCHAR(200) NOT NULL,
   `icon_url` VARCHAR(500) DEFAULT NULL,
   `type` ENUM('VIP','NORMAL') DEFAULT 'NORMAL',
+  `category` ENUM('key','account') DEFAULT 'key',
   `root_type` VARCHAR(50) DEFAULT 'Only Root',
   `is_active` TINYINT(1) DEFAULT 1,
   `sort_order` INT(11) DEFAULT 0,

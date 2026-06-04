@@ -60,6 +60,17 @@ SET @sql = IF(@col_exists = 0,
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- Thêm cột category vào games nếu chưa có
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'games' AND column_name = 'category'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE `games` ADD COLUMN `category` ENUM(\'key\',\'account\') DEFAULT \'key\' AFTER `type`',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Migration hoàn tất.
 -- Lưu ý: orders.account_id sẽ được set khi đơn là account order.
 -- Nhiều account có thể được gán vào 1 đơn qua orders table (không dùng account_id mà dùng order_id trong accounts).
