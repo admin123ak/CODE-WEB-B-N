@@ -321,8 +321,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'add_acc_game') {
         try {
             $iconUrl = handleGameIconUpload();
+            $name = trim($_POST['name'] ?? '');
+            if (!$name) throw new Exception('Thiếu tên game');
             $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?)")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],'account',$_POST['root'],$_POST['sort']??0]);
+               ->execute([$name, $name, $iconUrl, 'NORMAL', 'account', '', (int)($_POST['sort'] ?? 0)]);
             header("Location: ?tab=accounts&ok=1"); exit;
         } catch (Exception $e) {
             header("Location: ?tab=accounts&err=" . urlencode('Lỗi: ' . $e->getMessage())); exit;
@@ -1161,9 +1163,6 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <input type="hidden" name="act" value="add_acc_game">
 <div class="form-row">
   <div><label>Tên game</label><input name="name" required placeholder="Liên Quân Mobile"></div>
-  <div><label>Package name</label><input name="pkg" required placeholder="com.example.game" style="width:220px"></div>
-  <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
-  <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
   <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
   <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm game Acc</button></div>

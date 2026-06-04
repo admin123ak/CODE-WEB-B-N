@@ -252,6 +252,23 @@ async function openAccGameModal(){
   document.getElementById('gameModal').classList.add('show');
   buildAccGameList();
 }
+function buildAccGameList(){
+  var html='';
+  gCache.forEach(function(g){
+    var iconUrl=safeUrl(g.icon_url);
+    var pkg=safePackageName(g.package_name);
+    var ic=iconUrl?'<img src="'+escapeHtml(iconUrl)+'" alt="">':(ICONS[pkg]||'🎮');
+    var tag=g.type==='VIP'?'<span class="vip-tag">⭐ VIP</span>':'<span class="normal-tag">NORMAL</span>';
+    var sel=(selAccGame&&selAccGame.id==g.id)?' on':'';
+    html+='<div class="mgame'+sel+'" onclick="pickAccGame('+(parseInt(g.id,10)||0)+')">'
+      +'<div class="game-emoji">'+ic+'</div>'
+      +'<div style="flex:1"><div class="game-title">'+escapeHtml(g.name)+tag+'</div>'
+      +'<div class="game-pkgname">'+escapeHtml(pkg)+'</div></div>'
+      +'<div class="chev">&#x203A;</div></div>';
+  });
+  document.getElementById('gameList').innerHTML=html||'<div style="text-align:center;color:var(--text2);padding:24px">Ch&#x1B0;a c&#xF3; game n&#xE0;o</div>';
+  initMotion();
+}
 function buildGameList(){
   var html='';
   gCache.forEach(function(g){
