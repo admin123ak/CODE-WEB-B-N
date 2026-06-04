@@ -347,7 +347,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=games&ok=1"); exit;
     }
     if ($act === 'del_game') {
-        $db->prepare("DELETE FROM games WHERE id=?")->execute([$_POST['id']]);
+        $gid = (int)($_POST['id'] ?? 0);
+        if ($gid) {
+            try {
+                $db->beginTransaction();
+                // Trả key về pool trước khi xóa order liên quan
+                $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL, start_at=NULL, expire_at=NULL WHERE game_id=? AND status IN ('pending','active','expired','locked')")->execute([$gid]);
+                $db->prepare("DELETE FROM `keys` WHERE game_id=?")->execute([$gid]);
+                $db->prepare("UPDATE accounts SET status='available', user_id=NULL, order_id=NULL WHERE game_id=? AND status='pending'")->execute([$gid]);
+                $db->prepare("DELETE FROM accounts WHERE game_id=?")->execute([$gid]);
+                $db->prepare("DELETE FROM orders WHERE game_id=?")->execute([$gid]);
+                $db->prepare("DELETE FROM packages WHERE game_id=?")->execute([$gid]);
+                $db->prepare("DELETE FROM account_types WHERE game_id=?")->execute([$gid]);
+                $db->prepare("DELETE FROM free_keys WHERE game_id=?")->execute([$gid]);
+                $db->prepare("DELETE FROM games WHERE id=?")->execute([$gid]);
+                $db->commit();
+                header("Location: ?tab=games&ok=1"); exit;
+            } catch (Exception $e) {
+                $db->rollBack();
+                header("Location: ?tab=games&err=" . urlencode('Xoá game thất bại: ' . $e->getMessage())); exit;
+            }
+        }
         header("Location: ?tab=games"); exit;
     }
     if ($act === 'add_pkg') {
@@ -637,7 +657,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 
 <h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
 <?php
-$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
+$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
 if($pending): ?>
 <table>
 <tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Thời gian</th><th>Thao tác</th></tr>
@@ -668,7 +688,7 @@ if ($filter_method !== '' && !in_array($filter_method, $pmAllowed, true)) $filte
 $sqlWhereParts = ['o.status=?']; $sqlParams = [$filter_status];
 if ($filter_method !== '') { $sqlWhereParts[] = 'o.payment_method=?'; $sqlParams[] = $filter_method; }
 $sqlWhere = implode(' AND ', $sqlWhereParts);
-$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,p.name as pkg_name,p.days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
+$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
 $orders->execute($sqlParams); $orders = $orders->fetchAll();
 $pmLabel = ['mbbank'=>'🏦 MBBank','binance'=>'🪙 Binance','card'=>'🎴 Card','balance'=>'💰 Ví'];
 $pmBadgeColor = ['mbbank'=>'blue','binance'=>'orange','card'=>'purple','balance'=>'green'];
@@ -1180,14 +1200,17 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   $atS->execute([$ag['id']]);
   $accTypesForGame=$atS->fetchAll();
   if(!$accTypesForGame): ?>
-  <tr><td><?=h($ag['name'])?></td><td colspan="5" style="color:#8b949e">Chưa có loại acc nào — thêm bên dưới</td></tr>
+  <tr><td><?=h($ag['name'])?></td><td colspan="5" style="color:#8b949e">Chưa có loại acc nào — thêm bên dưới
+  <form method="POST" style="display:inline;float:right"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$ag['id']?>"><button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="return confirm('Xoá game acc này? Toàn bộ acc và loại acc sẽ bị xoá.')">🗑 Xoá game</button></form>
+  </td></tr>
   <?php else: foreach($accTypesForGame as $atg):
     $stk=$db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
     $stk->execute([$atg['id']]); $stkCount=(int)$stk->fetchColumn();
   ?>
   <tr><td><?=h($ag['name'])?></td><td><?=h($atg['name'])?></td><td><?=number_format($atg['price'])?>đ</td><td><b style="color:<?=$stkCount>0?'#4ade80':'#f85149'?>"><?=$stkCount?></b></td><td><span class="badge <?=$atg['is_active']?'green':'gray'?>"><?=$atg['is_active']?'Bật':'Tắt'?></span></td>
   <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-gray">Toggle</button></form>
-  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá?')">🗑</button></form></td></tr>
+  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá?')">🗑</button></form>
+  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$ag['id']?>"><button class="btn btn-red" style="padding:4px 8px;font-size:11px;opacity:.75" onclick="return confirm('Xoá cả game <?=h($ag["name"])?>? Toàn bộ acc và loại acc sẽ bị xoá.')">🗑 Game</button></form></td></tr>
   <?php endforeach; endif; ?>
 <?php endforeach; ?>
 </table>

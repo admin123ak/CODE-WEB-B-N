@@ -12,10 +12,10 @@ function runMaintenance(PDO $db): array {
     $stmt->execute();
     $out['deleted_expired_keys'] = $stmt->rowCount();
 
-    // Hủy đơn pending quá 15 phút — key quay lại pool để người khác mua
+    // Hủy đơn pending quá 15 phút — key + acc quay lại pool để người khác mua
     $db->beginTransaction();
     try {
-        $orders = $db->query("SELECT id FROM orders WHERE status='pending' AND created_at < (NOW() - INTERVAL 15 MINUTE) FOR UPDATE")->fetchAll();
+        $orders = $db->query("SELECT id, order_type FROM orders WHERE status='pending' AND created_at < (NOW() - INTERVAL 15 MINUTE) FOR UPDATE")->fetchAll();
         if ($orders) {
             $ids = array_map(fn($r)=>(int)$r['id'], $orders);
             $in = implode(',', array_fill(0, count($ids), '?'));
@@ -23,6 +23,10 @@ function runMaintenance(PDO $db): array {
             $stmt = $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id IN ($in) AND status='pending'");
             $stmt->execute($ids);
             $out['returned_to_pool'] = $stmt->rowCount();
+            // Trả acc về pool available
+            $stmt = $db->prepare("UPDATE accounts SET status='available', user_id=NULL, order_id=NULL WHERE order_id IN ($in) AND status='pending'");
+            $stmt->execute($ids);
+            $out['returned_to_pool'] += $stmt->rowCount();
             // Hủy đơn quá hạn
             $stmt = $db->prepare("UPDATE orders SET status='cancelled', admin_note='Tự huỷ do quá 15 phút chưa thanh toán' WHERE id IN ($in) AND status='pending'");
             $stmt->execute($ids);

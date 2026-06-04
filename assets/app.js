@@ -947,7 +947,12 @@ async function checkPayStatus(){
     stopPayAutoCheck();
     closeModal('payModal');
     toast(T.daDuyetAuto||'Thanh toán đã xác nhận','success');
-    await loadKeys('all');
+    if(res.order&&res.order.order_type==='account'){
+      await loadMyAccs();
+      switchTab('buyacc');
+    } else {
+      await loadKeys('all');
+    }
   }
 }
 function donePay(){
@@ -1389,10 +1394,10 @@ function updAccBuyBtn(){
   var sub=document.getElementById('accBuySub');
   if(selAccGame && selAccType && parseInt(selAccType.stock)>0){
     btn.classList.add('go');
-    sub.textContent=escapeHtml(selAccType.name)+' | '+fmtMoney(selAccType.price)+'&#x111;';
+    sub.textContent=selAccType.name+' | '+fmtMoney(selAccType.price)+'đ';
   } else {
     btn.classList.remove('go');
-    sub.textContent='Ch&#x1B0;a ch&#x1ECD;n lo&#x1EA1;i acc';
+    sub.textContent='Chưa chọn loại acc';
   }
 }
 async function doAccOrder(){
@@ -1452,7 +1457,7 @@ async function confirmAccOrder(){
     showPay(res);
     loadAccTypes();
   } else {
-    toast(res.error||'L&#x1ED7;i t&#x1EA1;o &#x111;&#x1EDD;n','error');
+    toast(res.error||'Lỗi tạo đơn acc','error');
   }
 }
 // Load purchased accounts for "Mua Acc" tab
