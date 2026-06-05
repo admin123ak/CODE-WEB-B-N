@@ -1090,7 +1090,7 @@ function renderKeys(keys){
     var pkgName=escapeHtml(k.pkg_name||k.package_name||'');
     html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
-      +'<div><div class="kgame" style="font-size:14px;font-weight:800">'+gameName+'</div><div class="kgame" style="font-size:11px;color:var(--text2);font-weight:600">'+pkgName+typeTag+'</div></div>'
+      +'<div><div class="kgame" style="font-size:14px;font-weight:800">'+gameName+'</div><div class="kgame" style="font-size:11px;color:var(--text2);font-weight:600">'+pkgName+' · '+(parseInt(k.days,10)||0)+' ngày '+typeTag+'</div></div>'
       // Badge = mã đơn (thay "Hoạt động")
       +'<div class="kbadge '+cls+'" style="font-family:monospace;font-size:10px">'+escapeHtml(k.order_code||lbl)+'</div></div>'
       +'<div style="padding:8px 16px 0;display:flex;align-items:center;gap:8px">'
@@ -1099,7 +1099,6 @@ function renderKeys(keys){
       +'</div></div>'
       +'<div class="kgrid">'
       // Ô "Còn lại" → "Thiết bị"
-      +'<div class="kbox"><div class="kbox-lbl">Số ngày</div><div class="kbox-val">'+(parseInt(k.days,10)||0)+' ngày</div></div>'
       +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
       +'</div>';
     if(k.status==='active'){
