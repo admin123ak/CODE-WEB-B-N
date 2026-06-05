@@ -57,4 +57,34 @@ if (!$col->fetchColumn()) {
     echo "✅ ADD games.download_url\n";
 } else { echo "⏭️ games.download_url có\n"; }
 
+// free_key_claims.claim_token, short_url, is_claimed
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='free_key_claims' AND COLUMN_NAME='claim_token'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `free_key_claims` ADD `claim_token` VARCHAR(80) DEFAULT NULL AFTER `key_id`");
+    echo "✅ ADD free_key_claims.claim_token\n";
+} else { echo "⏭️ free_key_claims.claim_token có\n"; }
+
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='free_key_claims' AND COLUMN_NAME='short_url'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `free_key_claims` ADD `short_url` TEXT DEFAULT NULL");
+    echo "✅ ADD free_key_claims.short_url\n";
+} else { echo "⏭️ free_key_claims.short_url có\n"; }
+
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='free_key_claims' AND COLUMN_NAME='is_claimed'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `free_key_claims` ADD `is_claimed` TINYINT(1) NOT NULL DEFAULT 0");
+    echo "✅ ADD free_key_claims.is_claimed\n";
+    // Đánh dấu các claim cũ đã có key_id là claimed
+    $db->exec("UPDATE `free_key_claims` SET `is_claimed`=1 WHERE `key_id` IS NOT NULL");
+    echo "✅ Migrate is_claimed cho claim cũ\n";
+} else { echo "⏭️ free_key_claims.is_claimed có\n"; }
+
+$idx = $db->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='free_key_claims' AND INDEX_NAME='uniq_claim_token'");
+if (!$idx->fetchColumn()) {
+    try {
+        $db->exec("ALTER TABLE `free_key_claims` ADD UNIQUE KEY `uniq_claim_token` (`claim_token`)");
+        echo "✅ ADD uniq_claim_token\n";
+    } catch (Exception $e) { echo "⚠️ Index claim_token: " . $e->getMessage() . "\n"; }
+} else { echo "⏭️ Index claim_token có\n"; }
+
 echo "\n✅ Xong! Xoá file fix_db.php sau khi dùng.\n";

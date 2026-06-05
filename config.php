@@ -39,6 +39,9 @@ if (!defined('DB_CHARSET'))                 define('DB_CHARSET', 'utf8mb4');
 if (!defined('APP_TIMEZONE'))               define('APP_TIMEZONE', 'Asia/Ho_Chi_Minh');
 if (!defined('MBBANK_AUTO_APPROVE_ENABLED')) define('MBBANK_AUTO_APPROVE_ENABLED', true);
 if (!defined('FREE_GETKEY_ENABLED'))        define('FREE_GETKEY_ENABLED', true);
+if (!defined('FREE_SHORTLINK_LAYERS'))      define('FREE_SHORTLINK_LAYERS', 2);
+if (!defined('LAYMA_API_TOKEN'))            define('LAYMA_API_TOKEN', '7fc1aa570262544a7b80d1bc0ab3c4e6');
+if (!defined('YEUMONEY_API_TOKEN'))         define('YEUMONEY_API_TOKEN', '');
 if (!defined('ADMIN_SESSION_TTL'))          define('ADMIN_SESSION_TTL', 3600);
 if (!defined('VIETQR_BANK_ID'))             define('VIETQR_BANK_ID', '970422');
 
@@ -224,7 +227,24 @@ function shortenLink4M($longUrl, &$debug = null) {
     return '';
 }
 
+function shortenLayma($longUrl, &$debug = null) {
+    // Layma API: https://api.layma.net/api/admin/shortlink/quicklink
+    $debug = [];
+    $token = defined('LAYMA_API_TOKEN') ? LAYMA_API_TOKEN : '';
+    if ($token === '') { $debug[] = ['error' => 'LAYMA_API_TOKEN chưa cấu hình']; return ''; }
+    $ep = 'https://api.layma.net/api/admin/shortlink/quicklink?tokenUser=' . rawurlencode($token)
+        . '&format=json&url=' . rawurlencode($longUrl);
+    $res = httpJsonRequest($ep);
+    $raw = (string)$res['raw'];
+    $debug[] = ['endpoint' => $ep, 'code' => $res['code'], 'ok' => $res['ok'], 'raw' => substr($raw, 0, 220)];
+    if (is_array($res['json']) && !empty($res['json']['success']) && !empty($res['json']['html'])) {
+        return (string)$res['json']['html'];
+    }
+    return '';
+}
+
 function shortenYeuMoney($longUrl, &$debug = null) {
+    // Legacy YeuMoney support - giữ lại cho backward compat
     $endpoints = [
         'https://yeumoney.com/QL_api.php?token=' . rawurlencode(YEUMONEY_API_TOKEN) . '&format=json&url=' . rawurlencode($longUrl),
         'https://yeumoney.com/api?api=' . rawurlencode(YEUMONEY_API_TOKEN) . '&url=' . rawurlencode($longUrl),
@@ -241,14 +261,25 @@ function shortenYeuMoney($longUrl, &$debug = null) {
 }
 
 function buildFreeShortlink($claimUrl, &$debug = null) {
-    $debug = [];
-    $ym = shortenYeuMoney($claimUrl, $ymDebug);
-    $debug['yeumoney'] = $ymDebug;
-    if (!$ym) throw new Exception('YeuMoney API không tạo được link');
-    $link4 = shortenLink4M($ym, $l4Debug);
+    // Layers: 1 = chỉ Layma, 2 = Layma + Link4M (vượt 2 lớp)
+    $layers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2;
+    if ($layers < 1) $layers = 1;
+    if ($layers > 2) $layers = 2;
+
+    $debug = ['layers' => $layers];
+
+    // Lớp 1: Layma
+    $layer1 = shortenLayma($claimUrl, $laymaDebug);
+    $debug['layma'] = $laymaDebug;
+    if (!$layer1) throw new Exception('Layma API không tạo được link. Kiểm tra LAYMA_API_TOKEN.');
+
+    if ($layers === 1) return $layer1;
+
+    // Lớp 2: Link4M wrap link Layma
+    $layer2 = shortenLink4M($layer1, $l4Debug);
     $debug['link4m'] = $l4Debug;
-    if (!$link4) throw new Exception('Link4M API không tạo được link. Kiểm tra lại token/API Link4M.');
-    return $link4;
+    if (!$layer2) throw new Exception('Link4M API không tạo được link. Kiểm tra LINK4M_API_TOKEN.');
+    return $layer2;
 }
 
 // =============================================
@@ -327,7 +358,9 @@ function hclouConfigEditableKeys() {
         'VIETQR_BANK_ID'              => 'string',
         'MBBANK_AUTO_APPROVE_ENABLED' => 'bool',
         'FREE_GETKEY_ENABLED'         => 'bool',
+        'FREE_SHORTLINK_LAYERS'       => 'string',
         'MBBANK_HISTORY_API_KEY'      => 'string',
+        'LAYMA_API_TOKEN'             => 'string',
         'LINK4M_API_TOKEN'            => 'string',
         'YEUMONEY_API_TOKEN'          => 'string',
         // --- Binance USDT TRC20 ---

@@ -747,34 +747,75 @@ switch ($action) {
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $token = $_POST['token'] ?? $_GET['token'] ?? '';
         if (!$token) jsonResponse(['error' => 'Thiếu token claim'], 400);
-        $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id WHERE fk.claim_token=?");
-        $stmt->execute([$token]);
-        $fk = $stmt->fetch();
-        if (!$fk) jsonResponse(['error' => 'Link claim không hợp lệ'], 404);
-        if (!$fk['is_active'] || strtotime($fk['expire_at']) < time()) jsonResponse(['error' => 'Key free đã hết hạn'], 410);
 
+        // Token mới (per-user-request) lưu trong free_key_claims.claim_token
+        $stmt = $db->prepare("SELECT fkc.*, fk.game_id, fk.package_id, fk.days as fk_days, fk.start_at as fk_start, fk.expire_at as fk_expire, fk.is_active as fk_active, fk.key_code as fk_keycode
+            FROM free_key_claims fkc
+            JOIN free_keys fk ON fkc.free_key_id = fk.id
+            WHERE fkc.claim_token = ? LIMIT 1");
+        $stmt->execute([$token]);
+        $row = $stmt->fetch();
+
+        // Fallback: token cũ trên free_keys.claim_token (legacy)
+        if (!$row) {
+            $legacy = $db->prepare("SELECT fk.* FROM free_keys fk WHERE fk.claim_token=? LIMIT 1");
+            $legacy->execute([$token]);
+            $lfk = $legacy->fetch();
+            if (!$lfk) jsonResponse(['error' => 'Link claim không hợp lệ'], 404);
+            if (!$lfk['is_active'] || strtotime($lfk['expire_at']) < time()) jsonResponse(['error' => 'Key free đã hết hạn'], 410);
+
+            // Insert claim atomic via uniq_free_user
+            $db->beginTransaction();
+            try {
+                $ins = $db->prepare("INSERT IGNORE INTO free_key_claims (free_key_id, user_id, is_claimed) VALUES (?,?,1)");
+                $ins->execute([$lfk['id'], $user['id']]);
+                if ($ins->rowCount() === 0) {
+                    $db->rollBack();
+                    jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key free này rồi', 'key_code' => $lfk['key_code']]);
+                }
+                $cid = $db->lastInsertId();
+                $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,status,days,start_at,expire_at) VALUES (?,?,?,?, 'active', ?, ?, ?)")
+                   ->execute([$lfk['key_code'], $user['id'], $lfk['game_id'], $lfk['package_id'], $lfk['days'], $lfk['start_at'], $lfk['expire_at']]);
+                $kid = (int)$db->lastInsertId();
+                $db->prepare("UPDATE free_key_claims SET key_id=? WHERE id=?")->execute([$kid, $cid]);
+                $db->commit();
+                jsonResponse(['success' => true, 'message' => 'Nhận key free thành công', 'key_code' => $lfk['key_code']]);
+            } catch (Exception $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                jsonResponse(['error' => 'Không nhận được key'], 500);
+            }
+        }
+
+        // Token mới: kiểm tra owner + state
+        if ((int)$row['user_id'] !== (int)$user['id']) jsonResponse(['error' => 'Link claim không thuộc về bạn'], 403);
+        if (!$row['fk_active'] || strtotime($row['fk_expire']) < time()) jsonResponse(['error' => 'Key free đã hết hạn'], 410);
+
+        if ($row['is_claimed']) {
+            // Đã claim trước đó - trả key cũ
+            $oldKey = $db->prepare("SELECT key_code FROM `keys` WHERE id=? LIMIT 1");
+            $oldKey->execute([$row['key_id']]);
+            $kc = $oldKey->fetchColumn();
+            jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key này rồi', 'key_code' => $kc ?: $row['fk_keycode']]);
+        }
+
+        // Đánh dấu claimed + insert key (atomic)
         $db->beginTransaction();
         try {
-            // INSERT IGNORE trước để claim atomic (uniq_free_user constraint)
-            $claimIns = $db->prepare("INSERT IGNORE INTO free_key_claims (free_key_id, user_id) VALUES (?, ?)");
-            $claimIns->execute([$fk['id'], $user['id']]);
-            if ($claimIns->rowCount() === 0) {
-                // User đã claim trước đó
+            // Re-check & lock claim
+            $lock = $db->prepare("SELECT is_claimed FROM free_key_claims WHERE id=? FOR UPDATE");
+            $lock->execute([$row['id']]);
+            $cur = $lock->fetchColumn();
+            if ($cur) {
                 $db->rollBack();
-                $oldRow = $db->prepare("SELECT k.key_code FROM free_key_claims fkc LEFT JOIN `keys` k ON fkc.key_id=k.id WHERE fkc.free_key_id=? AND fkc.user_id=?");
-                $oldRow->execute([$fk['id'], $user['id']]);
-                $row = $oldRow->fetch();
-                jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key free này rồi', 'key_code' => $row['key_code'] ?? $fk['key_code']]);
+                jsonResponse(['success' => true, 'already' => true, 'message' => 'Đã nhận trước đó', 'key_code' => $row['fk_keycode']]);
             }
-            $claimId = $db->lastInsertId();
 
-            // Insert key
             $db->prepare("INSERT INTO `keys` (key_code,user_id,game_id,package_id,status,days,start_at,expire_at) VALUES (?,?,?,?, 'active', ?, ?, ?)")
-               ->execute([$fk['key_code'], $user['id'], $fk['game_id'], $fk['package_id'], $fk['days'], $fk['start_at'], $fk['expire_at']]);
+               ->execute([$row['fk_keycode'], $user['id'], $row['game_id'], $row['package_id'], $row['fk_days'], $row['fk_start'], $row['fk_expire']]);
             $kid = (int)$db->lastInsertId();
-            $db->prepare("UPDATE free_key_claims SET key_id=? WHERE id=?")->execute([$kid, $claimId]);
+            $db->prepare("UPDATE free_key_claims SET key_id=?, is_claimed=1, claimed_at=NOW() WHERE id=?")->execute([$kid, $row['id']]);
             $db->commit();
-            jsonResponse(['success' => true, 'message' => 'Nhận key free thành công', 'key_code' => $fk['key_code']]);
+            jsonResponse(['success' => true, 'message' => 'Nhận key free thành công', 'key_code' => $row['fk_keycode']]);
         } catch (Exception $e) {
             if ($db->inTransaction()) $db->rollBack();
             error_log('[CLAIM_FREE_KEY] ' . $e->getMessage());
@@ -786,23 +827,54 @@ switch ($action) {
         if (!FREE_GETKEY_ENABLED) jsonResponse(['error' => 'GetKey Free đang tắt'], 403);
         $game_id = (int)($_POST['game_id'] ?? $_GET['game_id'] ?? 0);
         $free_key_id = (int)($_POST['package_id'] ?? $_GET['package_id'] ?? 0);
-        $where = "fk.is_active=1 AND fk.expire_at > NOW() AND c.id IS NULL";
+
+        // Tìm free_key available (còn key trong pool — is_claimed=0 hoặc chưa có claim)
+        $where = "fk.is_active=1 AND fk.expire_at > NOW()";
         $params = [];
         if ($game_id > 0) { $where .= " AND fk.game_id=?"; $params[] = $game_id; }
         if ($free_key_id > 0) { $where .= " AND fk.id=?"; $params[] = $free_key_id; }
-        $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id LEFT JOIN free_key_claims c ON c.free_key_id=fk.id WHERE {$where} ORDER BY fk.created_at DESC LIMIT 1");
+        $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name
+            FROM free_keys fk
+            JOIN games g ON fk.game_id=g.id
+            JOIN packages p ON fk.package_id=p.id
+            WHERE {$where}
+              AND NOT EXISTS(SELECT 1 FROM free_key_claims fkc WHERE fkc.free_key_id=fk.id AND fkc.is_claimed=1)
+            ORDER BY fk.created_at DESC LIMIT 1");
         $stmt->execute($params);
         $fk = $stmt->fetch();
         if (!$fk) jsonResponse(['error' => 'Chưa có key free khả dụng'], 404);
-        $chk = $db->prepare("SELECT id FROM free_key_claims WHERE free_key_id=? AND user_id=?");
+
+        // Check: user đã claim key này rồi?
+        $chk = $db->prepare("SELECT id, claim_token, short_url, is_claimed FROM free_key_claims WHERE free_key_id=? AND user_id=? LIMIT 1");
         $chk->execute([$fk['id'], $user['id']]);
-        if ($chk->fetch()) jsonResponse(['error' => 'Bạn đã nhận key free này rồi'], 429);
-        $url = $fk['short_url'];
-        if (!$url) {
-            $claimUrl = SITE_URL . '/claim.php?t=' . urlencode($fk['claim_token']);
-            $url = buildFreeShortlink($claimUrl);
-            $db->prepare("UPDATE free_keys SET short_url=? WHERE id=?")->execute([$url, $fk['id']]);
+        $existing = $chk->fetch();
+
+        if ($existing && $existing['is_claimed']) {
+            jsonResponse(['error' => 'Bạn đã nhận key free này rồi'], 429);
         }
+
+        // Re-use token + short_url nếu user đã request trước đó nhưng chưa vượt xong
+        if ($existing && $existing['short_url']) {
+            jsonResponse(['success'=>true, 'url'=>$existing['short_url'], 'game_name'=>$fk['game_name'], 'pkg_name'=>$fk['pkg_name'], 'expire_at'=>$fk['expire_at']]);
+        }
+
+        // Tạo token mới per user-request
+        $newToken = bin2hex(random_bytes(24));
+        if ($existing) {
+            $db->prepare("UPDATE free_key_claims SET claim_token=? WHERE id=?")->execute([$newToken, $existing['id']]);
+        } else {
+            $db->prepare("INSERT INTO free_key_claims (free_key_id, user_id, claim_token, is_claimed) VALUES (?,?,?,0)")
+               ->execute([$fk['id'], $user['id'], $newToken]);
+        }
+
+        try {
+            $claimUrl = SITE_URL . '/claim.php?t=' . urlencode($newToken);
+            $url = buildFreeShortlink($claimUrl);
+            $db->prepare("UPDATE free_key_claims SET short_url=? WHERE claim_token=?")->execute([$url, $newToken]);
+        } catch (Exception $e) {
+            jsonResponse(['error' => 'Không tạo được link: ' . $e->getMessage()], 500);
+        }
+
         jsonResponse(['success'=>true, 'url'=>$url, 'game_name'=>$fk['game_name'], 'pkg_name'=>$fk['pkg_name'], 'expire_at'=>$fk['expire_at']]);
 
     // ===== ĐƠN CHỜ THANH TOÁN CỦA USER =====
@@ -1000,37 +1072,53 @@ switch ($action) {
         if (!FREE_GETKEY_ENABLED) jsonResponse(['error' => 'GetKey Free đang tắt'], 403);
         $uid = $user['id'];
 
-        // Tìm free_key available
-        $fk = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id WHERE fk.is_active=1 AND fk.expire_at > NOW() ORDER BY fk.created_at DESC LIMIT 1");
+        // Tìm free_key còn key trong pool (chưa có user nào claim thành công)
+        $fk = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name
+            FROM free_keys fk
+            JOIN games g ON fk.game_id=g.id
+            JOIN packages p ON fk.package_id=p.id
+            WHERE fk.is_active=1 AND fk.expire_at > NOW()
+              AND NOT EXISTS(SELECT 1 FROM free_key_claims fkc WHERE fkc.free_key_id=fk.id AND fkc.is_claimed=1)
+            ORDER BY fk.created_at DESC LIMIT 1");
         $fk->execute();
         $freeKey = $fk->fetch();
         if (!$freeKey) {
             jsonResponse(['error' => 'Chưa có key free hôm nay! Admin sẽ thêm vào buổi sáng.'], 400);
         }
 
-        // Kiểm tra đã claim key này chưa
-        $chk = $db->prepare("SELECT id FROM free_key_claims WHERE free_key_id=? AND user_id=?");
+        // Check claim status của user với key này
+        $chk = $db->prepare("SELECT id, claim_token, short_url, is_claimed FROM free_key_claims WHERE free_key_id=? AND user_id=? LIMIT 1");
         $chk->execute([$freeKey['id'], $uid]);
-        if ($chk->fetch()) {
+        $existing = $chk->fetch();
+        if ($existing && $existing['is_claimed']) {
             jsonResponse(['success' => true, 'already' => true, 'message' => 'Bạn đã nhận key free này rồi']);
         }
 
-        // Lấy short_url có sẵn (đã tạo 2 lớp từ admin panel)
-        $shortUrl = $freeKey['short_url'] ?? null;
-        if (!$shortUrl) {
-            $claimUrl = SITE_URL . '/claim.php?t=' . urlencode($freeKey['claim_token']);
+        // Re-use link cũ nếu user đã request nhưng chưa vượt
+        if ($existing && $existing['short_url']) {
+            $shortUrl = $existing['short_url'];
+        } else {
+            $newToken = bin2hex(random_bytes(24));
+            if ($existing) {
+                $db->prepare("UPDATE free_key_claims SET claim_token=? WHERE id=?")->execute([$newToken, $existing['id']]);
+            } else {
+                $db->prepare("INSERT INTO free_key_claims (free_key_id, user_id, claim_token, is_claimed) VALUES (?,?,?,0)")
+                   ->execute([$freeKey['id'], $uid, $newToken]);
+            }
             try {
+                $claimUrl = SITE_URL . '/claim.php?t=' . urlencode($newToken);
                 $shortUrl = buildFreeShortlink($claimUrl, $debug);
-                $db->prepare("UPDATE free_keys SET short_url=? WHERE id=?")->execute([$shortUrl, $freeKey['id']]);
+                $db->prepare("UPDATE free_key_claims SET short_url=? WHERE claim_token=?")->execute([$shortUrl, $newToken]);
             } catch (Exception $e) {
-                jsonResponse(['error' => 'Không tạo được link. Liên hệ admin: ' . $e->getMessage()], 500);
+                jsonResponse(['error' => 'Không tạo được link: ' . $e->getMessage()], 500);
             }
         }
 
-        // Gắn telegram_id cá nhân để claim.php nhận diện user sau khi vượt link.
-        // FIX: dùng telegram_id thật (số Telegram), KHÔNG dùng $uid (= users.id nội bộ).
         $separator = strpos($shortUrl, '?') !== false ? '&' : '?';
         $personalUrl = $shortUrl . $separator . 'telegram_id=' . (int)$user['telegram_id'];
+
+        $layers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2;
+        $msg = $layers === 1 ? '🎉 Mở link và vượt 1 lớp để nhận key!' : '🎉 Mở link và vượt 2 lớp để nhận key!';
 
         jsonResponse([
             'success' => true,
@@ -1039,7 +1127,7 @@ switch ($action) {
             'days' => $freeKey['days'],
             'game_name' => $freeKey['game_name'],
             'pkg_name' => $freeKey['pkg_name'],
-            'message' => '🎉 Mở link và vượt 2 lớp để nhận key!'
+            'message' => $msg
         ]);
 
     default:
