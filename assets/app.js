@@ -1457,8 +1457,10 @@ async function confirmAccOrder(){
   btn.classList.remove('go');
   var res=await api('create_account_order','POST',{game_id:selAccGame.id,account_type_id:selAccType.id,payment_method:selectedPaymentMethod});
   accOrdering=false;
+  // Restore innerHTML trước — spinner đã xoá #accBuySub khỏi DOM, gọi updAccBuyBtn() sẽ null crash
+  btn.innerHTML='<span>Mua Acc</span><span class="buy-sub" id="accBuySub">'
+    +(selAccType?selAccType.name+' | '+fmtMoney(selAccType.price)+'đ':'Chưa chọn loại acc')+'</span>';
   btn.classList.add('go');
-  updAccBuyBtn();
   if(res.success){
     showPay(res);
     loadAccTypes();
