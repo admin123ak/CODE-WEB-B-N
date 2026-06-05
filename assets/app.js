@@ -319,6 +319,7 @@ function pickGame(gid){
   document.getElementById('gPkg').textContent=selGame.package_name;
   document.getElementById('gameBtnEl').classList.add('chosen');
   updPlayBtn();
+  updDlBtn();
   updBuyBtn(); loadPkgs(selGame.id);
 }
 
@@ -406,6 +407,24 @@ function updPlayBtn(){
 function openPlayLink(){
   if(!selGame||!selGame.package_name){ toast(T.chonGameTruoc,'error'); return; }
   window.open(PLAY_BASE+encodeURIComponent(selGame.package_name),'_blank');
+}
+function updDlBtn(){
+  var btn=document.getElementById('dlBtn');
+  if(!btn)return;
+  if(selGame&&selGame.download_url){ btn.classList.remove('disabled'); }
+  else { btn.classList.add('disabled'); }
+}
+function openDownloadLink(){
+  if(!selGame){ toast(T.chonGameTruoc,'error'); return; }
+  if(!selGame.download_url){ toast('Game này chưa có link tải','error'); return; }
+  var url=selGame.download_url;
+  try{
+    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){
+      window.Telegram.WebApp.openLink(url);
+    } else {
+      window.open(url,'_blank');
+    }
+  }catch(e){ window.open(url,'_blank'); }
 }
 
 function updBuyBtn(){
@@ -1087,7 +1106,8 @@ function renderKeys(keys){
     var cls=bmap[k.status]||'pending', lbl=lmap[k.status]||T.pending;
     var typeTag=k.key_type==='VIP'?'<span class="vip-tag">VIP</span>':'<span class="normal-tag">Normal</span>';
     var gameName=escapeHtml(k.game_name||'');
-    var pkgName=escapeHtml(k.pkg_name||k.package_name||'');
+    // Lấy package_name (com.example.game) chứ KHÔNG phải tên gói
+    var pkgName=escapeHtml(k.package_name||'');
     html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
       +'<div><div class="kgame" style="font-size:14px;font-weight:800">'+gameName+'</div><div class="kgame" style="font-size:11px;color:var(--text2);font-weight:600">'+pkgName+' '+typeTag+'</div></div>'
@@ -1098,8 +1118,8 @@ function renderKeys(keys){
       +'<button class="ksm" style="flex-shrink:0" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">📋 Copy</button>'
       +'</div></div>'
       +'<div class="kgrid">'
-      // Ô "Còn lại" → "Thiết bị"
       +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Số ngày</div><div class="kbox-val">'+(parseInt(k.days,10)||0)+' ngày</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div></div>';

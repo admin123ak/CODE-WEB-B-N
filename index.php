@@ -158,9 +158,9 @@
       </div>
 
       <div class="action-bar">
-        <a class="ic-btn tg" href="https://t.me/hclouserverfile" target="_blank" rel="noopener" title="Tải file" aria-label="Tải file">
+        <button type="button" class="ic-btn tg disabled" id="dlBtn" onclick="openDownloadLink()" title="Tải file" aria-label="Tải file">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
-        </a>
+        </button>
         <button type="button" class="ic-btn play disabled" id="playBtn" onclick="openPlayLink()" title="CH Play" aria-label="CH Play">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M4.4 2.78c-.25.22-.4.56-.4.98v16.48c0 .42.15.76.4.98l.06.05L13.7 12 4.46 2.73l-.06.05Z"/><path fill="#fff" opacity=".82" d="m16.79 8.91-3.09 3.1 3.1 3.1 3.77-2.15c1.24-.71 1.24-1.19 0-1.9l-3.78-2.15Z"/><path fill="#fff" opacity=".66" d="m16.79 8.91-3.09 3.1-9.24-9.28c.39-.2.9-.16 1.46.16l10.87 6.02Z"/><path fill="#fff" opacity=".9" d="m13.7 12.01-9.24 9.26c.39.19.9.15 1.46-.17l10.88-6-3.1-3.09Z"/></svg>
         </button>

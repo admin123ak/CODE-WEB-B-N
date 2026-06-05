@@ -311,8 +311,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $iconUrl = handleGameIconUpload();
             $cat = $_POST['category'] ?? 'key';
-            $db->prepare("INSERT INTO games (name,package_name,icon_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?)")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0]);
+            $dlUrl = trim($_POST['download_url'] ?? '');
+            $db->prepare("INSERT INTO games (name,package_name,icon_url,download_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?,?)")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0]);
             header("Location: ?tab=games&ok=1"); exit;
         } catch (Exception $e) {
             header("Location: ?tab=games&err=" . urlencode('Lỗi: ' . $e->getMessage())); exit;
@@ -337,12 +338,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($act === 'edit_game') {
         $iconUrl = handleGameIconUpload();
         $cat = $_POST['category'] ?? 'key';
+        $dlUrl = trim($_POST['download_url'] ?? '');
         if ($iconUrl) {
-            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, download_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         } else {
-            $db->prepare("UPDATE games SET name=?, package_name=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, download_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         }
         header("Location: ?tab=games&ok=1"); exit;
     }
@@ -1119,6 +1121,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <div class="form-row">
   <div><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
   <div><label>Package name</label><input name="pkg" required placeholder="com.dts.freefireth" style="width:220px"></div>
+  <div><label>Link tải (download)</label><input name="download_url" placeholder="https://t.me/..." style="width:240px"></div>
   <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
   <div><label>Loại Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
   <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
@@ -1130,7 +1133,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
 <table>
-<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
+<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Link tải</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
 <?php foreach($games as $g): ?>
 <tr>
 <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
@@ -1139,6 +1142,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><?php if(!empty($g['icon_url'])): ?><img src="<?=h($g['icon_url'])?>" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;background:#0d1117"><?php else: ?><span style="color:#8b949e;font-size:11px">-</span><?php endif ?></td>
   <td><input name="name" value="<?=h($g['name'])?>" required style="width:150px"></td>
   <td><input name="pkg" value="<?=h($g['package_name'])?>" required style="width:220px"></td>
+  <td><input name="download_url" value="<?=h($g['download_url'] ?? '')?>" placeholder="https://..." style="width:200px"></td>
   <td><select name="type"><option <?=$g['type']==='NORMAL'?'selected':''?>>NORMAL</option><option <?=$g['type']==='VIP'?'selected':''?>>VIP</option></select></td>
   <td><select name="category"><option value="key" <?=($g['category']??'key')==='key'?'selected':''?>>Key</option><option value="account" <?=($g['category']??'key')==='account'?'selected':''?>>Acc</option><option value="both" <?=($g['category']??'key')==='both'?'selected':''?>>Both</option></select></td>
   <td><select name="root"><option <?=$g['root_type']==='Only Root'?'selected':''?>>Only Root</option><option <?=$g['root_type']==='Root & NoRoot'?'selected':''?>>Root & NoRoot</option><option <?=$g['root_type']==='NoRoot'?'selected':''?>>NoRoot</option></select></td>

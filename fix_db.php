@@ -37,4 +37,24 @@ if (!$idx->fetchColumn()) {
     echo "⏭️ Index đã có\n";
 }
 
+// users.role + users.discount
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='role'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `users` ADD `role` ENUM('customer','reseller','admin') DEFAULT 'customer'");
+    echo "✅ ADD users.role\n";
+} else { echo "⏭️ users.role có\n"; }
+
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='discount'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `users` ADD `discount` DECIMAL(5,2) DEFAULT 0.00");
+    echo "✅ ADD users.discount\n";
+} else { echo "⏭️ users.discount có\n"; }
+
+// games.download_url
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='games' AND COLUMN_NAME='download_url'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `games` ADD `download_url` VARCHAR(500) DEFAULT NULL AFTER `icon_url`");
+    echo "✅ ADD games.download_url\n";
+} else { echo "⏭️ games.download_url có\n"; }
+
 echo "\n✅ Xong! Xoá file fix_db.php sau khi dùng.\n";
