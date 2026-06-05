@@ -1099,7 +1099,7 @@ function renderKeys(keys){
       +'</div></div>'
       +'<div class="kgrid">'
       // Ô "Còn lại" → "Thiết bị"
-      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">1/1</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
