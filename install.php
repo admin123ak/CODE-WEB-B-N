@@ -207,8 +207,10 @@ define('MBBANK_HISTORY_API_KEY',    %MBBANK_HISTORY_API_KEY%);
 define('MBBANK_AUTO_APPROVE_ENABLED', true);
 
 // --- Shortlink APIs ---
+define('LAYMA_API_TOKEN',    %LAYMA_API_TOKEN%);
 define('LINK4M_API_TOKEN',   %LINK4M_API_TOKEN%);
 define('YEUMONEY_API_TOKEN', %YEUMONEY_API_TOKEN%);
+define('FREE_SHORTLINK_LAYERS', 2);
 define('FREE_GETKEY_ENABLED', true);
 
 // --- Binance USDT TRC20 (auto-thanh-toán crypto) ---
@@ -300,7 +302,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['installer']['vietqr_bank_id'] = trim($_POST['vietqr_bank_id']) ?: '970422';
                 $_SESSION['installer']['mbbank_api_key'] = trim($_POST['mbbank_api_key']);
                 $_SESSION['installer']['link4m_token']   = trim($_POST['link4m_token']);
-                $_SESSION['installer']['yeumoney_token'] = trim($_POST['yeumoney_token']);
+                $_SESSION['installer']['yeumoney_token'] = trim($_POST['yeumoney_token'] ?? '');
+                $_SESSION['installer']['layma_token']    = trim($_POST['layma_token'] ?? '7fc1aa570262544a7b80d1bc0ab3c4e6');
                 header('Location: install.php?step=6');
                 exit;
 
@@ -336,7 +339,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'VIETQR_BANK_ID'           => $i['vietqr_bank_id'],
                     'MBBANK_HISTORY_API_KEY'   => $i['mbbank_api_key'],
                     'LINK4M_API_TOKEN'         => $i['link4m_token'],
-                    'YEUMONEY_API_TOKEN'       => $i['yeumoney_token'],
+                    'YEUMONEY_API_TOKEN'       => $i['yeumoney_token'] ?? '',
+                    'LAYMA_API_TOKEN'          => $i['layma_token'] ?? '7fc1aa570262544a7b80d1bc0ab3c4e6',
                     'CRON_RUN_TOKEN'           => $i['cron_run_token'],
                     'AUTOMATION_RUN_TOKEN'     => $i['automation_token'],
                     'TELEGRAM_WEBHOOK_SECRET'  => $i['webhook_secret'],
@@ -525,9 +529,12 @@ foreach ($checks as $name => $ok) {
 <div class="form-group"><label>MBBANK API Key (Queenvps)</label>
 <input type="text" name="mbbank_api_key" value="<?= htmlspecialchars($_POST['mbbank_api_key'] ?? '') ?>" required>
 <div class="hint">Lấy từ queenvps.com (liên hệ Zalo/Messenger).</div></div>
-<div class="form-group"><label>LINK4M Token</label>
+<div class="form-group"><label>LAYMA Token (mới)</label>
+<input type="text" name="layma_token" value="<?= htmlspecialchars($_POST['layma_token'] ?? '7fc1aa570262544a7b80d1bc0ab3c4e6') ?>">
+<div class="hint">Lấy tại layma.net → Developer API.</div></div>
+<div class="form-group"><label>LINK4M Token (nếu dùng 2 lớp)</label>
 <input type="text" name="link4m_token" value="<?= htmlspecialchars($_POST['link4m_token'] ?? '') ?>"></div>
-<div class="form-group"><label>YEUMONEY Token</label>
+<div class="form-group"><label>YEUMONEY Token (legacy, không bắt buộc)</label>
 <input type="text" name="yeumoney_token" value="<?= htmlspecialchars($_POST['yeumoney_token'] ?? '') ?>"></div>
 <button class="btn primary" type="submit">Tiếp tục →</button>
 </form>

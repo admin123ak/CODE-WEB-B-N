@@ -1717,8 +1717,9 @@ function _hclouFormatBytes($b) {
 <div style="flex:1;min-width:300px"><label>MBBANK API Key</label><input style="width:100%" name="cfg[MBBANK_HISTORY_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('MBBANK_HISTORY_API_KEY'))?>" placeholder="Nhập API Key từ Queenvps"><small>API Queenvps: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code>. Liên hệ Zalo/Messenger/Hotline để lấy key.</small></div>
 <div><label>Auto-bank</label><select name="cfg[MBBANK_AUTO_APPROVE_ENABLED]"><option value="1" <?=MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Tắt</option></select></div>
 <div><label>GetKey Free</label><select name="cfg[FREE_GETKEY_ENABLED]"><option value="1" <?=FREE_GETKEY_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!FREE_GETKEY_ENABLED?'selected':''?>>Tắt</option></select></div>
-<div style="flex:1;min-width:260px"><label>Link4M token</label><input style="width:100%" name="cfg[LINK4M_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LINK4M_API_TOKEN'))?>"></div>
-<div style="flex:1;min-width:260px"><label>YeuMoney token</label><input style="width:100%" name="cfg[YEUMONEY_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('YEUMONEY_API_TOKEN'))?>"></div>
+<div><label>Số lớp vượt link</label><select name="cfg[FREE_SHORTLINK_LAYERS]"><?php $_curLayers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2; ?><option value="1" <?=$_curLayers===1?'selected':''?>>1 lớp (Layma)</option><option value="2" <?=$_curLayers===2?'selected':''?>>2 lớp (Layma + Link4M)</option></select></div>
+<div style="flex:1;min-width:260px"><label>Layma token</label><input style="width:100%" name="cfg[LAYMA_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LAYMA_API_TOKEN'))?>" placeholder="7fc1aa570262544a7b80d1bc0ab3c4e6"><small>Lấy tại <a href="https://layma.net" target="_blank">layma.net</a> → Developer → API Token</small></div>
+<div style="flex:1;min-width:260px"><label>Link4M token (chỉ cần khi 2 lớp)</label><input style="width:100%" name="cfg[LINK4M_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LINK4M_API_TOKEN'))?>"></div>
 </div>
 
 <h3 style="margin-top:20px">🪙 Binance USDT TRC20</h3>
@@ -1854,7 +1855,7 @@ URL: <?=htmlspecialchars(hclouCronRunUrl('health'))?>
 Test VPS: php /www/wwwroot/hclou.com/cron/health_check_daily.php
 Test HTTP: curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div></div>
 
-  <div class="guide-card"><span class="where">config.php + admin GetKey Free</span><h3>🎁 Link4M/YeuMoney</h3><ul><li>Lấy token trong dashboard Link4M/YeuMoney mục API/Developer.</li><li>Sửa <code>LINK4M_API_TOKEN</code>, <code>YEUMONEY_API_TOKEN</code>.</li><li>Flow: Link4M → YeuMoney → HCLOU claim.</li></ul><div class="codebox">Admin → GetKey Free → nhập key → chọn game/gói → Tạo link 2 lớp</div></div>
+  <div class="guide-card"><span class="where">config.php + admin GetKey Free</span><h3>🎁 Layma + Link4M</h3><ul><li>Lấy token Layma tại <a href="https://layma.net" target="_blank">layma.net</a> mục Developer/API.</li><li>Sửa <code>LAYMA_API_TOKEN</code>, <code>LINK4M_API_TOKEN</code>.</li><li>Chọn <code>FREE_SHORTLINK_LAYERS</code>: 1 (Layma) hoặc 2 (Layma → Link4M → HCLOU claim).</li></ul><div class="codebox">Admin → GetKey Free → nhập key → chọn game/gói → mỗi user lấy link riêng</div></div>
 
   <div class="guide-card"><span class="where">admin/index.php</span><h3>🛠 Quản lý trong Admin</h3><ul><li>Games: thêm/sửa/tắt game.</li><li>Gói cước: sửa ngày/giá/key type.</li><li>Keys: khoá/mở/xoá key.</li><li>Đơn hàng: xem trạng thái, từ chối đơn pending lỗi/spam.</li></ul><div class="codebox">Paid order: pending → MBBANK API xác nhận → approved → key active</div></div>
 

@@ -40,8 +40,10 @@ define('MBBANK_HISTORY_API_KEY', 'your_mbbank_api_key');
 define('MBBANK_AUTO_APPROVE_ENABLED', true);
 
 // --- Shortlink APIs ---
+define('LAYMA_API_TOKEN', '7fc1aa570262544a7b80d1bc0ab3c4e6');
 define('LINK4M_API_TOKEN', 'your_link4m_token');
-define('YEUMONEY_API_TOKEN', 'your_yeumoney_token');
+define('YEUMONEY_API_TOKEN', 'your_yeumoney_token'); // legacy, không bắt buộc
+define('FREE_SHORTLINK_LAYERS', 2); // 1 = chỉ Layma, 2 = Layma + Link4M
 define('FREE_GETKEY_ENABLED', true);
 
 // --- Binance USDT TRC20 (auto-thanh-toán crypto) ---
