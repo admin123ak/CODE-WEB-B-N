@@ -136,15 +136,20 @@
         <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Danh s&#xE1;ch tr&#x1ED1;ng</div>
       </div>
 
-      <!-- Quantity Selector - luôn hiển thị -->
-      <div id="qtySelector" style="padding:0 16px 10px">
-        <div class="qty-label" data-i18n="soLuongKey">Số lượng key</div>
+      <!-- Quantity Selector - luôn hiển thị, layout ngang full width -->
+      <div id="qtySelector" class="qty-wrap" style="margin:0 12px 8px">
+        <div class="qty-left">
+          <div class="qty-icon">📦</div>
+          <div>
+            <div class="qty-label" data-i18n="soLuongKey">Số lượng key</div>
+            <div class="qty-sub" id="qtyTotal">Chọn gói để xem tổng</div>
+          </div>
+        </div>
         <div class="qty-row">
           <div class="qty-btn minus" onclick="changeQty(-1)">−</div>
           <input type="number" class="qty-input" id="qtyInput" value="1" min="1" max="10" readonly>
           <div class="qty-btn plus" onclick="changeQty(1)">+</div>
         </div>
-        <div class="qty-total" id="qtyTotal"></div>
       </div>
 
       <div class="action-bar">
@@ -279,15 +284,20 @@
         <div id="accTypeList" class="pkg-list">
           <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
         </div>
-        <!-- Acc qty: luôn 1, hiển thị để đồng bộ UI với tab Mua Key -->
-        <div style="padding:0 16px 10px">
-          <div class="qty-label">Số lượng acc</div>
-          <div class="qty-row">
-            <div class="qty-btn minus" style="opacity:.35;cursor:not-allowed">−</div>
-            <input type="number" class="qty-input" value="1" readonly>
-            <div class="qty-btn plus" style="opacity:.35;cursor:not-allowed">+</div>
+        <!-- Acc qty: luôn 1, layout đồng bộ với tab Mua Key -->
+        <div class="qty-wrap" style="margin:0 12px 8px">
+          <div class="qty-left">
+            <div class="qty-icon">🏪</div>
+            <div>
+              <div class="qty-label">Số lượng acc</div>
+              <div class="qty-sub">Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận</div>
+            </div>
           </div>
-          <div class="qty-total" style="color:var(--text2)">Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận</div>
+          <div class="qty-row">
+            <div class="qty-btn minus" style="opacity:.3;cursor:not-allowed">−</div>
+            <input type="number" class="qty-input" value="1" readonly>
+            <div class="qty-btn plus" style="opacity:.3;cursor:not-allowed">+</div>
+          </div>
         </div>
         <div class="action-bar">
           <div style="width:50px"></div>

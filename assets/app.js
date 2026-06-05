@@ -353,14 +353,15 @@ function changeQty(delta){
 }
 function updateQtyDisplay(){
   var input=document.getElementById('qtyInput');
-  var total=document.getElementById('qtyTotal');
+  var sub=document.getElementById('qtyTotal');
   if(input) input.value=selQty;
-  if(total){
-    if(selPkg && !selPkg.is_free){
-      var totalPrice=fmtMoney((parseInt(selPkg.price,10)||0)*selQty);
-      total.textContent='Tổng: '+totalPrice+'đ × '+selQty+' key';
+  if(sub){
+    if(selPkg && !selPkg.is_free && selQty>1){
+      sub.textContent='Tổng: '+fmtMoney((parseInt(selPkg.price,10)||0)*selQty)+'đ × '+selQty+' key';
+    } else if(selPkg && !selPkg.is_free){
+      sub.textContent=fmtMoney(parseInt(selPkg.price,10)||0)+'đ / 1 key';
     } else {
-      total.textContent='';
+      sub.textContent='Chọn gói để xem tổng';
     }
   }
 }
@@ -1404,24 +1405,24 @@ function updAccBuyBtn(){
 async function doAccOrder(){
   if(!selAccGame||!selAccType||accOrdering) return;
   var avail=parseInt(selAccType.stock)||0;
-  if(avail<1){ toast('H&#x1EBF;t acc lo&#x1EA1;i n&#xE0;y','error'); return; }
+  if(avail<1){ toast('Hết acc loại này','error'); return; }
   await fetchPaymentOptions();
   var nOn=(paymentOptions.mbbank?1:0)+(paymentOptions.binance?1:0)+(paymentOptions.card?1:0);
   if(nOn>=2){ showAccPaymentPicker(); return; }
   if(paymentOptions.binance){ selectedPaymentMethod='binance'; showAccConfirm(); return; }
-  if(paymentOptions.card){ selectedPaymentMethod='card'; openCardForOrder(); return; }
+  if(paymentOptions.card){ selectedPaymentMethod='card'; showAccConfirm(); return; }
   selectedPaymentMethod='mbbank';
   showAccConfirm();
 }
 function showAccPaymentPicker(){
-  document.querySelector('#confirmModal .mtitle').textContent='&#x1F4B3; Ch&#x1ECD;n ph&#x1B0;&#x1EDD;ng th&#x1EE9;c thanh to&#xE1;n';
+  document.querySelector('#confirmModal .mtitle').textContent='💳 Chọn phương thức thanh toán';
   var btnBase='display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:14px;text-align:left;cursor:pointer;font-family:inherit';
   var html='<div style="display:flex;flex-direction:column;gap:10px;margin:4px 0">';
   if(paymentOptions.mbbank){
-    html+='<button onclick="pickAccPayment(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">&#x1F3E6;</span><span><b>MBBank</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Chuy&#x1EC3;n kho&#x1EA3;n VietQR &#xB7; T&#x1EF1; duy&#x1EC7;t 1 ph&#xFA;t</div></span></button>';
+    html+='<button onclick="pickAccPayment(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">🏦</span><span><b>MBBank</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Chuyển khoản VietQR · Tự duyệt 1 phút</div></span></button>';
   }
   if(paymentOptions.binance){
-    html+='<button onclick="pickAccPayment(\'binance\')" style="'+btnBase+';border-color:rgba(240,185,11,.4);background:linear-gradient(135deg,rgba(240,185,11,.14),rgba(243,186,47,.06))"><span style="font-size:24px">&#x1FA99;</span><span><b>Binance USDT (TRC20)</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Crypto &#xB7; Auto detect on-chain</div></span></button>';
+    html+='<button onclick="pickAccPayment(\'binance\')" style="'+btnBase+';border-color:rgba(240,185,11,.4);background:linear-gradient(135deg,rgba(240,185,11,.14),rgba(243,186,47,.06))"><span style="font-size:24px">🪙</span><span><b>Binance USDT (TRC20)</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Crypto · Auto detect on-chain</div></span></button>';
   }
   html+='</div>';
   document.getElementById('confirmContent').innerHTML=html;
@@ -1434,12 +1435,16 @@ function pickAccPayment(method){
   showAccConfirm();
 }
 function showAccConfirm(){
-  document.querySelector('#confirmModal .mtitle').textContent='X&#xE1;c nh&#x1EAD;n';
-  document.querySelector('#confirmModal .confirm-btn.cancel').textContent='Hu&#x1EF7;y';
-  document.querySelector('#confirmModal .confirm-btn.ok').textContent='&#x110;&#x1ED3;ng &#xFD;';
+  document.querySelector('#confirmModal .mtitle').textContent='Xác nhận mua acc';
+  document.querySelector('#confirmModal .confirm-btn.cancel').textContent='Huỷ';
+  document.querySelector('#confirmModal .confirm-btn.ok').textContent='Đồng ý';
   var accName=selAccType?selAccType.name:'';
   var gameName=selAccGame?selAccGame.name:'';
-  document.getElementById('confirmContent').innerHTML='B&#x1EA1;n &#x111;ang mua: <b>'+escapeHtml(accName)+'</b> cho game <b>'+escapeHtml(gameName)+'</b>, gi&#xE1; <b>'+fmtMoney(selAccType?selAccType.price:0)+'&#x111;</b>.';
+  var price=fmtMoney(selAccType?selAccType.price:0);
+  var payLabel=selectedPaymentMethod==='binance'?'🪙 Binance USDT':'🏦 MBBank';
+  document.getElementById('confirmContent').innerHTML=
+    'Bạn đang mua acc <b>'+escapeHtml(accName)+'</b> của game <b>'+escapeHtml(gameName)+'</b><br>'
+    +'Giá: <b style="color:#4ade80">'+price+'đ</b> · Thanh toán: '+payLabel;
   document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmAccOrder;
   document.getElementById('confirmModal').classList.add('show');
 }
