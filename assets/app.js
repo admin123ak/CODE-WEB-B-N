@@ -1477,18 +1477,30 @@ async function loadMyAccs(){
       var count=res.accounts.length;
       document.getElementById('accCntLbl').textContent=count+' acc';
       var html='';
-      res.accounts.forEach(function(acc){
-        html+='<div class="kcard is-active" style="margin:0 0 10px">'
-          +'<div class="kc-head"><div class="kc-gt"><div class="kt-tag" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));color:var(--purple2)">ACC</div><div class="kc-gn">'+escapeHtml(acc.game_name)+'</div></div><span class="kc-st st-active">&#x1F49A; &#x110;&#xE3; nh&#x1EAD;n</span></div>'
-          +'<div class="kc-body"><div class="kc-row"><span class="kc-l">T&#xE0;i kho&#x1EA3;n</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.username)+',\'&#x110;&#xE3; copy tk!\')">'+escapeHtml(acc.username)+' &#x1F4CB;</span></div>'
-          +'<div class="kc-row"><span class="kc-l">M&#x1EAD;t kh&#x1EA9;u</span><span class="kc-v mono selectable" onclick="copyText('+jsAttr(acc.password)+',\'&#x110;&#xE3; copy mk!\')">'+escapeHtml(acc.password)+' &#x1F4CB;</span></div>'
-          +'<div class="kc-row"><span class="kc-l">Lo&#x1EA1;i</span><span class="kc-v">'+escapeHtml(acc.type_name)+'</span></div></div>'
+      res.accounts.forEach(function(acc, i){
+        var created = acc.created_at ? fmtDateFull(acc.created_at) : '--';
+        html+='<div class="kcard is-active" style="animation-delay:'+i*0.05+'s;margin:0 0 10px">'
+          +'<div class="ktop"><div class="kcode-row">'
+          +'<div class="kcode" style="color:var(--purple2)">'+escapeHtml(acc.username)+'</div>'
+          +'<div class="kbadge active" style="background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(139,92,246,.08));color:var(--purple2);border:1px solid rgba(168,85,247,.3)">ACC</div></div>'
+          +'<div class="kgame">'+escapeHtml(acc.game_name)+' <span class="normal-tag">'+escapeHtml(acc.type_name||'')+'</span></div></div>'
+          +'<div class="kgrid">'
+          +'<div class="kbox"><div class="kbox-lbl">Tài khoản</div><div class="kbox-val" style="font-family:monospace;font-size:13px">'+escapeHtml(acc.username)+'</div></div>'
+          +'<div class="kbox"><div class="kbox-lbl">Mật khẩu</div><div class="kbox-val" style="font-family:monospace;font-size:13px">'+escapeHtml(acc.password)+'</div></div>'
+          +'<div class="kbox"><div class="kbox-lbl">Loại</div><div class="kbox-val">'+escapeHtml(acc.type_name||'')+'</div></div>'
+          +'<div class="kbox"><div class="kbox-lbl">Ngày mua</div><div class="kbox-val">'+escapeHtml(created)+'</div></div>'
+          +'</div>'
+          +'<div class="kactions">'
+          +'<button class="ksm" onclick="copyText('+jsAttr(acc.username)+',\'Đã copy tài khoản!\')">📋 Copy tài khoản</button>'
+          +'<button class="ksm green" onclick="copyText('+jsAttr(acc.password)+',\'Đã copy mật khẩu!\')">🔑 Copy mật khẩu</button>'
+          +'</div>'
           +'</div>';
       });
       wrap.innerHTML=html;
+      initMotion();
     } else {
       document.getElementById('accCntLbl').textContent='0 acc';
-      wrap.innerHTML='<div style="text-align:center;color:var(--text2);padding:24px 0;font-size:13px;font-weight:600">Ch&#x1B0;a c&#xF3; acc n&#xE0;o</div>';
+      wrap.innerHTML='<div class="empty-box" style="margin:20px 0"><div class="empty-ico">📦</div><div class="empty-lbl">Chưa có acc nào</div></div>';
     }
   }catch(e){}
 }
