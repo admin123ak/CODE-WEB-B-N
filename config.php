@@ -275,10 +275,20 @@ function buildFreeShortlink($claimUrl, &$debug = null) {
 
     if ($layers === 1) return $layer1;
 
-    // Lớp 2: Link4M wrap link Layma
+    // Lớp 2: Link4M wrap link Layma — nếu fail thì fallback về Layma (graceful)
+    $token = defined('LINK4M_API_TOKEN') ? LINK4M_API_TOKEN : '';
+    if ($token === '' || strpos($token, 'your_') === 0) {
+        // Chưa cấu hình Link4M → tự fallback xuống 1 lớp
+        $debug['link4m'] = ['skipped' => 'LINK4M_API_TOKEN chưa cấu hình, fallback layma'];
+        return $layer1;
+    }
     $layer2 = shortenLink4M($layer1, $l4Debug);
     $debug['link4m'] = $l4Debug;
-    if (!$layer2) throw new Exception('Link4M API không tạo được link. Kiểm tra LINK4M_API_TOKEN.');
+    if (!$layer2) {
+        // Fail nhưng vẫn có Layma → dùng tạm Layma, không throw
+        error_log('[buildFreeShortlink] Link4M fail, fallback Layma. Debug: ' . json_encode($l4Debug));
+        return $layer1;
+    }
     return $layer2;
 }
 
