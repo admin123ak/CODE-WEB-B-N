@@ -46,7 +46,7 @@ function approvePaidOrder(
         // Đơn acc: JOIN account_types thay vì packages
         $stmt = $db->prepare("SELECT o.*, at.name as package_name, at.price, 'Account' as key_type, 0 as days, g.name AS game_name, g.package_name as game_package, u.telegram_id
             FROM orders o
-            JOIN account_types at ON o.package_id = at.id
+            JOIN account_types at ON o.account_type_id = at.id
             JOIN games g          ON o.game_id    = g.id
             JOIN users u          ON o.user_id    = u.id
             WHERE o.order_code = ? AND o.status = 'pending'

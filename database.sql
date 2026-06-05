@@ -112,7 +112,8 @@ CREATE TABLE `orders` (
   `order_code` VARCHAR(50) NOT NULL,
   `user_id` INT(11) NOT NULL,
   `game_id` INT(11) NOT NULL,
-  `package_id` INT(11) NOT NULL,
+  `package_id` INT(11) DEFAULT NULL,
+  `account_type_id` INT(11) DEFAULT NULL,
   `order_type` ENUM('key','account') DEFAULT 'key',
   `amount` DECIMAL(12,0) NOT NULL,
   `payment_method` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank',
@@ -130,11 +131,11 @@ CREATE TABLE `orders` (
   KEY `idx_orders_status_created` (`status`, `created_at`),
   KEY `idx_orders_game` (`game_id`),
   KEY `idx_orders_package` (`package_id`),
+  KEY `idx_orders_acc_type` (`account_type_id`),
   KEY `idx_orders_crypto_amount` (`crypto_amount`),
   KEY `idx_orders_payment_method` (`payment_method`, `status`),
   CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `fk_orders_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`),
-  CONSTRAINT `fk_orders_package` FOREIGN KEY (`package_id`) REFERENCES `packages` (`id`)
+  CONSTRAINT `fk_orders_game` FOREIGN KEY (`game_id`) REFERENCES `games` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================

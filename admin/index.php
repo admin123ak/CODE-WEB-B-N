@@ -657,7 +657,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 
 <h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
 <?php
-$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
+$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
 if($pending): ?>
 <table>
 <tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Thời gian</th><th>Thao tác</th></tr>
@@ -688,7 +688,7 @@ if ($filter_method !== '' && !in_array($filter_method, $pmAllowed, true)) $filte
 $sqlWhereParts = ['o.status=?']; $sqlParams = [$filter_status];
 if ($filter_method !== '') { $sqlWhereParts[] = 'o.payment_method=?'; $sqlParams[] = $filter_method; }
 $sqlWhere = implode(' AND ', $sqlWhereParts);
-$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.package_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
+$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
 $orders->execute($sqlParams); $orders = $orders->fetchAll();
 $pmLabel = ['mbbank'=>'🏦 MBBank','binance'=>'🪙 Binance','card'=>'🎴 Card','balance'=>'💰 Ví'];
 $pmBadgeColor = ['mbbank'=>'blue','binance'=>'orange','card'=>'purple','balance'=>'green'];
