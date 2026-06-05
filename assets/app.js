@@ -325,6 +325,7 @@ async function loadPkgs(gid){
   }
   pCache=res.packages;
   var rate=parseFloat(res.usdt_vnd_rate||0);
+  var disc=getDiscount();
   var html='';
   pCache.forEach(function(p){
     if(p.is_free){
@@ -337,16 +338,19 @@ async function loadPkgs(gid){
     }
     var sel=(selPkg&&selPkg.id==p.id)?' on':'';
     var priceVnd=parseInt(p.price,10)||0;
+    var discPrice=discountedPrice(priceVnd);
+    var hasDisc=disc>0 && discPrice<priceVnd;
     var usdtTag='';
     if(rate>0 && priceVnd>0){
       var usdt=priceVnd/rate;
       var usdtStr=usdt<0.01?usdt.toFixed(4):usdt.toFixed(3);
       usdtTag=' <span class="pkg-usdt">| \u2248 '+usdtStr+' USDT</span>';
     }
+    var priceHtml=hasDisc?'<span style="text-decoration:line-through;opacity:.5;font-size:11px">'+fmtMoney(priceVnd)+'\u0111</span> <span style="color:var(--green2)">'+fmtMoney(discPrice)+'\u0111</span>':fmtMoney(priceVnd)+'\u0111';
     html+='<div class="pkg-row'+sel+'" onclick="pickPkg('+(parseInt(p.id,10)||0)+',this)">'
       +'<div><div class="pkg-days">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+'</div>'
       +'<div class="pkg-mode">'+T.cheDoKey+escapeHtml(p.key_type)+T.keyMode+'</div></div>'
-      +'<div class="pkg-cost">'+fmtMoney(p.price)+'\u0111'+usdtTag+'</div></div>';
+      +'<div class="pkg-cost">'+priceHtml+usdtTag+'</div></div>';
   });
   document.getElementById('pkgList').innerHTML=html;
   initMotion();
@@ -371,10 +375,17 @@ function updateQtyDisplay(){
   var sub=document.getElementById('qtyTotal');
   if(input) input.value=selQty;
   if(sub){
-    if(selPkg && !selPkg.is_free && selQty>1){
-      sub.textContent='Tổng: '+fmtMoney((parseInt(selPkg.price,10)||0)*selQty)+'đ × '+selQty+' key';
-    } else if(selPkg && !selPkg.is_free){
-      sub.textContent=fmtMoney(parseInt(selPkg.price,10)||0)+'đ / 1 key';
+    if(selPkg && !selPkg.is_free){
+      var unitPrice=discountedPrice(parseInt(selPkg.price,10)||0);
+      var origUnit=parseInt(selPkg.price,10)||0;
+      var hasDisc=unitPrice<origUnit;
+      if(selQty>1){
+        var total=unitPrice*selQty;
+        sub.textContent='Tổng: '+fmtMoney(total)+'đ × '+selQty+' key';
+      } else {
+        var priceStr=hasDisc?'<span style="text-decoration:line-through;opacity:.5">'+fmtMoney(origUnit)+'đ</span> → '+fmtMoney(unitPrice)+'đ':fmtMoney(unitPrice)+'đ / 1 key';
+        sub.innerHTML=priceStr;
+      }
     } else {
       sub.textContent='Chọn gói để xem tổng';
     }
@@ -397,8 +408,10 @@ function updBuyBtn(){
     btn.classList.add('go');
     if(selPkg.is_free){ sub.textContent='Get Key Free | '+T.mienPhi; }
     else {
-      var total=selQty>1?fmtMoney((parseInt(selPkg.price,10)||0)*selQty)+'\u0111 x'+selQty:'';
-      sub.textContent=selPkg.days+T.ngay+' | '+fmtMoney(selPkg.price)+'\u0111'+(total?' | '+total:'');
+      var unitPrice=discountedPrice(parseInt(selPkg.price,10)||0);
+      var totalPrice=unitPrice*selQty;
+      var total=selQty>1?fmtMoney(totalPrice)+'\u0111 x'+selQty:'';
+      sub.textContent=selPkg.days+T.ngay+' | '+fmtMoney(unitPrice)+'\u0111'+(total?' | '+total:'');
     }
   } else {
     btn.classList.remove('go');
@@ -411,6 +424,13 @@ var paySecondsLeft=0;
 var buying=false;
 var paymentOptions=null;     // {mbbank:bool, binance:bool} — cache sau khi gọi lần đầu
 var selectedPaymentMethod='mbbank';
+function getDiscount(){
+  return currentUser && currentUser.discount ? Math.min(100, Math.max(0, parseFloat(currentUser.discount))) : 0;
+}
+function discountedPrice(price){
+  var d = getDiscount();
+  return d > 0 ? Math.round(price * (1 - d / 100)) : price;
+}
 async function fetchPaymentOptions(){
   if(paymentOptions) return paymentOptions;
   try{
@@ -630,12 +650,16 @@ function showOrderConfirm(){
   document.querySelector('#confirmModal .confirm-btn.ok').textContent=T.dongY;
   var pkgName=(selGame&&selGame.package_name)||'';
   var level=(selPkg&&selPkg.key_type)||'';
-  var totalPrice=fmtMoney((parseInt(selPkg.price,10)||0)*selQty);
+  var unitPrice=discountedPrice(parseInt(selPkg.price,10)||0);
+  var origUnit=parseInt(selPkg.price,10)||0;
+  var hasDisc=unitPrice<origUnit;
+  var totalPrice=fmtMoney(unitPrice*selQty);
+  var discNote=hasDisc?'<div style="font-size:11px;color:var(--green2);margin-top:4px">Giảm '+getDiscount()+'% · <span style="text-decoration:line-through;opacity:.5">'+fmtMoney(origUnit)+'đ</span> → <b>'+fmtMoney(unitPrice)+'đ</b>/key</div>':'';
   var qtyTag=selQty>1?'<div style="margin-top:8px;font-size:13px;color:var(--orange2)">Số lượng: <b>'+selQty+'</b> key | Tổng: <b>'+totalPrice+'đ</b></div>':'';
   var payTag = selectedPaymentMethod==='binance'
     ? '<div style="margin-top:8px;font-size:12px;color:#fbbf24">'+T.payViaBnb+'</div>'
     : '<div style="margin-top:8px;font-size:12px;color:#67e8f9">'+T.payViaMbb+'</div>';
-  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame + qtyTag + payTag;
+  document.getElementById('confirmContent').innerHTML=T.xacNhanMua+' <b>"'+escapeHtml(pkgName)+'"</b> '+T.capDo+' <b>"'+escapeHtml(level)+'"</b>, '+T.keyMotGame + discNote + qtyTag + payTag;
   document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmCreateOrder;
   document.getElementById('confirmModal').classList.add('show');
 }
@@ -654,8 +678,9 @@ async function confirmCreateOrder(){
   var res=await api('create_order','POST',{game_id:selGame.id,package_id:selPkg.id,payment_method:selectedPaymentMethod,quantity:selQty});
   buying=false;
   btn.classList.add('go');
-  var totalPrice=fmtMoney((parseInt(selPkg.price,10)||0)*selQty);
-  btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+totalPrice+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
+  var restUnit=discountedPrice(parseInt(selPkg.price,10)||0);
+  var restTotal=fmtMoney(restUnit*selQty);
+  btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+restTotal+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
   if(res.success) showPay(res);
   else { toast(res.error||T.loiTaoDon,'error'); if(res.order_code){ await loadPendingPayments(); setTimeout(function(){resumePay(0);},350); } }
 }
@@ -1385,12 +1410,16 @@ async function loadAccTypes(){
       var html='';
       accTypes.forEach(function(t){
         var avail=parseInt(t.stock)||0;
-        var stockTag=avail>0?' <span style="color:var(--green2);font-weight:800;font-size:11px">('+avail+' c&#xF2;n)</span>':' <span style="color:var(--red2);font-weight:800;font-size:11px">(H&#x1EBF;t)</span>';
+        var stockTag=avail>0?' <span style="color:var(--green2);font-weight:800;font-size:11px">('+avail+' còn)</span>':' <span style="color:var(--red2);font-weight:800;font-size:11px">(Hết)</span>';
+        var ap=parseInt(t.price,10)||0;
+        var dp=discountedPrice(ap);
+        var hasDisc=dp<ap;
+        var priceHtml=hasDisc?'<span style="text-decoration:line-through;opacity:.5;font-size:11px">'+fmtMoney(ap)+'đ</span> <span style="color:var(--green2)">'+fmtMoney(dp)+'đ</span>':fmtMoney(ap)+'đ';
         var sel=(selAccType&&selAccType.id==t.id)?' on':'';
         html+='<div class="pkg-row'+sel+'" onclick="pickAccType('+t.id+',this)">'
           +'<div><div class="pkg-days">'+escapeHtml(t.name)+'</div>'
           +'<div class="pkg-mode" style="font-size:11px;color:var(--text2)">Acc '+escapeHtml(t.name)+stockTag+'</div></div>'
-          +'<div class="pkg-cost">'+fmtMoney(t.price)+'&#x111;</div></div>';
+          +'<div class="pkg-cost">'+priceHtml+'</div></div>';
       });
       el.innerHTML=html;
     } else {
@@ -1412,7 +1441,9 @@ function updAccBuyBtn(){
   var sub=document.getElementById('accBuySub');
   if(selAccGame && selAccType && parseInt(selAccType.stock)>0){
     btn.classList.add('go');
-    sub.textContent=selAccType.name+' | '+fmtMoney(selAccType.price)+'đ';
+    var ap=parseInt(selAccType.price,10)||0;
+    var dp=discountedPrice(ap);
+    sub.textContent=selAccType.name+' | '+fmtMoney(dp)+'đ';
   } else {
     btn.classList.remove('go');
     sub.textContent='Chưa chọn loại acc';
@@ -1456,11 +1487,15 @@ function showAccConfirm(){
   document.querySelector('#confirmModal .confirm-btn.ok').textContent='Đồng ý';
   var accName=selAccType?selAccType.name:'';
   var gameName=selAccGame?selAccGame.name:'';
-  var price=fmtMoney(selAccType?selAccType.price:0);
+  var ap=parseInt(selAccType?selAccType.price:0,10);
+  var dp=discountedPrice(ap);
+  var hasDisc=dp<ap;
+  var price=hasDisc?'<span style="text-decoration:line-through;opacity:.5">'+fmtMoney(ap)+'đ</span> → <span style="color:var(--green2)">'+fmtMoney(dp)+'đ</span>':fmtMoney(ap)+'đ';
+  var discNote=hasDisc?'<div style="font-size:11px;color:var(--green2)">Giảm '+getDiscount()+'%</div>':'';
   var payLabel=selectedPaymentMethod==='binance'?'🪙 Binance USDT':'🏦 MBBank';
   document.getElementById('confirmContent').innerHTML=
     'Bạn đang mua acc <b>'+escapeHtml(accName)+'</b> của game <b>'+escapeHtml(gameName)+'</b><br>'
-    +'Giá: <b style="color:#4ade80">'+price+'đ</b> · Thanh toán: '+payLabel;
+    +'Giá: <b>'+price+'</b> · Thanh toán: '+payLabel+discNote;
   document.querySelector('#confirmModal .confirm-btn.ok').onclick=confirmAccOrder;
   document.getElementById('confirmModal').classList.add('show');
 }
@@ -1474,8 +1509,9 @@ async function confirmAccOrder(){
   var res=await api('create_account_order','POST',{game_id:selAccGame.id,account_type_id:selAccType.id,payment_method:selectedPaymentMethod});
   accOrdering=false;
   // Restore innerHTML trước — spinner đã xoá #accBuySub khỏi DOM, gọi updAccBuyBtn() sẽ null crash
+  var _ap=parseInt(selAccType?selAccType.price:0,10);
   btn.innerHTML='<span>Mua Acc</span><span class="buy-sub" id="accBuySub">'
-    +(selAccType?selAccType.name+' | '+fmtMoney(selAccType.price)+'đ':'Chưa chọn loại acc')+'</span>';
+    +(selAccType?selAccType.name+' | '+fmtMoney(discountedPrice(_ap))+'đ':'Chưa chọn loại acc')+'</span>';
   btn.classList.add('go');
   if(res.success){
     showPay(res);
