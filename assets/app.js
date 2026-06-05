@@ -1085,19 +1085,19 @@ function renderKeys(keys){
     var bmap={active:'active',expired:'expired',locked:'locked',pending:'pending'};
     var lmap={active:T.active,expired:T.expired,locked:T.locked,pending:T.pending};
     var cls=bmap[k.status]||'pending', lbl=lmap[k.status]||T.pending;
-    var start=k.start_at?fmtDate(k.start_at):'--';
-    var exp=k.expire_at?fmtDateFull(k.expire_at):'--';
     var typeTag=k.key_type==='VIP'?'<span class="vip-tag">VIP</span>':'<span class="normal-tag">Normal</span>';
+    var pkgName=escapeHtml(k.pkg_name||k.package_name||'');
     html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
-      +'<div class="kcode">'+escapeHtml(k.key_code)+'</div>'
+      +'<div class="kgame" style="font-size:14px;font-weight:800">'+pkgName+typeTag+'</div>'
       +'<div class="kbadge '+cls+'">'+lbl+'</div></div>'
-      +'<div class="kgame">'+escapeHtml(k.package_name)+typeTag+'</div></div>'
+      +'<div style="padding:8px 16px 0;display:flex;align-items:center;gap:8px">'
+      +'<div class="kcode" style="flex:1;font-size:13px">'+escapeHtml(k.key_code)+'</div>'
+      +'<button class="ksm" style="flex-shrink:0" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">📋 Copy</button>'
+      +'</div></div>'
       +'<div class="kgrid">'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.soNgay+'</div><div class="kbox-val">'+(parseInt(k.days,10)||0)+T.ngay+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.conLai+'</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">'+calcRem(k)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.batDau+'</div><div class="kbox-val">'+escapeHtml(start)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">'+T.ketThuc+'</div><div class="kbox-val">'+escapeHtml(exp)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Con lai</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">'+calcRem(k)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Ma don</div><div class="kbox-val" style="font-size:11px;font-family:monospace">'+escapeHtml(k.order_code||'--')+'</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
@@ -1107,10 +1107,7 @@ function renderKeys(keys){
       html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
     }
     html+='<div class="kactions">';
-    if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">\uD83D\uDD04 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
-    html+='<button class="ksm" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">\uD83D\uDCCB Copy</button>';
-    if(k.status==='active') html+='<button class="ksm green" onclick="toast(T.giaHanMsg,\'info\')">\u23F0 '+T.giaHan+'</button>';
-    if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+(parseInt(k.id,10)||0)+')">\uD83D\uDDD1 '+T.xoa+'</button>';
+    if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+(parseInt(k.id,10)||0)+')">🗑 '+T.xoa+'</button>';
     html+='</div></div>';
   });
   document.getElementById('keyWrap').innerHTML=html;

@@ -840,8 +840,9 @@ switch ($action) {
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $filter = $_GET['filter'] ?? 'all'; // all, active, expired, locked
 
-        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type
+        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type, o.order_code
                 FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id
+                LEFT JOIN orders o ON k.order_id=o.id
                 WHERE k.user_id=? AND k.status != 'pending'";
         $params = [$user['id']];
 
