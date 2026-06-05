@@ -1086,19 +1086,20 @@ function renderKeys(keys){
     var lmap={active:T.active,expired:T.expired,locked:T.locked,pending:T.pending};
     var cls=bmap[k.status]||'pending', lbl=lmap[k.status]||T.pending;
     var typeTag=k.key_type==='VIP'?'<span class="vip-tag">VIP</span>':'<span class="normal-tag">Normal</span>';
+    var gameName=escapeHtml(k.game_name||'');
     var pkgName=escapeHtml(k.pkg_name||k.package_name||'');
     html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
-      +'<div class="kgame" style="font-size:14px;font-weight:800">'+pkgName+typeTag+'</div>'
-      +'<div class="kbadge '+cls+'">'+lbl+'</div></div>'
+      +'<div class="kgame" style="font-size:14px;font-weight:800">'+gameName+typeTag+'</div>'
+      // Badge = mã đơn (thay "Hoạt động")
+      +'<div class="kbadge '+cls+'" style="font-family:monospace;font-size:10px">'+escapeHtml(k.order_code||lbl)+'</div></div>'
       +'<div style="padding:8px 16px 0;display:flex;align-items:center;gap:8px">'
       +'<div class="kcode" style="flex:1;font-size:13px">'+escapeHtml(k.key_code)+'</div>'
       +'<button class="ksm" style="flex-shrink:0" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">📋 Copy</button>'
       +'</div></div>'
       +'<div class="kgrid">'
-      +'<div class="kbox"><div class="kbox-lbl">Còn lại</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'" style="color:var(--red2)">'+calcRem(k)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">'+(k.reset_count||0)+'/'+(k.max_reset||3)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">Mã đơn</div><div class="kbox-val" style="font-size:11px;font-family:monospace;color:var(--text2)">'+escapeHtml(k.order_code||'--')+'</div></div>'
+      // Ô "Còn lại" → "Thiết bị"
+      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">'+(k.reset_count||0)+'/'+(k.max_reset||3)+'</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
@@ -1110,7 +1111,6 @@ function renderKeys(keys){
     html+='<div class="kactions">';
     if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">🔄 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
     if(k.status==='active') html+='<button class="ksm green" onclick="toast(T.giaHanMsg,\'info\')">⏰ '+T.giaHan+'</button>';
-    if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+(parseInt(k.id,10)||0)+')">🗑 '+T.xoa+'</button>';
     html+='</div></div>';
   });
   document.getElementById('keyWrap').innerHTML=html;
