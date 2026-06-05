@@ -94,6 +94,7 @@
         <span id="pHandle">@user</span>
         <div class="verified-icon">&#x2713;</div>
       </div>
+      <div class="profile-role" id="pRole"></div>
     </div>
 
     <div class="stats-card">
@@ -341,6 +342,7 @@
           <span id="pHandle2">@user</span>
           <div class="verified-icon">✓</div>
         </div>
+        <div class="profile-role" id="pRole2"></div>
       </div>
 
       <div class="profile-card">

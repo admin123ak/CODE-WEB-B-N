@@ -59,6 +59,7 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 .profile-name{font-size:19px;font-weight:900;letter-spacing:-.3px}
 .profile-handle{font-size:13px;color:var(--blue2);display:flex;align-items:center;gap:5px;font-weight:600}
 .verified-icon{width:17px;height:17px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;box-shadow:0 0 8px rgba(79,140,255,.5)}
+.profile-role{text-align:center;margin-top:6px}.role-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.02em;text-transform:uppercase}.role-customer{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}.role-reseller{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.3)}.role-admin{background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.3)}
 .stats-card{margin:0 16px 20px;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:18px;display:flex;box-shadow:var(--card-shadow);backdrop-filter:blur(16px);animation:floatIn .55s var(--ease-spring) .1s both}
 .stat-item{flex:1;text-align:center}
 .stat-item+.stat-item{border-left:1px solid var(--border)}

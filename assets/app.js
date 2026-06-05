@@ -146,6 +146,20 @@ function tryInit(n){
   }
 }
 
+function setUserRole(){
+  if(!currentUser) return;
+  var role = currentUser.role || 'customer';
+  var labels = {customer:'Khách hàng', reseller:'Reseller', admin:'Admin'};
+  var classes = {customer:'role-customer', reseller:'role-reseller', admin:'role-admin'};
+  var cls = classes[role] || 'role-customer';
+  var lbl = labels[role] || 'Khách hàng';
+  var html = '<span class="role-badge '+cls+'">'+lbl+'</span>';
+  var e1 = document.getElementById('pRole');
+  var e2 = document.getElementById('pRole2');
+  if(e1) e1.innerHTML = html;
+  if(e2) e2.innerHTML = html;
+}
+
 async function startApp(tg){
   tg.ready(); tg.expand();
   tgInitData=tg.initData||'';
@@ -161,6 +175,7 @@ async function startApp(tg){
     document.getElementById('pName').textContent=n;
     document.getElementById('pHandle').textContent='@'+(currentUser.telegram_username||'user');
     document.getElementById('telegramIdText').textContent=currentUser.telegram_id;
+    setUserRole();
     var init=n.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
     if(currentUser.avatar_url){
       document.getElementById('avatarEl').innerHTML='<img src="'+escapeHtml(safeUrl(currentUser.avatar_url))+'" alt="">';
@@ -1318,6 +1333,7 @@ async function loadProfile(){
     document.getElementById('pfTgUser').textContent = '@'+(currentUser.telegram_username || '--');
     document.getElementById('pfFullName').textContent = currentUser.full_name || '--';
     document.getElementById('pfJoined').textContent = currentUser.created_at ? fmtDate(currentUser.created_at) : '--';
+    setUserRole();
     profLoaded = true;
   }
   loadBalance();
