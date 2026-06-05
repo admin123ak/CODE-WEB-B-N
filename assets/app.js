@@ -124,7 +124,10 @@ var APP_VERSION='payauto20260428_1';
 var pendingClaimToken=new URLSearchParams(location.search).get('claim')||'';
 var BOT_USERNAME=window.HCLOU_BOT_USERNAME||'';
 var TG_OPEN_URL='https://t.me/'+BOT_USERNAME+'?start=webapp';
-window.onload=function(){ setTimeout(tryInit,100); };
+
+// Dùng DOMContentLoaded thay window.onload — nhanh hơn, không block ảnh/font
+document.addEventListener('DOMContentLoaded', function(){ tryInit(0); });
+
 function showTelegramOnly(){
   document.getElementById('loadingScreen').classList.add('hide');
   document.getElementById('app').style.display='none';
@@ -137,10 +140,13 @@ function showTelegramOnly(){
 function tryInit(n){
   n=n||0;
   var tg=window.Telegram&&window.Telegram.WebApp;
-  if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id){
+  var uid=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id;
+  if(uid){
     startApp(tg);
-  } else if(n<8){
-    setTimeout(function(){ tryInit(n+1); },250);
+  } else if(n<20){
+    // Exponential backoff: 100ms → 200ms → 400ms... tối đa 800ms giữa mỗi lần
+    var delay=Math.min(800, 100*Math.pow(1.4,n));
+    setTimeout(function(){ tryInit(n+1); }, delay);
   } else {
     showTelegramOnly();
   }
@@ -200,8 +206,8 @@ async function startApp(tg){
     var ls=document.getElementById('loadingScreen');
     ls.classList.add('hide');
     document.getElementById('app').style.opacity='1';
-    setTimeout(function(){ ls.style.display='none'; },400);
-  },1200);
+    setTimeout(function(){ ls.style.display='none'; },300);
+  },600);
 }
 
 
@@ -1046,8 +1052,18 @@ async function loadKeys(filter){
   renderKeys(allKeys);
 }
 function animNum(id,val){
-  var el=document.getElementById(id),cur=0,step=Math.ceil((val||1)/20);
-  var t=setInterval(function(){ cur+=step; if(cur>=val){cur=val;clearInterval(t);} el.textContent=cur; },40);
+  var el=document.getElementById(id);
+  if(!el) return;
+  // Dùng requestAnimationFrame thay vì setInterval — mượt hơn, không janky
+  var start=0, dur=500, startTime=null;
+  function step(ts){
+    if(!startTime) startTime=ts;
+    var prog=Math.min(1,(ts-startTime)/dur);
+    var ease=1-Math.pow(1-prog,3); // ease-out cubic
+    el.textContent=Math.round(ease*val);
+    if(prog<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 function filterK(f,el){
   document.querySelectorAll('.ftab').forEach(function(b){b.classList.remove('on');});
@@ -1175,14 +1191,30 @@ document.querySelectorAll('.moverlay').forEach(function(m){
   m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('show');});
 });
 
-// UI motion helpers: press feedback + subtle scroll parallax
-function initMotion(){
-  document.querySelectorAll('.game-btn,.pkg-row,.mgame,.ic-btn,.buy-btn.go,.ftab,.ksm,.bank-chip').forEach(function(el){
-    if(el.dataset.motion)return; el.dataset.motion='1'; el.classList.add('pressable');
-    ['touchstart','mousedown'].forEach(function(ev){el.addEventListener(ev,function(){el.classList.add('touching');},{passive:true});});
-    ['touchend','touchcancel','mouseup','mouseleave'].forEach(function(ev){el.addEventListener(ev,function(){el.classList.remove('touching');},{passive:true});});
+// initMotion: event delegation — chỉ attach 1 lần lên document, không attach từng element
+(function(){
+  var pressing=null;
+  var SEL='.game-btn,.pkg-row,.mgame,.ic-btn,.buy-btn.go,.ftab,.ksm,.bank-chip';
+  function isTarget(el){
+    while(el&&el!==document.body){
+      if(el.matches&&el.matches(SEL)) return el;
+      el=el.parentElement;
+    }
+    return null;
+  }
+  ['touchstart','mousedown'].forEach(function(ev){
+    document.addEventListener(ev,function(e){
+      var t=isTarget(e.target);
+      if(t){ pressing=t; t.classList.add('touching'); }
+    },{passive:true});
   });
-}
+  ['touchend','touchcancel','mouseup','mouseleave'].forEach(function(ev){
+    document.addEventListener(ev,function(){
+      if(pressing){ pressing.classList.remove('touching'); pressing=null; }
+    },{passive:true});
+  });
+})();
+function initMotion(){ /* no-op: delegation đã handle ở trên */ }
 
 // ===== Bottom Tab Navigation =====
 var currentTab = 'buykey';
@@ -1559,21 +1591,23 @@ async function loadMyAccs(){
 
 // END ACC SELLING
 
-var scrollTick=false;
 document.addEventListener('DOMContentLoaded',function(){
   applyLang();
-  initMotion();
-  var sc=document.querySelector('.scroll-area');
-  if(sc){
-    sc.addEventListener('scroll',function(){
-      if(scrollTick)return; scrollTick=true;
-      requestAnimationFrame(function(){
-        var y=sc.scrollTop;
-        var prof=document.querySelector('.profile-section');
-        if(prof){ prof.style.transform='translateY('+Math.min(10,y*.035)+'px) scale('+(1-Math.min(.035,y/4500))+')'; prof.style.opacity=String(1-Math.min(.22,y/260)); }
-        scrollTick=false;
-      });
-    },{passive:true});
+  // Scroll parallax chỉ bật trên màn hình lớn (tablet/desktop), tắt mobile tránh jank
+  if(window.innerWidth >= 768){
+    var scrollTick=false;
+    var sc=document.querySelector('.scroll-area');
+    if(sc){
+      sc.addEventListener('scroll',function(){
+        if(scrollTick)return; scrollTick=true;
+        requestAnimationFrame(function(){
+          var y=sc.scrollTop;
+          var prof=document.querySelector('.profile-section');
+          if(prof){ prof.style.transform='translateY('+Math.min(8,y*.025)+'px)'; prof.style.opacity=String(1-Math.min(.2,y/300)); }
+          scrollTick=false;
+        });
+      },{passive:true});
+    }
   }
 });
 
