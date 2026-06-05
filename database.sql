@@ -59,6 +59,8 @@ CREATE TABLE `users` (
   `full_name` VARCHAR(200) DEFAULT NULL,
   `avatar_url` VARCHAR(500) DEFAULT NULL,
   `balance` DECIMAL(12,0) DEFAULT 0,
+  `role` ENUM('customer','reseller','admin') DEFAULT 'customer',
+  `discount` DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Phan tram giam gia cho reseller (0-100)',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

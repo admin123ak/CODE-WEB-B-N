@@ -1896,20 +1896,47 @@ curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div>
 
 <?php elseif($tab==='users'): ?>
 <h1>👥 Danh sách Users</h1>
-<?php $users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id) as total_keys, (SELECT COUNT(*) FROM orders WHERE user_id=u.id AND status='approved') as total_orders FROM users u ORDER BY u.created_at DESC")->fetchAll(); ?>
+<?php
+// Xử lý update role/discount
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['act']) && $_POST['act'] === 'user_update') {
+    $uid = (int)$_POST['uid'];
+    $role = $_POST['role'] ?? 'customer';
+    $discount = min(100, max(0, (float)($_POST['discount'] ?? 0)));
+    if (!in_array($role, ['customer','reseller','admin'], true)) $role = 'customer';
+    $db->prepare("UPDATE users SET role=?, discount=? WHERE id=?")->execute([$role, $discount, $uid]);
+    header("Location: ?tab=users&ok=1"); exit;
+}
+$users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id) as total_keys, (SELECT COUNT(*) FROM orders WHERE user_id=u.id AND status='approved') as total_orders FROM users u ORDER BY u.created_at DESC")->fetchAll();
+?>
+<div style="max-width:100%;overflow-x:auto">
 <table>
-<tr><th>Telegram ID</th><th>Username</th><th>Tên</th><th>Keys</th><th>Đơn</th><th>Ngày tạo</th></tr>
+<tr><th>ID</th><th>Telegram</th><th>Vai trò</th><th>Giảm giá</th><th>Keys</th><th>Đơn</th><th>Lưu</th></tr>
 <?php foreach($users as $u): ?>
 <tr>
-  <td style="font-size:12px;font-family:monospace"><?=$u['telegram_id']?></td>
-  <td>@<?=h($u["telegram_username"])?></td>
-  <td><?=h($u["full_name"])?></td>
+<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="user_update"><input type="hidden" name="uid" value="<?=$u['id']?>">
+  <td style="font-size:11px;font-family:monospace;color:var(--muted)"><?=$u['id']?></td>
+  <td style="font-size:12px;font-family:monospace"><?=$u['telegram_id']?><br><small style="color:#8b949e">@<?=h($u["telegram_username"] ?: '--')?></small></td>
+  <td>
+    <select name="role" style="width:120px;font-size:12px;padding:7px">
+      <option value="customer" <?=$u['role']==='customer'?'selected':''?>>Khách hàng</option>
+      <option value="reseller" <?=$u['role']==='reseller'?'selected':''?>>Reseller</option>
+      <option value="admin" <?=$u['role']==='admin'?'selected':''?>>Admin</option>
+    </select>
+  </td>
+  <td>
+    <div style="display:flex;align-items:center;gap:4px">
+      <input name="discount" type="number" min="0" max="100" step="1" value="<?=h($u['discount'] ?? 0)?>" style="width:60px;font-size:12px;padding:6px">
+      <span style="color:var(--muted);font-size:12px;font-weight:700">%</span>
+    </div>
+  </td>
   <td><?=$u['total_keys']?></td>
   <td><?=$u['total_orders']?></td>
-  <td style="font-size:12px;color:#8b949e"><?=date('d/m/Y',strtotime($u['created_at']))?></td>
+  <td><button class="btn btn-blue" style="padding:6px 12px;font-size:11px">💾 Lưu</button></td>
+</form>
 </tr>
 <?php endforeach ?>
 </table>
+</div>
 <?php endif ?>
 </div>
 

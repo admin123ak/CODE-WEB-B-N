@@ -57,6 +57,18 @@ if ($lookupTelegramId) {
     $user = $stmt->fetch();
 }
 
+// Helper: apply discount cho user (reseller hoặc user có discount > 0)
+// Trả về [discounted_price, discount_percent, original_price]
+function applyDiscount($price, $user) {
+    $discount = 0;
+    if ($user && isset($user['discount']) && (float)$user['discount'] > 0) {
+        $discount = min(100, max(0, (float)$user['discount']));
+    }
+    if ($discount <= 0) return [(float)$price, 0, (float)$price];
+    $discounted = (float)$price * (1 - $discount / 100);
+    return [round($discounted), $discount, (float)$price];
+}
+
 switch ($action) {
 
     // ===== ĐĂNG NHẬP / TẠO USER =====
@@ -364,6 +376,8 @@ switch ($action) {
 
         $price = (float)$package['price'];
         $total_price = $price * $quantity;
+        // Apply discount cho reseller
+        [$total_price, $discountPct,] = applyDiscount($total_price, $user);
         $curBal = balanceGet($db, (int)$user['id']);
         if ($curBal < $total_price) {
             jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($total_price) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
@@ -487,6 +501,10 @@ switch ($action) {
 
         $order_code = generateOrderCode();
         $total_amount = (int)$package['price'] * $quantity;
+        // Apply discount cho reseller
+        [$total_amount, $discountPct,] = applyDiscount($total_amount, $user);
+        $unitPrice = (int)$package['price'];
+        $unitPriceDiscounted = (int)round($unitPrice * (1 - $discountPct / 100));
         $db->beginTransaction();
         try {
             // Lấy N keys từ pool
@@ -558,7 +576,8 @@ switch ($action) {
             'order_code' => $order_code,
             'amount' => $total_amount,
             'quantity' => $quantity,
-            'unit_price' => (int)$package['price'],
+            'unit_price' => $unitPriceDiscounted,
+            'discount' => $discountPct,
             'payment_method' => $payment_method,
             'created_at' => date('Y-m-d H:i:s'),
             'pay_expires_at' => date('Y-m-d H:i:s', time()+900),
@@ -576,6 +595,17 @@ switch ($action) {
             $response['crypto_address']  = USDT_TRC20_ADDRESS;
             $response['crypto_network']  = 'TRC20 (TRON)';
             $response['crypto_qr_url']   = cryptoBuildQrUrl(USDT_TRC20_ADDRESS, (float)$cryptoData['usdt']);
+        }
+        // Cập nhật lại crypto_amount với giá đã discount (Binance)
+        if ($payment_method === 'binance' && isset($discountPct) && $discountPct > 0) {
+            try {
+                $conv = cryptoConvertVndToUsdt($accPriceDiscounted, $order_id);
+                $db->prepare("UPDATE orders SET crypto_amount=?, usdt_vnd_rate=? WHERE id=?")
+                   ->execute([$conv['usdt'], $conv['rate'], $order_id]);
+                $response['crypto_amount'] = (float)$conv['usdt'];
+                $response['crypto_qr_url'] = cryptoBuildQrUrl(USDT_TRC20_ADDRESS, (float)$conv['usdt']);
+            } catch (Exception $e) {}
+        }
             $response['usdt_vnd_rate']   = (float)$cryptoData['rate'];
             $response['rate_source']     = $cryptoData['rate_source'] ?? 'cache';
         }
@@ -637,9 +667,12 @@ switch ($action) {
                 jsonResponse(['error' => 'Hết acc cho loại này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
             }
 
+            // Apply discount cho reseller
+            $accPrice = (int)$accType['price'];
+            [$accPriceDiscounted, $discountPct,] = applyDiscount($accPrice, $user);
             // Tạo đơn hàng
             $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, account_type_id, order_type, amount, payment_method, status) VALUES (?,?,?,NULL,?,?,?,?,'pending')")
-               ->execute([$order_code, $user['id'], $game_id, $account_type_id, 'account', (int)$accType['price'], $payment_method]);
+               ->execute([$order_code, $user['id'], $game_id, $account_type_id, 'account', $accPriceDiscounted, $payment_method]);
             $order_id = (int)$db->lastInsertId();
 
             // Gán acc từ pool vào đơn hàng
@@ -650,7 +683,7 @@ switch ($action) {
             $cryptoData = null;
             if ($payment_method === 'binance') {
                 try {
-                    $cryptoData = cryptoConvertVndToUsdt((int)$accType['price'], $order_id);
+                    $cryptoData = cryptoConvertVndToUsdt($accPriceDiscounted, $order_id);
                     $db->prepare("UPDATE orders SET crypto_amount=?, usdt_vnd_rate=? WHERE id=?")
                        ->execute([$cryptoData['usdt'], $cryptoData['rate'], $order_id]);
                 } catch (Exception $e) {
@@ -685,7 +718,9 @@ switch ($action) {
         $response = [
             'success' => true,
             'order_code' => $order_code,
-            'amount' => (int)$accType['price'],
+            'amount' => $accPriceDiscounted,
+            'original_price' => $accPrice,
+            'discount' => $discountPct,
             'payment_method' => $payment_method,
             'created_at' => date('Y-m-d H:i:s'),
             'pay_expires_at' => date('Y-m-d H:i:s', time()+900),
@@ -696,7 +731,7 @@ switch ($action) {
             $response['bank_name']        = BANK_NAME;
             $response['bank_owner']       = BANK_OWNER;
             $response['transfer_content'] = $order_code;
-            $response['vietqr_url']       = buildVietQrUrl((int)$accType['price'], $order_code);
+            $response['vietqr_url']       = buildVietQrUrl($accPriceDiscounted, $order_code);
         } else {
             $response['crypto_amount']   = (float)$cryptoData['usdt'];
             $response['crypto_address']  = USDT_TRC20_ADDRESS;
