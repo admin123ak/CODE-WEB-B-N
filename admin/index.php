@@ -591,57 +591,78 @@ $stats = [
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0b1020;--side:#0f172a;--side2:#111c33;--panel:#111827;--card:#182235;--card2:#151f31;--line:#26354f;--line2:#334765;--text:#edf4ff;--muted:#91a4c3;--blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--purple:#8b5cf6;--shadow:0 18px 46px rgba(0,0,0,.28)}
-html{scroll-behavior:smooth}body{background:linear-gradient(180deg,#08111f 0%,#0b1020 45%,#090d18 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;font-size:14px}.layout{display:flex;min-height:100vh}.sidebar{width:270px;background:linear-gradient(180deg,var(--side),#0a1222);border-right:1px solid var(--line);padding:18px 14px;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto;box-shadow:12px 0 34px rgba(0,0,0,.22);z-index:10}.sidebar::-webkit-scrollbar{width:4px}.sidebar::-webkit-scrollbar-thumb{background:#26354f;border-radius:99px}.sidebar-logo{padding:18px 16px;margin:0 2px 18px;border:1px solid rgba(59,130,246,.24);border-radius:22px;background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(6,182,212,.10));font-size:18px;font-weight:950;letter-spacing:-.02em;box-shadow:0 14px 34px rgba(37,99,235,.12)}.sidebar-logo small{display:block!important;margin-top:7px;color:#9fb2cf!important;font-size:11px!important;font-weight:700!important}.version-pill{display:inline-flex;align-items:center;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.28);color:#86efac;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:900;margin-left:6px}.nav-item{display:flex;align-items:center;gap:10px;padding:12px 14px;color:#aab8d0;text-decoration:none;font-size:14px;font-weight:800;border-radius:14px;margin:5px 0;transition:.16s;position:relative}.nav-item:hover{color:#fff;background:rgba(59,130,246,.10);transform:translateX(2px)}.nav-item.active{color:#fff;background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(6,182,212,.12));box-shadow:inset 3px 0 0 var(--cyan),0 10px 24px rgba(6,182,212,.08)}.main{margin-left:270px;padding:26px;flex:1;min-width:0}.main:before{content:"HCLOU SERVER / ADMIN";display:block;color:#7dd3fc;font-size:11px;font-weight:900;letter-spacing:.16em;margin-bottom:8px}.main>h1:first-of-type{font-size:30px;font-weight:950;letter-spacing:-.035em;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main>h1:first-of-type:after{content:"Control Center";font-size:12px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:8px 12px;border-radius:999px}h2{font-size:17px;margin-bottom:13px;color:#dbeafe}.alert{padding:13px 16px;border-radius:14px;font-size:13px;font-weight:750;margin-bottom:16px;border:1px solid var(--line)}.alert-green{background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.30);color:#86efac}.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:28px}.stat-card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:19px;box-shadow:var(--shadow);position:relative;overflow:hidden}.stat-card:after{content:"";position:absolute;right:-24px;top:-24px;width:84px;height:84px;border-radius:50%;background:rgba(59,130,246,.12)}.stat-card:hover{border-color:var(--line2);transform:translateY(-2px);transition:.16s}.stat-val{font-size:34px;font-weight:950;margin-bottom:5px;letter-spacing:-.04em;position:relative}.stat-label{font-size:12px;color:var(--muted);font-weight:800;position:relative}.stat-val.blue{color:#60a5fa}.stat-val.green{color:#4ade80}.stat-val.orange{color:#fbbf24}.stat-val.red{color:#f87171}
+html{scroll-behavior:smooth}body{background:linear-gradient(180deg,#08111f 0%,#0b1020 45%,#090d18 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;min-height:100vh;font-size:14px}.nav-item{display:flex;align-items:center;gap:12px;padding:10px 18px;color:#aab8d0;text-decoration:none;font-size:14px;font-weight:700;transition:.15s;position:relative}.nav-item:hover{color:#fff;background:var(--card)}.nav-item.active{color:var(--cyan);background:rgba(6,182,212,.1)}.nav-item.active:before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--cyan);border-radius:0 3px 3px 0}.nav-icon{width:20px;text-align:center;flex-shrink:0;font-size:16px}.nav-item .count{background:#f85149;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:auto}h2{font-size:17px;margin-bottom:13px;color:#dbeafe}.alert{padding:13px 16px;border-radius:14px;font-size:13px;font-weight:750;margin-bottom:16px;border:1px solid var(--line)}.alert-green{background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.30);color:#86efac}.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:28px}.stat-card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:22px;padding:19px;box-shadow:var(--shadow);position:relative;overflow:hidden}.stat-card:after{content:"";position:absolute;right:-24px;top:-24px;width:84px;height:84px;border-radius:50%;background:rgba(59,130,246,.12)}.stat-card:hover{border-color:var(--line2);transform:translateY(-2px);transition:.16s}.stat-val{font-size:34px;font-weight:950;margin-bottom:5px;letter-spacing:-.04em;position:relative}.stat-label{font-size:12px;color:var(--muted);font-weight:800;position:relative}.stat-val.blue{color:#60a5fa}.stat-val.green{color:#4ade80}.stat-val.orange{color:#fbbf24}.stat-val.red{color:#f87171}
 table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;font-size:13px;box-shadow:var(--shadow)}th{padding:14px 15px;text-align:left;font-size:11px;font-weight:900;color:#9fb7d7;text-transform:uppercase;border-bottom:1px solid var(--line);background:#0f172a;letter-spacing:.04em}td{padding:13px 15px;border-bottom:1px solid rgba(148,163,184,.10);vertical-align:middle;color:#e5edf8}tr:last-child td{border-bottom:none}tr:hover td{background:rgba(59,130,246,.045)}td small{color:var(--muted)!important}.badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:900}.badge.green{background:rgba(34,197,94,.14);color:#86efac;border:1px solid rgba(34,197,94,.30)}.badge.orange{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.30)}.badge.red{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.30)}.badge.blue{background:rgba(59,130,246,.14);color:#93c5fd;border:1px solid rgba(59,130,246,.30)}.badge.gray{background:rgba(148,163,184,.12);color:#cbd5e1;border:1px solid rgba(148,163,184,.20)}.btn{padding:8px 13px;border-radius:11px;border:none;font-size:12px;font-weight:900;cursor:pointer;transition:.14s;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}.btn-green{background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff}.btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff}.btn-blue{background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff}.btn-gray{background:#243044;color:#e6edf3;border:1px solid var(--line2)}.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn:active{transform:scale(.97)}.form-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:20px;box-shadow:var(--shadow)}.form-card h3{font-size:16px;font-weight:900;margin-bottom:15px;color:#dbeafe}.form-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}input,select{padding:10px 12px;background:#0f172a;border:1px solid var(--line);border-radius:11px;color:#e6edf3;font-size:13px;outline:none;max-width:100%}input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(6,182,212,.12)}select option{background:#0f172a;color:#e6edf3}label{font-size:12px;color:#93c5fd;display:block;margin-bottom:6px;font-weight:850}.main a:not(.btn):not(.nav-item){color:#67e8f9;text-decoration:none}.main a:not(.btn):not(.nav-item):hover{text-decoration:underline}p{color:var(--muted)}
-.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;margin-bottom:18px}.guide-card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}.guide-card h3{font-size:16px;margin-bottom:10px;color:#dbeafe}.guide-card ul{margin-left:18px;color:#cbd5e1;line-height:1.65}.guide-card li{margin:4px 0}.guide-card .where{display:inline-flex;background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.26);color:#67e8f9;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:900;margin-bottom:10px}.guide-card code,.codebox{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.codebox{white-space:pre-wrap;background:#07101f;border:1px solid #26354f;border-radius:14px;padding:12px;margin-top:10px;color:#bfdbfe;font-size:12px;line-height:1.55;overflow:auto}.warnbox{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.30);color:#fde68a;border-radius:16px;padding:13px 15px;margin-bottom:16px;font-weight:750}.okbox{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.30);color:#bbf7d0;border-radius:16px;padding:13px 15px;margin-bottom:16px;font-weight:750}.desc-cell{max-width:420px;white-space:normal;line-height:1.45;color:#cbd5e1}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px}.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.filters input,.filters select{width:auto;min-width:180px}.nav-section{margin:14px 6px 7px;color:#6b7f9e;font-size:10px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}.nav-sub{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:0 0 8px}.nav-sub .nav-item{font-size:12px;padding:9px 10px;margin:0;border-radius:12px}.nav-item .count{background:#f85149;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:auto}.nav-bottom{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
-@media(max-width:960px){.sidebar{position:sticky;top:0;width:100%;height:auto;display:flex;gap:8px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:12px}.sidebar-logo{min-width:190px;margin:0}.nav-section,.nav-bottom{display:none}.nav-sub{display:flex;gap:8px;margin:0}.nav-item{min-width:max-content;margin:0}.layout{display:block}.main{margin-left:0;padding:18px}.main>h1:first-of-type{font-size:25px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;margin-bottom:18px}.guide-card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:var(--shadow)}.guide-card h3{font-size:16px;margin-bottom:10px;color:#dbeafe}.guide-card ul{margin-left:18px;color:#cbd5e1;line-height:1.65}.guide-card li{margin:4px 0}.guide-card .where{display:inline-flex;background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.26);color:#67e8f9;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:900;margin-bottom:10px}.guide-card code,.codebox{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.codebox{white-space:pre-wrap;background:#07101f;border:1px solid #26354f;border-radius:14px;padding:12px;margin-top:10px;color:#bfdbfe;font-size:12px;line-height:1.55;overflow:auto}.warnbox{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.30);color:#fde68a;border-radius:16px;padding:13px 15px;margin-bottom:16px;font-weight:750}.okbox{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.30);color:#bbf7d0;border-radius:16px;padding:13px 15px;margin-bottom:16px;font-weight:750}.desc-cell{max-width:420px;white-space:normal;line-height:1.45;color:#cbd5e1}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px}.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.filters input,.filters select{width:auto;min-width:180px}.nav-item .count{background:#f85149;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:auto}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}
 @media(max-width:560px){.stats-grid{grid-template-columns:1fr}.main{padding:14px}.main>h1:first-of-type{display:block}.main>h1:first-of-type:after{display:inline-flex;margin-top:8px}}
-.admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}</style>
+.admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}
+
+/* === Hamburger Nav === */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="layout">
-<div class="sidebar">
-  <div class="sidebar-logo">⚡ <?= h(SITE_NAME) ?><br><small style="color:#8b949e;font-size:11px;font-weight:500">Admin Suite <span class="version-pill">CLEAN</span></small></div>
-  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard">📊 Tổng quan</a>
 
-  <div class="nav-section">Bán hàng</div>
-  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders">🛒 Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
-  <div class="nav-sub">
-    <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx">💰 Giao dịch</a>
-    <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet">👛 Ví user</a>
-    <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys">🔑 Keys</a>
-  </div>
-
-  <div class="nav-section">Sản phẩm</div>
-  <div class="nav-sub">
-    <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games">🎮 Games</a>
-    <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages">📦 Gói Key</a>
-    <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts">🏪 Accounts</a>
-  </div>
-  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys">🎁 GetKey Free</a>
-
-  <div class="nav-section">Hệ thống</div>
-  <div class="nav-sub">
-    <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig">⚙️ Config</a>
-    <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup">🧭 Setup</a>
-  </div>
-  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users">👥 Users</a>
-
-  <div class="nav-bottom">
-    <div class="nav-sub">
-      <a class="nav-item" href="../" target="_blank">🌐 Web</a>
-      <a class="nav-item" href="?logout=1">🚪 Thoát</a>
-    </div>
-  </div>
+<!-- Topbar -->
+<div class="topbar">
+  <button class="hamburger" id="menuBtn" onclick="toggleNav()">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="topbar-logo">⚡ <span class="blue"><?= h(SITE_NAME) ?></span></div>
+  <div class="topbar-right" onclick="location='?logout=1'" title="Thoát">🚪</div>
 </div>
 
-<div class="main">
-<?php if(isset($_GET['ok'])): ?>
-<div class="alert alert-green">✅ Thao tác thành công!</div>
-<?php endif ?>
-<?php if(isset($_GET['err'])): ?>
-<div class="alert" style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#fca5a5">⚠️ <?=htmlspecialchars($_GET['err'])?></div>
-<?php endif ?>
+<!-- Overlay -->
+<div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
+
+<!-- Sidebar Nav -->
+<div class="sidebar-nav" id="sidebarNav">
+
+<div class="sn-logo">
+  <div class="big">⚡ <?= h(SITE_NAME) ?></div>
+  <div class="sub">Admin Panel</div>
+</div>
+
+<div class="nav-group">
+  <div class="nav-group-label">Bảng điều khiển</div>
+  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard"><span class="nav-icon">📊</span> Tổng quan</a>
+</div>
+
+<div class="nav-group">
+  <div class="nav-group-label">Đơn hàng</div>
+  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders"><span class="nav-icon">🛒</span> Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
+  <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx"><span class="nav-icon">💰</span> Giao dịch</a>
+  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys"><span class="nav-icon">🎁</span> GetKey Free</a>
+</div>
+
+<div class="nav-group">
+  <div class="nav-group-label">Sản phẩm</div>
+  <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games"><span class="nav-icon">🎮</span> Games</a>
+  <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages"><span class="nav-icon">📦</span> Gói Key</a>
+  <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts"><span class="nav-icon">🏪</span> Accounts</a>
+  <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys"><span class="nav-icon">🔑</span> Keys</a>
+</div>
+
+<div class="nav-group">
+  <div class="nav-group-label">Tài chính</div>
+  <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet"><span class="nav-icon">👛</span> Ví user</a>
+</div>
+
+<div class="nav-group">
+  <div class="nav-group-label">Hệ thống</div>
+  <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> Config</a>
+  <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> Setup</a>
+  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> Users</a>
+  <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> Web</a>
+  <a class="nav-item" href="?logout=1"><span class="nav-icon">🚪</span> Thoát</a>
+</div>
+
+</div>
+
+<div class="main-content">
+<?php if(isset($_GET['ok'])): ?><div class="alert alert-green">✅ Thao tác thành công!</div><?php endif ?>
+<?php if(isset($_GET['err'])): ?><div class="alert" style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#fca5a5">⚠️ <?=htmlspecialchars($_GET['err'])?></div><?php endif ?>
 
 <?php if($tab==='dashboard'): ?>
 <h1>📊 Dashboard</h1>
@@ -1918,8 +1939,19 @@ $users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id
 </div>
 <?php endif ?>
 </div>
-</div>
 
 <footer class="admin-footer">Copyright by HCLOU Server · Telegram @hcloucom · Địa chỉ: Thành phố Quảng Ngãi</footer>
+
+<script>
+function toggleNav(){
+  var s=document.getElementById('sidebarNav'),o=document.getElementById('navOverlay'),b=document.getElementById('menuBtn');
+  s.classList.toggle('open'); o.classList.toggle('show'); b.classList.toggle('open');
+}
+function closeNav(){
+  document.getElementById('sidebarNav').classList.remove('open');
+  document.getElementById('navOverlay').classList.remove('show');
+  document.getElementById('menuBtn').classList.remove('open');
+}
+</script>
 </body>
 </html>
