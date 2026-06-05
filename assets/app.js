@@ -1096,17 +1096,20 @@ function renderKeys(keys){
       +'<button class="ksm" style="flex-shrink:0" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">📋 Copy</button>'
       +'</div></div>'
       +'<div class="kgrid">'
-      +'<div class="kbox"><div class="kbox-lbl">Con lai</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'">'+calcRem(k)+'</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">Ma don</div><div class="kbox-val" style="font-size:11px;font-family:monospace">'+escapeHtml(k.order_code||'--')+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Còn lại</div><div class="kbox-val" id="rem-'+(parseInt(k.id,10)||0)+'" style="color:var(--red2)">'+calcRem(k)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">'+(k.reset_count||0)+'/'+(k.max_reset||3)+'</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Mã đơn</div><div class="kbox-val" style="font-size:11px;font-family:monospace;color:var(--text2)">'+escapeHtml(k.order_code||'--')+'</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
-        +'<div class="cdtxt" id="ctxt-'+(parseInt(k.id,10)||0)+'">'+T.dangTinh+'</div></div>';
+        +'<div class="cdtxt" id="ctxt-'+(parseInt(k.id,10)||0)+'" style="color:var(--red2)">'+T.dangTinh+'</div></div>';
     }
     if(k.status==='expired'){
       html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
     }
     html+='<div class="kactions">';
+    if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">🔄 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
+    if(k.status==='active') html+='<button class="ksm green" onclick="toast(T.giaHanMsg,\'info\')">⏰ '+T.giaHan+'</button>';
     if(k.status!=='active') html+='<button class="ksm red" onclick="doDelete('+(parseInt(k.id,10)||0)+')">🗑 '+T.xoa+'</button>';
     html+='</div></div>';
   });
