@@ -1090,7 +1090,7 @@ function renderKeys(keys){
     var pkgName=escapeHtml(k.pkg_name||k.package_name||'');
     html+='<div class="kcard is-'+escapeHtml(k.status)+'" id="kc-'+(parseInt(k.id,10)||0)+'" style="animation-delay:'+i*.05+'s">'
       +'<div class="ktop"><div class="kcode-row">'
-      +'<div><div class="kgame" style="font-size:14px;font-weight:800">'+gameName+'</div><div class="kgame" style="font-size:11px;color:var(--text2);font-weight:600">'+pkgName+' · '+(parseInt(k.days,10)||0)+' ngày '+typeTag+'</div></div>'
+      +'<div><div class="kgame" style="font-size:14px;font-weight:800">'+gameName+'</div><div class="kgame" style="font-size:11px;color:var(--text2);font-weight:600">'+pkgName+' '+typeTag+'</div></div>'
       // Badge = mã đơn (thay "Hoạt động")
       +'<div class="kbadge '+cls+'" style="font-family:monospace;font-size:10px">'+escapeHtml(k.order_code||lbl)+'</div></div>'
       +'<div style="padding:8px 16px 0;display:flex;align-items:center;gap:8px">'
@@ -1102,8 +1102,7 @@ function renderKeys(keys){
       +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
       +'</div>';
     if(k.status==='active'){
-      html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div>'
-        +'<div class="cdtxt" id="ctxt-'+(parseInt(k.id,10)||0)+'" style="color:var(--red2)">'+T.dangTinh+'</div></div>';
+      html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div></div>';
     }
     if(k.status==='expired'){
       html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
