@@ -120,7 +120,7 @@ function toggleHelpBot(force){var p=document.getElementById('helpPanel'); if(!p)
 function showHelpAnswer(i){document.querySelectorAll('.help-a').forEach(function(a){a.classList.remove('show');}); var a=document.getElementById('helpA'+i); if(a)a.classList.add('show');}
 
 
-var APP_VERSION='payauto20260428_1';
+var APP_VERSION='payauto20260605_2';
 var pendingClaimToken=new URLSearchParams(location.search).get('claim')||'';
 var BOT_USERNAME=window.HCLOU_BOT_USERNAME||'';
 var TG_OPEN_URL='https://t.me/'+BOT_USERNAME+'?start=webapp';
