@@ -1,19 +1,17 @@
--- Migration 002: Fix orders table for acc selling
--- An toàn chạy nhiều lần, có dữ liệu vẫn OK
+-- Migration 002: Fix orders table
+-- Cách dùng: copy từng dòng vào SQL tab phpMyAdmin, chạy từng dòng
 
-SELECT '1. Drop FK' AS ' ';
-SET @s = (SELECT IF(EXISTS(SELECT 1 FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND CONSTRAINT_NAME='fk_orders_package'), 'ALTER TABLE `orders` DROP FOREIGN KEY `fk_orders_package`', 'SELECT 1'));
-PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- B1: Tìm tên FK constraint (chạy dòng này trước, copy kết quả)
+SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND CONSTRAINT_TYPE='FOREIGN KEY' AND CONSTRAINT_NAME LIKE '%package%';
 
-SELECT '2. package_id -> NULL' AS ' ';
-ALTER TABLE `orders` MODIFY COLUMN `package_id` INT(11) DEFAULT NULL;
+-- B2: Thay [FK_NAME] bằng kết quả ở B1 rồi chạy
+-- ALTER TABLE `orders` DROP FOREIGN KEY `[FK_NAME]`;
 
-SELECT '3. Them account_type_id' AS ' ';
-SET @s = (SELECT IF(NOT EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='account_type_id'), 'ALTER TABLE `orders` ADD COLUMN `account_type_id` INT(11) DEFAULT NULL AFTER `package_id`', 'SELECT 1'));
-PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- B3: package_id -> NULL
+ALTER TABLE `orders` MODIFY `package_id` INT(11) DEFAULT NULL;
 
-SELECT '4. Them index' AS ' ';
-SET @s = (SELECT IF(NOT EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND INDEX_NAME='idx_orders_acc_type'), 'ALTER TABLE `orders` ADD KEY `idx_orders_acc_type` (`account_type_id`)', 'SELECT 1'));
-PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- B4: Thêm account_type_id (chỉ chạy 1 lần)
+ALTER TABLE `orders` ADD `account_type_id` INT(11) DEFAULT NULL AFTER `package_id`;
 
-SELECT '✅ Done' AS ' ';
+-- B5: Thêm index
+ALTER TABLE `orders` ADD KEY `idx_orders_acc_type` (`account_type_id`);

@@ -606,9 +606,8 @@ switch ($action) {
                 $response['crypto_qr_url'] = cryptoBuildQrUrl(USDT_TRC20_ADDRESS, (float)$conv['usdt']);
             } catch (Exception $e) {}
         }
-            $response['usdt_vnd_rate']   = (float)$cryptoData['rate'];
-            $response['rate_source']     = $cryptoData['rate_source'] ?? 'cache';
-        }
+        $response['usdt_vnd_rate']   = (float)$cryptoData['rate'];
+        $response['rate_source']     = $cryptoData['rate_source'] ?? 'cache';
         jsonResponse($response);
 
 
