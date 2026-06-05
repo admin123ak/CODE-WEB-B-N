@@ -180,7 +180,7 @@ async function startApp(tg){
     var n=currentUser.full_name||'User';
     document.getElementById('pName').textContent=n;
     document.getElementById('pHandle').textContent='@'+(currentUser.telegram_username||'user');
-    document.getElementById('telegramIdText').textContent=currentUser.telegram_id;
+    var _ti=document.getElementById('telegramIdText'); if(_ti)_ti.textContent=currentUser.telegram_id;
     setUserRole();
     var init=n.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
     if(currentUser.avatar_url){
@@ -190,11 +190,12 @@ async function startApp(tg){
     }
     loadKeys('all');
     loadPendingPayments();
+    loadBalance();
     processPendingClaim();
   } else {
     // Fallback: Telegram đã có user nhưng /auth lỗi thì vẫn thử tải key bằng telegram_id.
     currentUser={telegram_id:u.id,telegram_username:u.username||'',full_name:((u.first_name||'')+' '+(u.last_name||'')).trim(),avatar_url:u.photo_url||''};
-    document.getElementById('telegramIdText').textContent=currentUser.telegram_id;
+    var _ti=document.getElementById('telegramIdText'); if(_ti)_ti.textContent=currentUser.telegram_id;
     document.getElementById('pName').textContent=currentUser.full_name||'User';
     document.getElementById('pHandle').textContent='@'+(currentUser.telegram_username||'user');
     loadKeys('all');
@@ -469,18 +470,19 @@ async function doOrder(){
   if(!selGame||!selPkg||buying)return;
   if(selPkg.is_free){ getFreeKey(); return; }
   await fetchPaymentOptions();
-  // Có ≥2 option bật → hiện picker. Chỉ 1 option → chọn thẳng.
-  var nOn=(paymentOptions.mbbank?1:0)+(paymentOptions.binance?1:0)+(paymentOptions.card?1:0);
-  if(nOn>=2){ showPaymentMethodPicker(); return; }
-  if(paymentOptions.binance){ selectedPaymentMethod='binance'; showOrderConfirm(); return; }
-  if(paymentOptions.card){ selectedPaymentMethod='card'; openCardForOrder(); return; }
-  selectedPaymentMethod='mbbank';
-  showOrderConfirm();
+  await loadBalance();
+  // Luôn hiện picker để user chọn (có thêm option Số dư ví)
+  showPaymentMethodPicker();
 }
 function showPaymentMethodPicker(){
   document.querySelector('#confirmModal .mtitle').textContent=T.pickerTitle||'Chọn phương thức thanh toán';
   var btnBase='display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:14px;text-align:left;cursor:pointer;font-family:inherit';
   var html='<div style="display:flex;flex-direction:column;gap:10px;margin:4px 0">';
+  // Option SỐ DƯ ví — luôn hiện nếu có balance
+  var price=selPkg?(parseInt(selPkg.price,10)||0)*selQty:0;
+  var discPrice=discountedPrice(price);
+  var enough=currentBalance>=discPrice;
+  html+='<button onclick="pickPayment(\'balance\')" '+(enough?'':'disabled')+' style="'+btnBase+';border-color:rgba(52,211,153,.4);background:linear-gradient(135deg,rgba(52,211,153,.14),rgba(110,231,183,.06));'+(enough?'':'opacity:.5;cursor:not-allowed')+'"><span style="font-size:24px">💰</span><span><b>Số dư ví ('+fmtMoney(currentBalance)+'đ)</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">'+(enough?'Trừ thẳng từ ví · Nhận key ngay':'Số dư không đủ, nạp thêm')+'</div></span></button>';
   if(paymentOptions.mbbank){
     html+='<button onclick="pickPayment(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">🏦</span><span><b>'+(T.pickerMbbankT||'MBBank')+'</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">'+(T.pickerMbbankSub||'Chuyển khoản VND (1-2 phút)')+'</div></span></button>';
   }
@@ -498,6 +500,11 @@ function showPaymentMethodPicker(){
 function pickPayment(method){
   selectedPaymentMethod=method;
   document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
+  if(method==='balance'){
+    closeModal('confirmModal');
+    buyWithBalance();
+    return;
+  }
   if(method==='card'){
     closeModal('confirmModal');
     openCardForOrder();
@@ -656,15 +663,22 @@ async function submitCardForOrder(){
   }, 5000);
 }
 async function buyWithBalance(){
-  if(!selGame||!selPkg) return;
-  var btn=document.querySelector('.topup-submit-btn'); if(btn){ btn.disabled=true; btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>'; }
+  if(!selGame||!selPkg||buying) return;
+  buying=true;
+  var btn=document.getElementById('buyBtn');
+  if(btn){ btn.innerHTML='<div class="spin" style="width:20px;height:20px;border-width:2px;margin:0"></div>'; btn.classList.remove('go'); }
   var res=await api('buy_with_balance','POST',{game_id:selGame.id,package_id:selPkg.id,quantity:selQty});
-  if(btn){ btn.disabled=false; btn.innerHTML='💰 Mua bằng ví'; }
+  buying=false;
+  if(btn){
+    var unit=discountedPrice(parseInt(selPkg.price,10)||0);
+    btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+fmtMoney(unit*selQty)+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
+    btn.classList.add('go');
+  }
+  try{ closeModal('topupModal'); }catch(e){}
   if(!res||!res.success){ toast((res&&res.error)||'Lỗi trừ ví','error'); return; }
-  closeModal('topupModal');
-  toast('🎉 Đã mua key thành công!','success');
-  if(typeof loadMyKeys==='function') loadMyKeys();
-  if(typeof loadBalance==='function') loadBalance();
+  toast('🎉 Đã mua key thành công bằng ví!','success');
+  loadKeys('all');
+  loadBalance();
 }
 function showPaymentMethodPickerOld(){
   // legacy, không dùng nữa — giữ làm fallback
@@ -736,15 +750,23 @@ async function getFreeKey(){
 var topupOptions=null;
 var cardRates={VIETTEL:28, MOBIFONE:30, VINAPHONE:30};
 function cardMultFor(telco){ var r=cardRates[telco]||30; if(r<0)r=0; if(r>=95)r=95; return 1.0/(1-r/100); }
+var currentBalance=0;
 async function loadBalance(){
   try{
     var res=await api('me_balance','GET');
     if(res&&res.success){
-      document.getElementById('pfBalance').textContent=fmtMoney(res.balance||0)+'đ';
-      document.getElementById('walletCard').style.display='';
+      currentBalance=parseInt(res.balance||0,10)||0;
+      var fmt=fmtMoney(currentBalance)+'đ';
+      var pfBal=document.getElementById('pfBalance');
+      if(pfBal) pfBal.textContent=fmt;
+      var topBal=document.getElementById('topBalance');
+      if(topBal) topBal.textContent=fmt;
+      var wc=document.getElementById('walletCard');
+      if(wc) wc.style.display='';
     } else if(res&&res.error){
-      // ví chưa bật -> giấu card
-      document.getElementById('walletCard').style.display='none';
+      currentBalance=0;
+      var wc=document.getElementById('walletCard');
+      if(wc) wc.style.display='none';
     }
   }catch(e){}
 }
@@ -1505,17 +1527,17 @@ async function doAccOrder(){
   var avail=parseInt(selAccType.stock)||0;
   if(avail<1){ toast('Hết acc loại này','error'); return; }
   await fetchPaymentOptions();
-  var nOn=(paymentOptions.mbbank?1:0)+(paymentOptions.binance?1:0)+(paymentOptions.card?1:0);
-  if(nOn>=2){ showAccPaymentPicker(); return; }
-  if(paymentOptions.binance){ selectedPaymentMethod='binance'; showAccConfirm(); return; }
-  if(paymentOptions.card){ selectedPaymentMethod='card'; showAccConfirm(); return; }
-  selectedPaymentMethod='mbbank';
-  showAccConfirm();
+  await loadBalance();
+  showAccPaymentPicker();
 }
 function showAccPaymentPicker(){
   document.querySelector('#confirmModal .mtitle').textContent='💳 Chọn phương thức thanh toán';
   var btnBase='display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:14px;text-align:left;cursor:pointer;font-family:inherit';
   var html='<div style="display:flex;flex-direction:column;gap:10px;margin:4px 0">';
+  var price=parseInt(selAccType?selAccType.price:0,10);
+  var dp=discountedPrice(price);
+  var enough=currentBalance>=dp;
+  html+='<button onclick="pickAccPayment(\'balance\')" '+(enough?'':'disabled')+' style="'+btnBase+';border-color:rgba(52,211,153,.4);background:linear-gradient(135deg,rgba(52,211,153,.14),rgba(110,231,183,.06));'+(enough?'':'opacity:.5;cursor:not-allowed')+'"><span style="font-size:24px">💰</span><span><b>Số dư ví ('+fmtMoney(currentBalance)+'đ)</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">'+(enough?'Trừ thẳng từ ví · Nhận acc ngay':'Số dư không đủ')+'</div></span></button>';
   if(paymentOptions.mbbank){
     html+='<button onclick="pickAccPayment(\'mbbank\')" style="'+btnBase+';border-color:rgba(96,165,250,.4);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(96,165,250,.06))"><span style="font-size:24px">🏦</span><span><b>MBBank</b><div style="font-size:11px;opacity:.8;font-weight:500;margin-top:2px">Chuyển khoản VietQR · Tự duyệt 1 phút</div></span></button>';
   }
@@ -1530,7 +1552,31 @@ function showAccPaymentPicker(){
 function pickAccPayment(method){
   selectedPaymentMethod=method;
   document.querySelector('#confirmModal .confirm-actions .confirm-btn.ok').style.display='';
+  if(method==='balance'){
+    closeModal('confirmModal');
+    buyAccWithBalance();
+    return;
+  }
   showAccConfirm();
+}
+async function buyAccWithBalance(){
+  if(!selAccGame||!selAccType||accOrdering) return;
+  accOrdering=true;
+  var btn=document.getElementById('accBuyBtn');
+  if(btn){ btn.innerHTML='<div class="spin" style="width:20px;height:20px;border-width:2px;margin:0"></div>'; btn.classList.remove('go'); }
+  var res=await api('buy_account_with_balance','POST',{game_id:selAccGame.id,account_type_id:selAccType.id});
+  accOrdering=false;
+  if(btn){
+    var _ap=parseInt(selAccType.price,10)||0;
+    btn.innerHTML='<span>Mua Acc</span><span class="buy-sub" id="accBuySub">'+selAccType.name+' | '+fmtMoney(discountedPrice(_ap))+'đ</span>';
+    btn.classList.add('go');
+  }
+  if(!res||!res.success){ toast((res&&res.error)||'Lỗi trừ ví','error'); return; }
+  toast('🎉 Đã mua acc thành công bằng ví!','success');
+  loadAccTypes();
+  loadMyAccs();
+  loadBalance();
+  switchTab('buyacc');
 }
 function showAccConfirm(){
   document.querySelector('#confirmModal .mtitle').textContent='Xác nhận mua acc';

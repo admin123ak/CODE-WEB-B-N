@@ -12,6 +12,7 @@ $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $rateRules = [
     'auth' => [60, 60], 'games' => [120, 60], 'packages' => [120, 60],
     'create_order' => [8, 60], 'pending_orders' => [40, 60], 'order_status' => [80, 60], 'my_keys' => [80, 60],
+    'buy_account_with_balance' => [8, 60],
     'get_free_link' => [10, 60], 'claim_free_key' => [10, 60],
     'reset_key' => [12, 60], 'delete_key' => [20, 60], 'search_key' => [60, 60],
     'my_orders' => [60, 60], 'profile_stats' => [60, 60],
@@ -613,6 +614,69 @@ switch ($action) {
 
 
     // ===== TẠO ĐƠN HÀNG ACC =====
+    // ===== MUA ACC BẰNG SỐ DƯ VÍ =====
+    case 'buy_account_with_balance':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+
+        $game_id = (int)($_POST['game_id'] ?? 0);
+        $account_type_id = (int)($_POST['account_type_id'] ?? 0);
+
+        $atStmt = $db->prepare("SELECT at.*, g.name as game_name FROM account_types at JOIN games g ON at.game_id=g.id WHERE at.id=? AND at.game_id=? AND at.is_active=1 AND g.is_active=1");
+        $atStmt->execute([$account_type_id, $game_id]);
+        $accType = $atStmt->fetch();
+        if (!$accType) jsonResponse(['error' => 'Loại acc không tồn tại'], 404);
+
+        $accPrice = (int)$accType['price'];
+        [$accPriceDiscounted, $discountPct,] = applyDiscount($accPrice, $user);
+
+        $curBal = balanceGet($db, (int)$user['id']);
+        if ($curBal < $accPriceDiscounted) {
+            jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($accPriceDiscounted) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
+        }
+
+        $order_code = generateOrderCode();
+        $db->beginTransaction();
+        try {
+            $accStmt = $db->prepare("SELECT id, username, `password` FROM accounts WHERE account_type_id=? AND status='available' ORDER BY id ASC LIMIT 1 FOR UPDATE");
+            $accStmt->execute([$account_type_id]);
+            $poolAcc = $accStmt->fetch();
+            if (!$poolAcc) { $db->rollBack(); jsonResponse(['error' => 'Hết acc cho loại này'], 400); }
+
+            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, account_type_id, order_type, amount, payment_method, status, approved_at, approved_by) VALUES (?,?,?,NULL,?,'account',?,'balance','approved',NOW(),'balance')")
+               ->execute([$order_code, $user['id'], $game_id, $account_type_id, $accPriceDiscounted]);
+            $order_id = (int)$db->lastInsertId();
+
+            $now = date('Y-m-d H:i:s');
+            $db->prepare("UPDATE accounts SET status='sold', user_id=?, order_id=?, sold_at=? WHERE id=?")
+               ->execute([$user['id'], $order_id, $now, $poolAcc['id']]);
+
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            jsonResponse(['error' => 'Lỗi tạo đơn: ' . $e->getMessage()], 500);
+        }
+
+        try {
+            $debit = balanceDebit($db, (int)$user['id'], $accPriceDiscounted, 'purchase', 'order', $order_id, 'Mua acc ' . $accType['name']);
+        } catch (Throwable $e) {
+            try {
+                $db->beginTransaction();
+                $db->prepare("UPDATE accounts SET status='available', user_id=NULL, order_id=NULL, sold_at=NULL WHERE order_id=?")->execute([$order_id]);
+                $db->prepare("UPDATE orders SET status='cancelled', admin_note=? WHERE id=?")->execute(['Trừ ví fail: ' . $e->getMessage(), $order_id]);
+                $db->commit();
+            } catch (Throwable $e2) { if ($db->inTransaction()) $db->rollBack(); }
+            jsonResponse(['error' => 'Trừ ví thất bại: ' . $e->getMessage()], 400);
+        }
+
+        jsonResponse([
+            'success' => true,
+            'order_code' => $order_code,
+            'username' => $poolAcc['username'],
+            'password' => $poolAcc['password'],
+            'balance_after' => $debit['balance_after'],
+            'discount' => $discountPct,
+        ]);
+
     case 'create_account_order':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $game_id = (int)($_POST['game_id'] ?? 0);

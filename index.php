@@ -73,14 +73,15 @@
 
 <div id="app" style="opacity:0;transition:opacity .4s ease">
   <div class="app-header">
-    <div class="promo-badge" data-i18n="promo">🔥 KHUYẾN MÃI HOT!</div>
-    <div class="lang-pills" id="langPills" role="group" aria-label="Language">
+    <button type="button" class="topup-btn" onclick="openTopupModal()">💰 Nạp tiền</button>
+    <div class="balance-chip" onclick="switchTab('profile')">
+      <span class="balance-lbl">Số dư</span>
+      <span class="balance-val" id="topBalance">0đ</span>
+    </div>
+    <div class="lang-pills" id="langPills" role="group" aria-label="Language" style="margin-left:auto">
       <button type="button" class="lang-pill" data-lang="vi" onclick="setLang('vi')" title="Tiếng Việt"><span class="flag">&#127483;&#127475;</span></button>
       <button type="button" class="lang-pill" data-lang="en" onclick="setLang('en')" title="English"><span class="flag">&#127468;&#127463;</span></button>
       <button type="button" class="lang-pill" data-lang="es" onclick="setLang('es')" title="Español"><span class="flag">&#127466;&#127480;</span></button>
-    </div>
-    <div class="bank-chip" id="telegramIdChip" onclick="copyTelegramId()">
-      <span id="telegramIdText">Đang tải...</span> &#x1F4CB;
     </div>
   </div>
 
