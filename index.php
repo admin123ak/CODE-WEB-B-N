@@ -73,7 +73,7 @@
 
 <div id="app" style="opacity:0;transition:opacity .4s ease">
   <div class="app-header">
-    <button type="button" class="topup-btn" onclick="openTopupModal()">💰 Nạp tiền</button>
+    <button type="button" class="topup-btn" onclick="openTopupModal()" data-i18n="topupNav">💰 Nạp tiền</button>
     <div class="balance-chip" onclick="switchTab('profile')">
       <span class="balance-lbl">Số dư</span>
       <span class="balance-val" id="topBalance">0đ</span>
