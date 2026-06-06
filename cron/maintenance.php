@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config.php';
 
 function runMaintenance(PDO $db): array {
-    $out = ['expired_keys'=>0, 'deleted_expired_keys'=>0, 'cancelled_orders'=>0, 'returned_to_pool'=>0];
+    $out = ['expired_keys'=>0, 'deleted_expired_keys'=>0, 'cancelled_orders'=>0, 'returned_to_pool'=>0, 'expired_topups'=>0];
     $stmt = $db->prepare("UPDATE `keys` SET status='expired' WHERE status='active' AND expire_at IS NOT NULL AND expire_at < NOW()");
     $stmt->execute();
     $out['expired_keys'] = $stmt->rowCount();
@@ -37,6 +37,21 @@ function runMaintenance(PDO $db): array {
         $db->rollBack();
         throw $e;
     }
+
+    // Huỷ topup_requests pending quá 30 phút (bank: 30p, binance: 30p, card: cho callback xử lý)
+    // Card có thể callback chậm — chỉ huỷ bank + binance
+    try {
+        $stmt = $db->prepare("UPDATE topup_requests
+            SET status='expired', note=CONCAT(COALESCE(note,''),' [auto-expired after 30 minutes]'), processed_at=NOW()
+            WHERE status='pending'
+              AND method IN ('mbbank','binance')
+              AND created_at < (NOW() - INTERVAL 30 MINUTE)");
+        $stmt->execute();
+        $out['expired_topups'] = $stmt->rowCount();
+    } catch (Throwable $e) {
+        $out['expired_topups_error'] = $e->getMessage();
+    }
+
     return $out;
 }
 
