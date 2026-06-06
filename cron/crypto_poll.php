@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../backend/lib/order_approval.php';
 require_once __DIR__ . '/../backend/lib/crypto_helpers.php';
+require_once __DIR__ . '/../backend/lib/topup_helpers.php';
+require_once __DIR__ . '/../backend/lib/balance_helpers.php';
 
 // =============================================
 // SCRIPT — Poll TronGrid để auto-approve order Binance USDT TRC20
@@ -240,36 +242,44 @@ try {
         $exist->execute([$hash]);
         if ($exist->fetch()) continue;
 
-        // Match order: orders.crypto_amount = số tiền nhận (unique decimal).
-        // Phải có status='pending' và payment_method='binance'.
-        // Cast amount ra DECIMAL(18,6) khi compare để khớp với column type.
+        $amtFmt = number_format($amount, 6, '.', '');
+
+        // Match ORDER (mua key/acc) trước
         $orderStmt = $db->prepare("SELECT id, order_code FROM orders
             WHERE crypto_amount = CAST(? AS DECIMAL(18,6))
               AND status = 'pending'
               AND payment_method = 'binance'
             ORDER BY id DESC LIMIT 1");
-        $orderStmt->execute([number_format($amount, 6, '.', '')]);
+        $orderStmt->execute([$amtFmt]);
         $orderRow = $orderStmt->fetch();
         $orderCode = $orderRow['order_code'] ?? null;
 
+        // Match TOPUP (nạp ví) nếu không phải order
+        $topupRow = null;
+        if (!$orderCode) {
+            $tu = $db->prepare("SELECT id, user_id, amount_requested, usdt_vnd_rate FROM topup_requests
+                WHERE crypto_amount = CAST(? AS DECIMAL(18,6))
+                  AND status='pending' AND method='binance'
+                ORDER BY id DESC LIMIT 1");
+            $tu->execute([$amtFmt]);
+            $topupRow = $tu->fetch();
+        }
+
         $desc = "TRC20 from {$from} | txid={$txid}";
+        $matchCode = $orderCode ?: ($topupRow ? 'TOPUP#' . $topupRow['id'] : null);
 
         $ins = $db->prepare("INSERT IGNORE INTO bank_transactions
             (tx_hash, tx_date, amount, source, description, order_code, status)
             VALUES (?,?,?, 'binance', ?, ?, ?)");
-        $ins->execute([$hash, $date, $amount, $desc, $orderCode, $orderCode ? 'matched' : 'seen']);
+        $ins->execute([$hash, $date, $amount, $desc, $matchCode, $matchCode ? 'matched' : 'seen']);
         if ($ins->rowCount() === 0) continue;
         $seen++;
 
         if ($orderCode) {
             $matched++;
-            $extraNote = "🔗 <b>Mạng:</b> TRC20 (TRON)\n💵 <b>USDT nhận:</b> " . rtrim(rtrim(number_format($amount, 6, '.', ''), '0'), '.');
+            $extraNote = "🔗 <b>Mạng:</b> TRC20 (TRON)\n💵 <b>USDT nhận:</b> " . rtrim(rtrim($amtFmt, '0'), '.');
             $res = approvePaidOrder(
-                $db,
-                $orderCode,
-                $amount,
-                $hash,
-                'binance_trc20',
+                $db, $orderCode, $amount, $hash, 'binance_trc20',
                 [
                     'admin_label'   => 'BINANCE USDT',
                     'amount_format' => function ($amt) {
@@ -278,11 +288,21 @@ try {
                     'extra_user_note' => $extraNote,
                 ]
             );
-            if ($res['status'] === 'approved') {
+            if ($res['status'] === 'approved') $approved++;
+            else $db->prepare("UPDATE bank_transactions SET status=?, processed_at=NOW(), note=? WHERE tx_hash=?")
+                    ->execute([$res['status'], $res['note'], $hash]);
+        } elseif ($topupRow) {
+            $matched++;
+            // Convert USDT nhận → VND theo rate đã lock khi tạo topup
+            $vndCredited = (float)$topupRow['amount_requested'];
+            try {
+                topupApprove($db, (int)$topupRow['id'], $vndCredited, 'binance_' . substr($txid, 0, 12));
+                $db->prepare("UPDATE bank_transactions SET status='approved', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['Topup #' . $topupRow['id'] . ' +' . number_format($vndCredited) . 'đ vào ví', $hash]);
                 $approved++;
-            } else {
-                $db->prepare("UPDATE bank_transactions SET status=?, processed_at=NOW(), note=? WHERE tx_hash=?")
-                   ->execute([$res['status'], $res['note'], $hash]);
+            } catch (Throwable $e) {
+                $db->prepare("UPDATE bank_transactions SET status='error', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['topupApprove fail: ' . $e->getMessage(), $hash]);
             }
         }
     }

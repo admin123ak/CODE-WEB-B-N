@@ -174,6 +174,8 @@ function normalizeDateForDb($raw) {
 }
 
 // approvePaidOrder() ở backend/lib/order_approval.php — share với crypto_poll.php
+require_once __DIR__ . '/../backend/lib/topup_helpers.php';
+require_once __DIR__ . '/../backend/lib/balance_helpers.php';
 
 try {
     if (!defined('MBBANK_AUTO_APPROVE_ENABLED') || !MBBANK_AUTO_APPROVE_ENABLED) {
@@ -190,13 +192,18 @@ try {
 
         $date = normalizeDateForDb($rawDate);
         $hash = hash('sha256', $rawDate . '|' . $amount . '|' . $desc);
-        preg_match('/\b(ORD[0-9A-Z]+)\b/i', $desc, $m);
-        $orderCode = strtoupper($m[1] ?? '');
 
-        // Bỏ qua nếu cùng order_code + amount đã approved (MBBank đôi khi gửi trùng)
-        if ($orderCode) {
+        // Match ORD (mua key/acc trực tiếp) HOẶC NAP (nạp tiền vào ví)
+        preg_match('/\b(ORD[0-9A-Z]+)\b/i', $desc, $mOrd);
+        preg_match('/\b(NAP[0-9A-Z]+)\b/i', $desc, $mNap);
+        $orderCode = strtoupper($mOrd[1] ?? '');
+        $napCode   = strtoupper($mNap[1] ?? '');
+
+        // Bỏ qua nếu cùng code + amount đã approved
+        if ($orderCode || $napCode) {
+            $matchCode = $orderCode ?: $napCode;
             $dupStmt = $db->prepare("SELECT id FROM bank_transactions WHERE order_code=? AND amount=? AND status='approved' LIMIT 1");
-            $dupStmt->execute([$orderCode, $amount]);
+            $dupStmt->execute([$matchCode, $amount]);
             if ($dupStmt->fetchColumn()) continue;
         }
 
@@ -205,11 +212,13 @@ try {
         $existStmt->execute([$hash]);
         if ($existStmt->fetch()) continue;
 
+        $matchCode = $orderCode ?: $napCode;
         $ins = $db->prepare("INSERT IGNORE INTO bank_transactions (tx_hash, tx_date, amount, description, order_code, status) VALUES (?,?,?,?,?,?)");
-        $ins->execute([$hash, $date, $amount, $desc, $orderCode ?: null, $orderCode ? 'matched' : 'seen']);
+        $ins->execute([$hash, $date, $amount, $desc, $matchCode ?: null, $matchCode ? 'matched' : 'seen']);
         if ($ins->rowCount() === 0) continue;
         $seen++;
 
+        // --- ORD: duyệt order key/acc ---
         if ($orderCode) {
             $matched++;
             $res = approvePaidOrder($db, $orderCode, $amount, $hash);
@@ -218,6 +227,40 @@ try {
             } else {
                 $db->prepare("UPDATE bank_transactions SET status=?, processed_at=NOW(), note=? WHERE tx_hash=?")
                    ->execute([$res['status'], $res['note'], $hash]);
+            }
+            continue;
+        }
+
+        // --- NAP: duyệt topup vào ví ---
+        if ($napCode) {
+            $matched++;
+            $tu = $db->prepare("SELECT id, user_id, amount_requested, status FROM topup_requests WHERE unique_code=? AND method='mbbank' LIMIT 1");
+            $tu->execute([$napCode]);
+            $topup = $tu->fetch(PDO::FETCH_ASSOC);
+            if (!$topup) {
+                $db->prepare("UPDATE bank_transactions SET status='ignored', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['Không tìm thấy topup cho mã ' . $napCode, $hash]);
+                continue;
+            }
+            if ($topup['status'] !== 'pending') {
+                $db->prepare("UPDATE bank_transactions SET status='ignored', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['Topup đã ' . $topup['status'], $hash]);
+                continue;
+            }
+            // Check tiền chuyển >= yêu cầu (cho phép dư, cộng đúng amount nhận được)
+            if ((float)$amount < (float)$topup['amount_requested']) {
+                $db->prepare("UPDATE bank_transactions SET status='ignored', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['Số tiền < yêu cầu: ' . $amount . ' < ' . $topup['amount_requested'], $hash]);
+                continue;
+            }
+            try {
+                topupApprove($db, (int)$topup['id'], (float)$amount, 'mbbank_' . $hash);
+                $db->prepare("UPDATE bank_transactions SET status='approved', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['Topup #' . $topup['id'] . ' +' . $amount . 'đ vào ví', $hash]);
+                $approved++;
+            } catch (Throwable $e) {
+                $db->prepare("UPDATE bank_transactions SET status='error', processed_at=NOW(), note=? WHERE tx_hash=?")
+                   ->execute(['topupApprove fail: ' . $e->getMessage(), $hash]);
             }
         }
     }
