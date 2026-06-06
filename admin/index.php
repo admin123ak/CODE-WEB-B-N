@@ -25,14 +25,14 @@ $ADMIN_LANG_ALL = [
         'revenue' => 'Doanh thu', 'keys_active' => 'Key active', 'keys_avail' => 'Key trong pool',
         'keys_total' => 'Tổng key', 'save' => 'Lưu', 'edit' => 'Sửa', 'delete' => 'Xoá',
         'enable' => 'Bật', 'disable' => 'Tắt', 'add' => 'Thêm', 'add_new' => 'Thêm mới',
-        'cancel' => 'Huỷ', 'confirm' => 'Xác nhận', 'success' => '<?= h(_t("action")) ?> thành công!',
+        'cancel' => 'Huỷ', 'confirm' => 'Xác nhận', 'success' => 'Thao tac thanh cong!',
         'language' => 'Ngôn ngữ', 'role_customer' => 'Khách hàng', 'role_reseller' => 'Reseller',
-        'role_admin' => 'Admin', 'discount' => 'Giảm giá', 'status' => '<?= h(_t("status")) ?>',
+        'role_admin' => 'Admin', 'discount' => 'Giảm giá', 'status' => 'Trang thai',
         'created_at' => 'Ngày tạo', 'action' => 'Thao tác', 'amount' => 'Số tiền',
     ],
     'en' => [
         'logout' => 'Logout', 'dashboard' => 'Dashboard', 'orders' => 'Orders',
-        'transactions' => 'Transactions', 'wallet' => '<?= h(_t("user")) ?> Wallet', 'keys' => 'Keys',
+        'transactions' => 'Transactions', 'wallet' => 'User Wallet', 'keys' => 'Keys',
         'games' => 'Games', 'packages' => 'Key Packages', 'accounts' => 'Accounts',
         'getfree' => 'Get Free Key', 'config' => 'Config', 'setup' => 'Setup',
         'users' => 'Users', 'web' => 'Web', 'sales' => 'Sales',
@@ -83,7 +83,7 @@ function admin_login_page($error = '') {
     $err = $error ? '<div class="err">'.htmlspecialchars($error).'</div>' : '';
     echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU SERVER Admin</title>
         <style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:radial-gradient(circle at 20% 10%,rgba(31,111,235,.35),transparent 28%),radial-gradient(circle at 85% 20%,rgba(139,92,246,.28),transparent 30%),#070b14;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}.card{width:410px;max-width:100%;background:linear-gradient(180deg,rgba(22,27,34,.94),rgba(13,17,23,.97));border:1px solid rgba(88,166,255,.22);border-radius:28px;padding:30px;box-shadow:0 24px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(18px)}.logo{width:68px;height:68px;border-radius:22px;background:linear-gradient(135deg,#1f6feb,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px;box-shadow:0 0 30px rgba(31,111,235,.45)}h1{text-align:center;font-size:24px;margin-bottom:6px}.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:24px}.field{margin-bottom:14px}label{display:block;color:#8b949e;font-size:12px;font-weight:800;margin:0 0 7px 2px}input{width:100%;padding:14px 15px;background:#0d1117;border:1px solid #30363d;border-radius:14px;color:#e6edf3;font-size:15px;outline:none}input:focus{border-color:#58a6ff;box-shadow:0 0 0 4px rgba(88,166,255,.12)}button{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#1f6feb,#8b5cf6);color:#fff;font-size:15px;font-weight:950;cursor:pointer;box-shadow:0 12px 30px rgba(31,111,235,.28)}.hint{margin-top:16px;text-align:center;color:#6e7681;font-size:12px}.err{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:11px 13px;border-radius:13px;margin-bottom:14px;font-size:13px;font-weight:750}.admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}</style></head>
-        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label><?= h(_t('mat_khau_quan_tri')) ?></label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password" autofocus></div><button><?= h(_t('dang_nhap_an_toan')) ?></button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
+        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label>Mật khẩu quản trị</label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password" autofocus></div><button>Đăng nhập an toàn</button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
 }
 
 if (isset($_GET['logout'])) {
@@ -201,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $url = rtrim(SITE_URL, '/') . '/cron/db_backup.php?cron_token=' . rawurlencode(CRON_RUN_TOKEN);
             $ch  = curl_init($url);
             curl_setopt_array($ch, [
-                CURLO<?= h(_t("method")) ?>_RETURNTRANSFER => true,
+                CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT        => 120,
                 CURLOPT_CONNECTTIMEOUT => 10,
                 CURLOPT_SSL_VERIFYPEER => false,
