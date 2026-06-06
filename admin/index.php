@@ -295,15 +295,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($act === 'add_free_key') {
-        $game_id=(int)$_POST['game_id']; $package_id=(int)$_POST['package_id']; $key_code=trim($_POST['key_code']);
-        $pkg=$db->prepare("SELECT * FROM packages WHERE id=? AND game_id=?"); $pkg->execute([$package_id,$game_id]); $p=$pkg->fetch();
-        if (!$p || !$key_code) { header("Location: ?tab=freekeys&err=missing"); exit; }
-        $token=bin2hex(random_bytes(24)); $start=date('Y-m-d H:i:s'); $exp=date('Y-m-d H:i:s', strtotime("+{$p['days']} days"));
-        $claim=SITE_URL.'/claim.php?t='.$token;
-        try { $short=buildFreeShortlink($claim); } catch (Exception $e) { header("Location: ?tab=freekeys&err=" . urlencode($e->getMessage())); exit; }
-        $db->prepare("INSERT INTO free_keys (key_code,game_id,package_id,days,key_type,is_active,start_at,expire_at,claim_token,short_url) VALUES (?,?,?,?,?,1,?,?,?,?)")
-           ->execute([$key_code,$game_id,$package_id,$p['days'],$p['key_type'],$start,$exp,$token,$short]);
-        header("Location: ?tab=freekeys&ok=1"); exit;
+        $game_id    = (int)$_POST['game_id'];
+        $package_id = (int)$_POST['package_id'];
+        $keysRaw    = trim($_POST['key_codes'] ?? $_POST['key_code'] ?? '');
+
+        $pkg = $db->prepare("SELECT * FROM packages WHERE id=? AND game_id=?");
+        $pkg->execute([$package_id, $game_id]);
+        $p = $pkg->fetch();
+        if (!$p || $keysRaw === '') { header("Location: ?tab=freekeys&err=missing"); exit; }
+
+        $lines = preg_split('/[\r\n,;\s]+/', $keysRaw, -1, PREG_SPLIT_NO_EMPTY);
+        $start = date('Y-m-d H:i:s');
+        $exp   = date('Y-m-d H:i:s', strtotime("+{$p['days']} days"));
+
+        $ins = $db->prepare("INSERT INTO free_keys (key_code,game_id,package_id,days,key_type,is_active,start_at,expire_at,claim_token,short_url) VALUES (?,?,?,?,?,1,?,?,?,NULL)");
+        $added = 0; $errs = [];
+        foreach ($lines as $code) {
+            $code = trim($code);
+            if ($code === '') continue;
+            try {
+                $token = bin2hex(random_bytes(24));
+                $ins->execute([$code, $game_id, $package_id, $p['days'], $p['key_type'], $start, $exp, $token]);
+                $added++;
+            } catch (Exception $e) {
+                $errs[] = $code . ': ' . substr($e->getMessage(), 0, 60);
+            }
+        }
+        if ($added === 0) {
+            header("Location: ?tab=freekeys&err=" . urlencode('Không thêm được key nào: ' . implode(' | ', $errs))); exit;
+        }
+        $note = "&added={$added}" . ($errs ? "&errs=" . urlencode(implode(' | ', array_slice($errs, 0, 3))) : "");
+        header("Location: ?tab=freekeys&ok=1{$note}"); exit;
     }
     if ($act === 'toggle_free_key') {
         $db->prepare("UPDATE free_keys SET is_active=1-is_active WHERE id=?")->execute([$_POST['id']]);
@@ -1342,10 +1364,9 @@ if($accs):
 <?php elseif($tab==='freekeys'): ?>
 <h1>🎁 GetKey Free</h1>
 <?php $gamesAll=$db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll(); $packagesAll=$db->query("SELECT p.*,g.name game_name FROM packages p JOIN games g ON p.game_id=g.id WHERE p.is_active=1 ORDER BY g.sort_order,p.days")->fetchAll(); ?>
-<div class="form-card"><h3>➕ Thêm key free mới</h3>
+<div class="form-card"><h3>➕ Thêm nhiều key free cùng lúc</h3>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_free_key">
 <div class="form-row">
-<div><label>Key code</label><input name="key_code" required placeholder="abcd..." style="width:220px"></div>
 <div><label>Game</label>
   <select name="game_id" id="freeKeyGameSelect" required onchange="updateFreeKeyPkgOptions(this.value)">
     <option value="">-- Chọn game --</option>
@@ -1359,7 +1380,12 @@ if($accs):
     <option value="">-- Chọn game trước --</option>
   </select>
 </div>
-<div style="padding-top:20px"><button class="btn btn-blue">Tạo link 2 lớp</button></div>
+</div>
+<div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
+  <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABCDEF123&#10;XYZ456789&#10;HCLOU-FREE-001" style="width:100%;font-family:monospace;font-size:13px;resize:vertical;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px"></textarea>
+</div>
+<div style="margin-top:10px"><button class="btn btn-green" type="submit">➕ Thêm vào pool key free</button>
+<small style="color:#8b949e;margin-left:10px">Pool nhiều key → mỗi user vượt link nhận 1 key khác nhau. Link tự tạo per-user (Layma/Link4M).</small>
 </div></form>
 
 <script>
