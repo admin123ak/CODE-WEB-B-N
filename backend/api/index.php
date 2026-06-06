@@ -21,6 +21,8 @@ $rateRules = [
     'me_balance' => [120, 60], 'topup_options' => [120, 60],
     'topup_create' => [6, 60], 'balance_history' => [60, 60],
     'topup_history_card' => [60, 60],
+    'topup_history_all' => [60, 60],
+    'topup_pending' => [60, 60],
 ];
 if (isset($rateRules[$action])) { [$lim,$win] = $rateRules[$action]; rateLimit('api_'.$action, $lim, $win, $ip); }
 
@@ -337,6 +339,34 @@ switch ($action) {
         jsonResponse(['success' => true, 'items' => $items]);
 
     // Lịch sử nạp thẻ gần đây (5 dòng) — hiện trong form nạp card.
+    // Lịch sử nạp tiền đầy đủ (tất cả method)
+    case 'topup_history_all':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $stmt = $db->prepare("SELECT id, method, amount_requested, amount_credited, status, unique_code, crypto_amount, card_telco, card_face_value, note, created_at, processed_at FROM topup_requests WHERE user_id=? ORDER BY id DESC LIMIT 50");
+        $stmt->execute([(int)$user['id']]);
+        jsonResponse(['success' => true, 'items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+
+    // Topup pending (để hiện banner khi user out modal)
+    case 'topup_pending':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        $stmt = $db->prepare("SELECT id, method, amount_requested, unique_code, crypto_amount, usdt_vnd_rate, created_at FROM topup_requests WHERE user_id=? AND status='pending' AND created_at >= (NOW() - INTERVAL 30 MINUTE) ORDER BY id DESC LIMIT 5");
+        $stmt->execute([(int)$user['id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) {
+            if ($r['method'] === 'mbbank' && defined('BANK_ACCOUNT')) {
+                $r['bank_name'] = BANK_NAME;
+                $r['bank_account'] = BANK_ACCOUNT;
+                $r['bank_owner'] = BANK_OWNER;
+                $r['vietqr_url'] = function_exists('buildVietQrUrl') ? buildVietQrUrl((int)$r['amount_requested'], $r['unique_code']) : '';
+            } elseif ($r['method'] === 'binance' && defined('USDT_TRC20_ADDRESS') && USDT_TRC20_ADDRESS !== '') {
+                $r['crypto_address'] = USDT_TRC20_ADDRESS;
+                $r['crypto_network'] = 'TRC20 (TRON)';
+                $r['crypto_qr_url'] = function_exists('cryptoBuildQrUrl') ? cryptoBuildQrUrl(USDT_TRC20_ADDRESS, (float)$r['crypto_amount']) : '';
+            }
+        }
+        unset($r);
+        jsonResponse(['success' => true, 'items' => $rows]);
+
     case 'topup_history_card':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $stmt = $db->prepare("SELECT id, status, card_telco, card_face_value, amount_credited, note,

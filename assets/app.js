@@ -1389,11 +1389,60 @@ async function loadHistory(){
   var wrap = document.getElementById('histWrap');
   wrap.innerHTML = '<div class="loading"><div class="spin"></div>'+escapeHtml(T.loadingHistory)+'</div>';
   try {
+    var html = '';
+
+    // 1. PENDING TOPUP - hiện đầu, có nút "Xem lại QR"
+    try {
+      var resP = await api('topup_pending','GET',{});
+      if(resP && resP.success && resP.items && resP.items.length){
+        html += '<div style="padding:0 16px 6px;font-size:11px;font-weight:900;color:var(--orange2);letter-spacing:.04em;text-transform:uppercase">⏳ Nạp đang chờ</div>';
+        resP.items.forEach(function(t){
+          var label = t.method==='mbbank'?'🏦 MBBank':t.method==='binance'?'🪙 Binance':'💳 Thẻ cào';
+          var amt = fmtMoney(t.amount_requested||0)+'đ';
+          html += '<div class="hist-order" style="border-left:3px solid #fb923c">'
+            +'<div class="hist-header"><span class="hist-code">'+label+'</span>'
+            +'<span class="hist-badge pending">⏳ Chờ thanh toán</span></div>'
+            +'<div class="hist-detail">'
+            +(t.unique_code?'<span><span>Mã CK</span><b style="color:#fbbf24">'+escapeHtml(t.unique_code)+'</b></span>':'')
+            +(t.crypto_amount?'<span><span>USDT</span><b>'+escapeHtml(String(t.crypto_amount))+'</b></span>':'')
+            +'<span><span>Số tiền</span><b>'+amt+'</b></span>'
+            +'<span><span>Thời gian</span><b>'+escapeHtml(fmtDateFull(t.created_at))+'</b></span>'
+            +'</div>'
+            +'<button class="pay-refresh-btn" style="margin-top:10px;width:100%" onclick=\'resumeTopupPay('+JSON.stringify(t).replace(/\'/g,"&#39;")+')\'>📲 Xem lại QR/thông tin</button>'
+            +'</div>';
+        });
+        html += '<div style="height:8px"></div>';
+      }
+    }catch(e){}
+
+    // 2. LỊCH SỬ NẠP TIỀN
+    try {
+      var resT = await api('topup_history_all','GET',{});
+      if(resT && resT.success && resT.items && resT.items.length){
+        html += '<div style="padding:0 16px 6px;font-size:11px;font-weight:900;color:var(--green2);letter-spacing:.04em;text-transform:uppercase">💵 Lịch sử nạp tiền</div>';
+        resT.items.forEach(function(t){
+          var badgeCls = t.status==='approved'?'approved':t.status==='rejected'?'rejected':t.status==='expired'?'cancelled':'pending';
+          var statusText = t.status==='approved'?'Đã cộng ví':t.status==='rejected'?'Bị từ chối':t.status==='expired'?'Hết hạn':'Đang chờ';
+          var label = t.method==='mbbank'?'🏦 MBBank':t.method==='binance'?'🪙 Binance':'💳 Thẻ '+(t.card_telco||'');
+          var amt = fmtMoney(t.amount_requested||0)+'đ';
+          var credit = t.amount_credited?(' → +'+fmtMoney(t.amount_credited)+'đ ví'):'';
+          html += '<div class="hist-order">'
+            +'<div class="hist-header"><span class="hist-code">'+label+'</span>'
+            +'<span class="hist-badge '+badgeCls+'">'+statusText+'</span></div>'
+            +'<div class="hist-detail">'
+            +'<span><span>Yêu cầu</span><b>'+amt+credit+'</b></span>'
+            +'<span><span>Thời gian</span><b>'+escapeHtml(fmtDate(t.created_at))+'</b></span>'
+            +(t.note?'<span><span>Ghi chú</span><b style="font-size:11px">'+escapeHtml(t.note)+'</b></span>':'')
+            +'</div></div>';
+        });
+        html += '<div style="height:8px"></div>';
+      }
+    }catch(e){}
+
+    // 3. ĐƠN HÀNG
     var res = await api('my_orders','GET',{});
-    if(!res.orders || res.orders.length===0){
-      wrap.innerHTML = '<div class="hist-empty-note" style="padding:40px 20px"><div class="empty-ico">📭</div><div class="empty-lbl">'+escapeHtml(T.histEmpty)+'</div></div>';
-    } else {
-      var html = '';
+    if(res.orders && res.orders.length){
+      html += '<div style="padding:0 16px 6px;font-size:11px;font-weight:900;color:var(--blue2);letter-spacing:.04em;text-transform:uppercase">🛒 Đơn hàng</div>';
       res.orders.forEach(function(o){
         var badgeCls = o.status==='approved'?'approved':o.status==='rejected'?'rejected':o.status==='cancelled'?'cancelled':'pending';
         var statusText = o.status==='approved'?T.statusApproved:o.status==='rejected'?T.statusRejected:o.status==='cancelled'?T.statusCancelled:T.statusPending;
@@ -1407,12 +1456,36 @@ async function loadHistory(){
           +'</div>'
           +'<div class="hist-amount">'+fmtMoney(o.amount)+'₫</div></div>';
       });
+    }
+
+    if(!html){
+      wrap.innerHTML = '<div class="hist-empty-note" style="padding:40px 20px"><div class="empty-ico">📭</div><div class="empty-lbl">'+escapeHtml(T.histEmpty)+'</div></div>';
+    } else {
       wrap.innerHTML = html;
     }
     histLoaded = true;
   } catch(e){
     wrap.innerHTML = '<div class="hist-empty-note">'+escapeHtml(T.histLoadFail)+'</div>';
   }
+}
+
+// Mở lại modal nạp với info đã tạo (cho user xem QR/mã CK)
+function resumeTopupPay(t){
+  document.getElementById('topupTitle').textContent='💳 Tiếp tục nạp tiền';
+  document.getElementById('topupModal').classList.add('show');
+  showTopupPayInfo({
+    method: t.method,
+    amount_requested: t.amount_requested,
+    unique_code: t.unique_code,
+    bank_name: t.bank_name||'',
+    bank_account: t.bank_account||'',
+    bank_owner: t.bank_owner||'',
+    vietqr_url: t.vietqr_url||'',
+    crypto_amount: t.crypto_amount,
+    crypto_address: t.crypto_address||'',
+    crypto_qr_url: t.crypto_qr_url||'',
+    usdt_vnd_rate: t.usdt_vnd_rate
+  });
 }
 
 var profLoaded = false;
