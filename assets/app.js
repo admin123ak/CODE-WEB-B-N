@@ -821,7 +821,7 @@ function showAmountForm(m){
     +'<button class="quick-amt" data-v="200000" onclick="setQuickAmt(200000)" style="'+qBtn+'">200k</button>'
     +'<button class="quick-amt" data-v="500000" onclick="setQuickAmt(500000)" style="'+qBtn+'">500k</button>'
     +'</div>'
-    +'<button class="topup-submit-btn" onclick="submitTopupAmount('+JSON.stringify(m)+')" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">Tiếp tục</button>'
+    +'<button class="topup-submit-btn" onclick="submitTopupAmount(\''+m+'\')" style="width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">Tiếp tục</button>'
     +'<button onclick="openTopupModal()" style="width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit">← Chọn lại phương thức</button>';
   document.getElementById('topupContent').innerHTML=html;
 }
