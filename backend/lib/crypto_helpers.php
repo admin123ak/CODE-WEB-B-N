@@ -1,5 +1,13 @@
 <?php
 /**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
+/**
  * Helper convert VND ↔ USDT cho thanh toán Binance USDT TRC20.
  *
  * - Cache tỷ giá USDT/VND vào data/usdt_vnd_rate.json (TTL 5 phút) để

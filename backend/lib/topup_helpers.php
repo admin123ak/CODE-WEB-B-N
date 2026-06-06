@@ -1,5 +1,13 @@
 <?php
 /**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
+/**
  * Helper thao tác `topup_requests` — yêu cầu nạp tiền vào ví.
  *
  * 3 method:

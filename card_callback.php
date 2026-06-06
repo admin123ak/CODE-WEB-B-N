@@ -1,5 +1,13 @@
 <?php
 /**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
+/**
  * Endpoint callback từ doithe.vn — gọi về sau khi thẻ được xử lý xong.
  *
  * URL cấu hình bên doithe.vn merchant: {SITE_URL}/card_callback.php (POST).

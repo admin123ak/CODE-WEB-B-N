@@ -1,5 +1,13 @@
 <?php
 /**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
+/**
  * Helper thay đổi balance của user nguyên tử (atomic).
  *
  * Mọi credit/debit BẮT BUỘC đi qua đây — không UPDATE thẳng users.balance

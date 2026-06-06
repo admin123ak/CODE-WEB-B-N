@@ -1,4 +1,12 @@
 <?php
+/**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
 require_once __DIR__ . '/../config.php';
 
 function runMaintenance(PDO $db): array {

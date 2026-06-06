@@ -1,3 +1,11 @@
+/**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
 var API='./backend/api/index.php',currentUser=null,selGame=null,selPkg=null,selQty=1,tgInitData='',appToken='';
 var PLAY_BASE='https://play.google.com/store/apps/details?id=';
 var allKeys=[],curFilter='all',cdTimers={},gCache=[],pCache=[],pendingPayOrders=[];

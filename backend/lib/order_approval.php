@@ -1,5 +1,13 @@
 <?php
 /**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
+/**
  * Shared helper to approve a paid order atomically.
  *
  * Tách ra từ cron/mbbank_poll.php để cả MBBank lẫn Crypto (Binance USDT) reuse.

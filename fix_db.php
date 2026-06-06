@@ -1,4 +1,12 @@
 <?php
+/**
+ * ============================================
+ *  HCLOU SERVER
+ *  Developer: TRAN VAN HOANG
+ *  Zalo: 0868641019
+ *  Copyright © 2026 - All rights reserved
+ * ============================================
+ */
 // Fix DB orders table - chạy file này từ browser
 // domain.com/fix_db.php
 require_once __DIR__ . '/config.php';
