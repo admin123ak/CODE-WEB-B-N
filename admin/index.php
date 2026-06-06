@@ -10,6 +10,72 @@
 require_once '../config.php';
 session_start();
 
+// ==========================================
+// ADMIN I18N - VI/EN/ES
+// ==========================================
+$ADMIN_LANG_ALL = [
+    'vi' => [
+        'logout' => 'Thoát', 'dashboard' => 'Tổng quan', 'orders' => 'Đơn hàng',
+        'transactions' => 'Giao dịch', 'wallet' => 'Ví user', 'keys' => 'Keys',
+        'games' => 'Games', 'packages' => 'Gói Key', 'accounts' => 'Accounts',
+        'getfree' => 'GetKey Free', 'config' => 'Cấu hình', 'setup' => 'Setup',
+        'users' => 'Người dùng', 'web' => 'Web', 'sales' => 'Bán hàng',
+        'products' => 'Sản phẩm', 'system' => 'Hệ thống', 'control_center' => 'Control Center',
+        'total_users' => 'Tổng users', 'orders_pending' => 'Đơn chờ', 'orders_approved' => 'Đã duyệt',
+        'revenue' => 'Doanh thu', 'keys_active' => 'Key active', 'keys_avail' => 'Key trong pool',
+        'keys_total' => 'Tổng key', 'save' => 'Lưu', 'edit' => 'Sửa', 'delete' => 'Xoá',
+        'enable' => 'Bật', 'disable' => 'Tắt', 'add' => 'Thêm', 'add_new' => 'Thêm mới',
+        'cancel' => 'Huỷ', 'confirm' => 'Xác nhận', 'success' => 'Thao tác thành công!',
+        'language' => 'Ngôn ngữ', 'role_customer' => 'Khách hàng', 'role_reseller' => 'Reseller',
+        'role_admin' => 'Admin', 'discount' => 'Giảm giá', 'status' => 'Trạng thái',
+        'created_at' => 'Ngày tạo', 'action' => 'Thao tác', 'amount' => 'Số tiền',
+    ],
+    'en' => [
+        'logout' => 'Logout', 'dashboard' => 'Dashboard', 'orders' => 'Orders',
+        'transactions' => 'Transactions', 'wallet' => 'User Wallet', 'keys' => 'Keys',
+        'games' => 'Games', 'packages' => 'Key Packages', 'accounts' => 'Accounts',
+        'getfree' => 'Get Free Key', 'config' => 'Config', 'setup' => 'Setup',
+        'users' => 'Users', 'web' => 'Web', 'sales' => 'Sales',
+        'products' => 'Products', 'system' => 'System', 'control_center' => 'Control Center',
+        'total_users' => 'Total users', 'orders_pending' => 'Pending orders', 'orders_approved' => 'Approved',
+        'revenue' => 'Revenue', 'keys_active' => 'Active keys', 'keys_avail' => 'Keys in pool',
+        'keys_total' => 'Total keys', 'save' => 'Save', 'edit' => 'Edit', 'delete' => 'Delete',
+        'enable' => 'On', 'disable' => 'Off', 'add' => 'Add', 'add_new' => 'Add new',
+        'cancel' => 'Cancel', 'confirm' => 'Confirm', 'success' => 'Operation successful!',
+        'language' => 'Language', 'role_customer' => 'Customer', 'role_reseller' => 'Reseller',
+        'role_admin' => 'Admin', 'discount' => 'Discount', 'status' => 'Status',
+        'created_at' => 'Created', 'action' => 'Action', 'amount' => 'Amount',
+    ],
+    'es' => [
+        'logout' => 'Salir', 'dashboard' => 'Panel', 'orders' => 'Pedidos',
+        'transactions' => 'Transacciones', 'wallet' => 'Billetera', 'keys' => 'Claves',
+        'games' => 'Juegos', 'packages' => 'Paquetes', 'accounts' => 'Cuentas',
+        'getfree' => 'Clave Gratis', 'config' => 'Configuración', 'setup' => 'Instalación',
+        'users' => 'Usuarios', 'web' => 'Web', 'sales' => 'Ventas',
+        'products' => 'Productos', 'system' => 'Sistema', 'control_center' => 'Centro de Control',
+        'total_users' => 'Total usuarios', 'orders_pending' => 'Pendientes', 'orders_approved' => 'Aprobados',
+        'revenue' => 'Ingresos', 'keys_active' => 'Claves activas', 'keys_avail' => 'Claves en pool',
+        'keys_total' => 'Total claves', 'save' => 'Guardar', 'edit' => 'Editar', 'delete' => 'Eliminar',
+        'enable' => 'Activar', 'disable' => 'Desactivar', 'add' => 'Añadir', 'add_new' => 'Añadir nuevo',
+        'cancel' => 'Cancelar', 'confirm' => 'Confirmar', 'success' => '¡Operación exitosa!',
+        'language' => 'Idioma', 'role_customer' => 'Cliente', 'role_reseller' => 'Distribuidor',
+        'role_admin' => 'Admin', 'discount' => 'Descuento', 'status' => 'Estado',
+        'created_at' => 'Creado', 'action' => 'Acción', 'amount' => 'Cantidad',
+    ],
+];
+// Lang switching: cookie + URL param
+if (isset($_GET['admin_lang']) && isset($ADMIN_LANG_ALL[$_GET['admin_lang']])) {
+    setcookie('admin_lang', $_GET['admin_lang'], time() + 86400 * 365, '/');
+    $_COOKIE['admin_lang'] = $_GET['admin_lang'];
+    $redirUrl = strtok($_SERVER['REQUEST_URI'], '?');
+    $qs = $_GET; unset($qs['admin_lang']);
+    header('Location: ' . $redirUrl . ($qs ? '?' . http_build_query($qs) : '')); exit;
+}
+$ADMIN_LANG = isset($_COOKIE['admin_lang']) && isset($ADMIN_LANG_ALL[$_COOKIE['admin_lang']])
+    ? $_COOKIE['admin_lang'] : 'vi';
+$AL = $ADMIN_LANG_ALL[$ADMIN_LANG];
+function _t($key) { global $AL; return $AL[$key] ?? $key; }
+
 // Admin auth: session + CSRF + timeout
 function admin_login_page($error = '') {
     $csrf = $_SESSION['admin_csrf'] ?? bin2hex(random_bytes(16));
@@ -631,7 +697,11 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 .admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}
 
 /* === Hamburger Nav === */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
+.admin-lang-pills{display:flex;gap:3px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.admin-lang-pill{display:flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:999px;font-size:14px;text-decoration:none;transition:all .15s;cursor:pointer;line-height:1}
+.admin-lang-pill:hover{background:rgba(255,255,255,.06)}
+.admin-lang-pill.active{background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 4px 12px rgba(59,130,246,.3)}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -642,7 +712,14 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
     <span></span><span></span><span></span>
   </button>
   <div class="topbar-logo">⚡ <span class="blue"><?= h(SITE_NAME) ?></span></div>
-  <div class="topbar-right" onclick="location='?logout=1'" title="Thoát">🚪</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="admin-lang-pills" role="group" aria-label="Language">
+      <a class="admin-lang-pill <?= $ADMIN_LANG==='vi'?'active':'' ?>" href="?admin_lang=vi" title="Tiếng Việt">🇻🇳</a>
+      <a class="admin-lang-pill <?= $ADMIN_LANG==='en'?'active':'' ?>" href="?admin_lang=en" title="English">🇬🇧</a>
+      <a class="admin-lang-pill <?= $ADMIN_LANG==='es'?'active':'' ?>" href="?admin_lang=es" title="Español">🇪🇸</a>
+    </div>
+    <div class="topbar-right" onclick="location='?logout=1'" title="<?= h(_t('logout')) ?>">🚪</div>
+  </div>
 </div>
 
 <!-- Overlay -->
@@ -657,36 +734,36 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label">Bảng điều khiển</div>
-  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard"><span class="nav-icon">📊</span> Tổng quan</a>
+  <div class="nav-group-label"><?= h(_t('dashboard')) ?></div>
+  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard"><span class="nav-icon">📊</span> <?= h(_t('dashboard')) ?></a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label">Đơn hàng</div>
-  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders"><span class="nav-icon">🛒</span> Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
-  <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx"><span class="nav-icon">💰</span> Giao dịch</a>
-  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys"><span class="nav-icon">🎁</span> GetKey Free</a>
+  <div class="nav-group-label"><?= h(_t('sales')) ?></div>
+  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders"><span class="nav-icon">🛒</span> <?= h(_t('orders')) ?> <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
+  <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx"><span class="nav-icon">💰</span> <?= h(_t('transactions')) ?></a>
+  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys"><span class="nav-icon">🎁</span> <?= h(_t('getfree')) ?></a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label">Sản phẩm</div>
-  <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games"><span class="nav-icon">🎮</span> Games</a>
-  <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages"><span class="nav-icon">📦</span> Gói Key</a>
-  <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts"><span class="nav-icon">🏪</span> Accounts</a>
-  <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys"><span class="nav-icon">🔑</span> Keys</a>
+  <div class="nav-group-label"><?= h(_t('products')) ?></div>
+  <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games"><span class="nav-icon">🎮</span> <?= h(_t('games')) ?></a>
+  <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages"><span class="nav-icon">📦</span> <?= h(_t('packages')) ?></a>
+  <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts"><span class="nav-icon">🏪</span> <?= h(_t('accounts')) ?></a>
+  <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys"><span class="nav-icon">🔑</span> <?= h(_t('keys')) ?></a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label">Tài chính</div>
-  <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet"><span class="nav-icon">👛</span> Ví user</a>
+  <div class="nav-group-label"><?= h(_t('wallet')) ?></div>
+  <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet"><span class="nav-icon">👛</span> <?= h(_t('wallet')) ?></a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label">Hệ thống</div>
-  <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> Config</a>
-  <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> Setup</a>
-  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> Users</a>
-  <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> Web</a>
+  <div class="nav-group-label"><?= h(_t('system')) ?></div>
+  <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> <?= h(_t('config')) ?></a>
+  <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> <?= h(_t('setup')) ?></a>
+  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> <?= h(_t('users')) ?></a>
+  <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> <?= h(_t('web')) ?></a>
   <a class="nav-item" href="?logout=1"><span class="nav-icon">🚪</span> Thoát</a>
 </div>
 
