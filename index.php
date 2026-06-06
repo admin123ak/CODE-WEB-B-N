@@ -270,33 +270,33 @@
       <div class="sec-head">
         <div class="sec-icon" style="background:linear-gradient(135deg,rgba(168,85,247,.16),rgba(139,92,246,.08));border-color:rgba(168,85,247,.35);box-shadow:0 0 24px rgba(168,85,247,.25)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <div>
-          <div class="sec-title" style="background:linear-gradient(135deg,#fff 0%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Mua Acc</div>
-          <div class="sec-sub">Chọn loại acc (Google, Facebook...)</div>
+          <div class="sec-title" style="background:linear-gradient(135deg,#fff 0%,#c4b5fd 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent" data-i18n="accTitle">Mua Acc</div>
+          <div class="sec-sub" data-i18n="accSubtitle">Chọn loại acc (Google, Facebook...)</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span>Chọn game & loại acc</span></div>
+        <div class="card-inner-label"><span class="label-ico" style="color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span data-i18n="accChooseLabel">Chọn game & loại acc</span></div>
         <div style="padding:0 12px 4px">
           <div class="game-btn" id="accGameBtnEl" onclick="openAccGameModal()">
             <div class="game-emoji" id="accGIcon">&#x1F3AE;</div>
             <div style="flex:1">
-              <div class="game-title" id="accGName">Nhấn chọn game</div>
-              <div class="game-pkgname" id="accGPkg">Chưa chọn game</div>
+              <div class="game-title" id="accGName" data-i18n="tapChooseGame">Nhấn chọn game</div>
+              <div class="game-pkgname" id="accGPkg" data-i18n="noGameSelected">Chưa chọn game</div>
             </div>
             <div class="chev">&#x203A;</div>
           </div>
         </div>
         <div id="accTypeList" class="pkg-list">
-          <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600">Chọn game trước</div>
+          <div style="text-align:center;color:var(--text2);padding:16px 0;font-size:13px;font-weight:600" data-i18n="accPickGameFirst">Chọn game trước</div>
         </div>
         <!-- Acc qty: luôn 1, layout đồng bộ với tab Mua Key -->
         <div class="qty-wrap" style="margin:0 12px 8px">
           <div class="qty-left">
             <div class="qty-icon">🏪</div>
             <div>
-              <div class="qty-label">Số lượng acc</div>
-              <div class="qty-sub">Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận</div>
+              <div class="qty-label" data-i18n="accQtyLabel">Số lượng acc</div>
+              <div class="qty-sub" data-i18n="accQtyHint">Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận</div>
             </div>
           </div>
           <div class="qty-row">
@@ -309,22 +309,22 @@
           <div style="width:50px"></div>
           <div style="width:50px"></div>
           <button class="buy-btn" id="accBuyBtn" onclick="doAccOrder()">
-            <span>Mua Acc</span>
-            <span class="buy-sub" id="accBuySub">Chưa chọn loại acc</span>
+            <span data-i18n="accBuyBtn">Mua Acc</span>
+            <span class="buy-sub" id="accBuySub" data-i18n="accNoTypeSelected">Chưa chọn loại acc</span>
           </button>
         </div>
-        <div class="note-txt">&#x26A0;&#xFE0F; Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.</div>
+        <div class="note-txt" data-i18n="accNote">&#x26A0;&#xFE0F; Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.</div>
       </div>
 
       <div class="key-head">
         <div class="key-head-icon" style="color:var(--purple2);background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(139,92,246,.06));border-color:rgba(168,85,247,.3)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 3H8l-1 4h10L16 3z"/></svg></div>
         <div>
-          <div class="sec-title">Acc của tôi</div>
+          <div class="sec-title" data-i18n="accMyTitle">Acc của tôi</div>
           <div class="key-count-lbl" id="accCntLbl">0 acc</div>
         </div>
       </div>
       <div id="accMyList" style="padding:0 16px 20px">
-        <div style="text-align:center;color:var(--text2);padding:24px 0;font-size:13px;font-weight:600">Chưa có acc nào</div>
+        <div style="text-align:center;color:var(--text2);padding:24px 0;font-size:13px;font-weight:600" data-i18n="accNoneYet">Chưa có acc nào</div>
       </div>
     </div>
 
@@ -418,7 +418,7 @@
     </div>
     <div class="nav-tab" onclick="switchTab('buyacc')" id="nav-buyacc">
       <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="nav-lbl">Mua Acc</span>
+      <span class="nav-lbl" data-i18n="navAcc">Mua Acc</span>
     </div>
     <div class="nav-tab" onclick="switchTab('freekey')" id="nav-freekey">
       <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>

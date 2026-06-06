@@ -52,7 +52,7 @@ function approvePaidOrder(
 
     if ($orderType === 'account') {
         // Đơn acc: JOIN account_types thay vì packages
-        $stmt = $db->prepare("SELECT o.*, at.name as package_name, at.price, 'Account' as key_type, 0 as days, g.name AS game_name, g.package_name as game_package, u.telegram_id
+        $stmt = $db->prepare("SELECT o.*, at.name as package_name, at.price, 'Account' as key_type, 0 as days, g.name AS game_name, g.package_name as game_package, g.download_url, u.telegram_id
             FROM orders o
             JOIN account_types at ON o.account_type_id = at.id
             JOIN games g          ON o.game_id    = g.id
@@ -65,7 +65,7 @@ function approvePaidOrder(
 
     // Đơn key: JOIN packages
     if (!$order) {
-        $stmt = $db->prepare("SELECT o.*, p.days, p.key_type, p.price, g.name AS game_name, g.package_name, u.telegram_id
+        $stmt = $db->prepare("SELECT o.*, p.days, p.key_type, p.price, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
             FROM orders o
             LEFT JOIN packages p ON o.package_id = p.id
             JOIN games g    ON o.game_id    = g.id
@@ -118,6 +118,7 @@ function approvePaidOrder(
             if ($extraUserNote !== '') {
                 $userMsg .= "\n\n" . $extraUserNote;
             }
+            // Phần acc KHÔNG cần nút Tải game
             sendTelegram($order['telegram_id'], $userMsg);
 
             sendTelegram(ADMIN_CHAT_ID,
@@ -173,7 +174,15 @@ function approvePaidOrder(
             if ($extraUserNote !== '') {
                 $userMsg .= "\n\n" . $extraUserNote;
             }
-            sendTelegram($order['telegram_id'], $userMsg);
+            // Inline button: Tải game (lấy download_url theo game)
+            $dlUrl = trim((string)($order['download_url'] ?? ''));
+            $userMarkup = null;
+            if ($dlUrl !== '') {
+                $userMarkup = ['inline_keyboard' => [[
+                    ['text' => '📥 Tải game ' . ($order['game_name'] ?: ''), 'url' => $dlUrl]
+                ]]];
+            }
+            sendTelegram($order['telegram_id'], $userMsg, $userMarkup);
 
             $keyFirst = $allKeys[0]['key_code'];
             $keyExtra = $activatedCount > 1 ? " (+" . ($activatedCount - 1) . " keys)" : "";

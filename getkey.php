@@ -354,7 +354,7 @@ function renderForm($fk, $gameList, $L, $LANG) {
 }
 
 // Render card khi đã/vừa claim (key + copy)
-function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_title', $msgKey = 'success_msg', $claimedAt = null) {
+function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_title', $msgKey = 'success_msg', $claimedAt = null, $downloadUrl = '') {
     $safeKey  = h($keyCode);
     $safeGame = h($gameName);
     $jsKey    = json_encode($keyCode);
@@ -371,9 +371,16 @@ function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_titl
         <div class="free-claimed-meta">🎮 <?= $safeGame ?> · <?= (int)$days ?> <?= h($L['days']) ?></div>
         <?= $meta ?>
       </div>
-      <button class="free-btn" onclick="copyKey(<?= $jsKey ?>)">
-        <span><?= h($L['copy_key']) ?></span>
-      </button>
+      <div style="display:flex;gap:8px;width:100%">
+        <button class="free-btn" style="flex:1" onclick="copyKey(<?= $jsKey ?>)">
+          <span><?= h($L['copy_key']) ?></span>
+        </button>
+        <?php if ($downloadUrl !== ''): ?>
+        <a class="free-btn" href="<?= h($downloadUrl) ?>" target="_blank" rel="noopener" style="flex:1;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none">
+          <span>📥 Tải game</span>
+        </a>
+        <?php endif; ?>
+      </div>
       <div class="free-timer"><?= h($L['back_tomorrow']) ?></div>
     </div>
     <script>
@@ -424,7 +431,7 @@ $t  = $_GET['t'] ?? '';
 $fk = null;
 
 // Pool tất cả free_keys active để pick + render dropdown unique game
-$pool = $db->query("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+$pool = $db->query("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days
     FROM free_keys fk
     JOIN games g    ON fk.game_id    = g.id
     JOIN packages p ON fk.package_id = p.id
@@ -444,7 +451,7 @@ foreach ($pool as $row) {
 
 if ($t) {
     // GET có ?t= → fetch chính xác theo token (kể cả expired để show 'expired')
-    $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+    $stmt = $db->prepare("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days
         FROM free_keys fk
         JOIN games g    ON fk.game_id    = g.id
         JOIN packages p ON fk.package_id = p.id
@@ -567,7 +574,7 @@ if ($claimedRow) {
         'race'    => ['already_title', 'race_msg'],
     ];
     [$tk, $mk] = $stateMap[$claimedRow['state']] ?? ['success_title', 'success_msg'];
-    renderClaimed($claimedRow['key_code'], $fk['game_name'], $fk['days'], $L, $tk, $mk, $claimedRow['claimed_at']);
+    renderClaimed($claimedRow['key_code'], $fk['game_name'], $fk['days'], $L, $tk, $mk, $claimedRow['claimed_at'], $fk['download_url'] ?? '');
     shellClose();
 }
 
