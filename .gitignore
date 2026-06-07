@@ -15,6 +15,9 @@ data/*.lock
 data/locks/
 data/ratelimit/
 data/login_attempts/
+data/.lic
+data/update_tmp.zip
+data/update_backups/
 !data/.gitkeep
 
 # Uploads (admin upload images) - giữ thư mục nhưng không push file

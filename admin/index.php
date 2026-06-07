@@ -8,6 +8,8 @@
  * ============================================
  */
 require_once '../config.php';
+// License lock lớp 4
+if (!defined('HCLOU_LICENSE_OK')) { http_response_code(403); die('License required — liên hệ Zalo 0868641019'); }
 session_start();
 
 // Admin auth: session + CSRF + timeout
@@ -603,6 +605,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->prepare("DELETE FROM accounts WHERE id=? AND status='available'")->execute([$_POST['acc_id']]);
         header("Location: ?tab=accounts"); exit;
     }
+    if ($act === 'do_update') {
+        // Auto-update: tải zip từ license server → backup → giải nén đè (giữ config.local.php, data/, uploads/)
+        try {
+            if (!defined('LICENSE_KEY') || LICENSE_KEY === '') throw new Exception('Chưa có LICENSE_KEY');
+            if (!defined('LICENSE_SERVER_URL')) throw new Exception('Thiếu LICENSE_SERVER_URL');
+            $domain = strtolower(preg_replace('/^www\./', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+
+            // 1. Backup config + version cũ
+            $bkDir = APP_ROOT . '/data/update_backups';
+            if (!is_dir($bkDir)) @mkdir($bkDir, 0755, true);
+            @copy(APP_ROOT . '/config.local.php', $bkDir . '/config.local.php.bk_' . date('Ymd_His'));
+
+            // 2. Tải zip
+            $zipPath = APP_ROOT . '/data/update_tmp.zip';
+            $url = rtrim(LICENSE_SERVER_URL, '/') . '/api.php?action=download&license_key=' . urlencode(LICENSE_KEY) . '&domain=' . urlencode($domain);
+            $fp = @fopen($zipPath, 'wb');
+            if (!$fp) throw new Exception('Không tạo được file tạm');
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [CURLOPT_FILE => $fp, CURLOPT_TIMEOUT => 120, CURLOPT_FOLLOWLOCATION => true, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0]);
+            $okDl = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch); fclose($fp);
+            if (!$okDl || $code !== 200) { @unlink($zipPath); throw new Exception('Tải code lỗi (HTTP ' . $code . '). Kiểm tra license.'); }
+
+            // 3. Verify zip
+            $za = new ZipArchive();
+            if ($za->open($zipPath) !== true) { @unlink($zipPath); throw new Exception('File tải về không phải zip hợp lệ'); }
+
+            // 4. Giải nén từng entry, BỎ QUA file/thư mục nhạy cảm
+            $protect = ['config.local.php', '.install_lock', 'data/', 'uploads/', 'license.php'];
+            $extracted = 0;
+            for ($i = 0; $i < $za->numFiles; $i++) {
+                $name = $za->getNameIndex($i);
+                if ($name === false || $name === '') continue;
+                // Strip thư mục gốc nếu zip bọc 1 lớp (vd CODE-WEB-B-N/...)
+                $rel = $name;
+                $skip = false;
+                foreach ($protect as $p) {
+                    if (substr($p, -1) === '/') { if (strpos($rel, $p) !== false) { $skip = true; break; } }
+                    else { if (basename($rel) === $p || $rel === $p) { $skip = true; break; } }
+                }
+                if ($skip) continue;
+                if (substr($name, -1) === '/') continue; // thư mục
+                $dest = APP_ROOT . '/' . ltrim($rel, '/');
+                $destDir = dirname($dest);
+                if (!is_dir($destDir)) @mkdir($destDir, 0755, true);
+                $stream = $za->getStream($name);
+                if ($stream) {
+                    $content = stream_get_contents($stream);
+                    fclose($stream);
+                    if ($content !== false) { @file_put_contents($dest, $content); $extracted++; }
+                }
+            }
+            $za->close();
+            @unlink($zipPath);
+
+            logInfo('Admin auto-update', ['extracted' => $extracted]);
+            header("Location: ?tab=update&ok=updated&n=" . $extracted); exit;
+        } catch (Throwable $e) {
+            header("Location: ?tab=update&err=" . urlencode('Update lỗi: ' . $e->getMessage())); exit;
+        }
+    }
 }
 
 // Lấy data cho dashboard
@@ -686,6 +750,11 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 <div class="nav-group">
   <div class="nav-group-label">Hệ thống</div>
   <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> Config</a>
+  <a class="nav-item <?=$tab==='update'?'active':''?>" href="?tab=update"><span class="nav-icon">🔄</span> Cập nhật<?php
+    // Badge nếu có bản mới (đọc cache .lic)
+    $_lic = @json_decode((string)@file_get_contents(APP_ROOT.'/data/.lic'), true);
+    $_curV = @json_decode((string)@file_get_contents(APP_ROOT.'/version.json'), true)['version'] ?? '1.0.0';
+    if (is_array($_lic) && !empty($_lic['latest']) && version_compare($_lic['latest'], $_curV, '>')): ?><span class="count">●</span><?php endif; ?></a>
   <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> Setup</a>
   <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> Users</a>
   <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> Web</a>
@@ -1935,6 +2004,42 @@ curl '<?=htmlspecialchars(hclouCronRunUrl('health'))?>'</div>
 <tr><td>VietQR không hiện</td><td>buildVietQrUrl, bank id, img.vietqr.io</td><td>config.php, index.php</td></tr>
 <tr><td>GetKey Free lỗi link</td><td>Token Link4M/YeuMoney, endpoint, curl internet</td><td>config.php, admin/index.php</td></tr>
 </table>
+</div>
+
+<?php elseif($tab==='update'): ?>
+<h1>🔄 Cập nhật hệ thống</h1>
+<?php
+$curVer = @json_decode((string)@file_get_contents(APP_ROOT.'/version.json'), true)['version'] ?? '1.0.0';
+$lic = @json_decode((string)@file_get_contents(APP_ROOT.'/data/.lic'), true);
+$latest = is_array($lic) ? ($lic['latest'] ?? '') : '';
+$hasUpdate = $latest !== '' && version_compare($latest, $curVer, '>');
+// Gọi check_update để lấy changelog (nếu có license)
+$changelog = '';
+if (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL')) {
+    $u = rtrim(LICENSE_SERVER_URL,'/').'/api.php?action=check_update&license_key='.urlencode(LICENSE_KEY).'&current_version='.urlencode($curVer);
+    $ch=curl_init($u); curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_SSL_VERIFYPEER=>false,CURLOPT_SSL_VERIFYHOST=>0]);
+    $r=@json_decode((string)curl_exec($ch),true); curl_close($ch);
+    if(is_array($r)){ if(!empty($r['latest_version'])){$latest=$r['latest_version']; $hasUpdate=version_compare($latest,$curVer,'>');} $changelog=$r['changelog']??''; }
+}
+?>
+<?php if(isset($_GET['ok']) && $_GET['ok']==='updated'): ?>
+<div class="okbox">✅ Cập nhật thành công! Đã ghi <?=(int)($_GET['n']??0)?> file. <b>Tải lại trang</b> để dùng bản mới.</div>
+<?php endif; ?>
+<div class="form-card">
+  <h3>Phiên bản</h3>
+  <p style="font-size:15px;margin-bottom:8px">Hiện tại: <b style="color:#67e8f9">v<?=h($curVer)?></b>
+  <?php if($latest):?> · Mới nhất: <b style="color:<?=$hasUpdate?'#4ade80':'#67e8f9'?>">v<?=h($latest)?></b><?php endif;?></p>
+  <?php if($hasUpdate): ?>
+    <div class="warnbox">🎉 Có bản cập nhật mới <b>v<?=h($latest)?></b>!</div>
+    <?php if($changelog):?><div class="codebox" style="margin-bottom:14px"><?=h($changelog)?></div><?php endif;?>
+    <form method="POST" onsubmit="return confirm('Cập nhật lên v<?=h($latest)?>? Code sẽ được tải về và ghi đè (giữ config + data).')">
+      <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="do_update">
+      <button class="btn btn-green" type="submit" style="font-size:14px;padding:11px 22px">⬇️ Cập nhật ngay lên v<?=h($latest)?></button>
+    </form>
+    <p style="margin-top:10px;font-size:12px">⚠️ Tự backup config.local.php. Giữ nguyên <code>config.local.php</code>, <code>data/</code>, <code>uploads/</code>, <code>license.php</code>.</p>
+  <?php else: ?>
+    <div class="okbox">✔️ Bạn đang dùng bản mới nhất.</div>
+  <?php endif; ?>
 </div>
 
 <?php elseif($tab==='users'): ?>

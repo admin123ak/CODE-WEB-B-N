@@ -16,6 +16,10 @@
 // Nếu cần edit thủ công: copy file này thành config.local.php và sửa.
 // =============================================
 
+// --- License (bắt buộc — code không chạy nếu sai) ---
+define('LICENSE_KEY', '');                                  // Key admin cấp từ License Server
+define('LICENSE_SERVER_URL', 'https://license.tranvanhoang.com'); // Domain license server
+
 // --- Database ---
 define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'your_database_name');

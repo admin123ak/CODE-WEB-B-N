@@ -8,6 +8,8 @@
  * ============================================
  */
 require_once __DIR__ . '/../../config.php';
+// License lock lớp 3
+if (!defined('HCLOU_LICENSE_OK')) { http_response_code(403); die(json_encode(['error' => 'License required'])); }
 require_once __DIR__ . '/../lib/crypto_helpers.php';
 require_once __DIR__ . '/../lib/balance_helpers.php';
 require_once __DIR__ . '/../lib/topup_helpers.php';

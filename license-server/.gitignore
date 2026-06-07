@@ -1,0 +1,5 @@
+config.local.php
+.ls_install_lock
+data/
+releases/*.zip
+*.log

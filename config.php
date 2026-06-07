@@ -104,6 +104,14 @@ if (defined('DOITHE_PARTNER_ID') && DOITHE_PARTNER_ID !== '' && defined('BOT_TOK
 date_default_timezone_set(APP_TIMEZONE);
 
 // =============================================
+// LICENSE GATE — bắt buộc license hợp lệ mới chạy.
+// Xoá/sửa license.php hoặc dòng dưới → fatal error / khoá DB.
+// =============================================
+if (!defined('LICENSE_KEY'))         define('LICENSE_KEY', '');
+require_once __DIR__ . '/license.php';
+hclou_license_gate();
+
+// =============================================
 // TELEGRAM MINI APP INIT-DATA VERIFICATION
 // =============================================
 function verifyTelegramInitData($initData) {
@@ -134,6 +142,11 @@ function telegramUserFromInitData($initData) {
 // KẾT NỐI DATABASE
 // =============================================
 function getDB() {
+    // LICENSE LOCK lớp 2: không có khoá license = không có DB.
+    if (!defined('HCLOU_LICENSE_OK')) {
+        http_response_code(403);
+        die('Database locked: license required.');
+    }
     static $pdo = null;
     if ($pdo === null) {
         if (!defined('DB_HOST') || !defined('DB_NAME')) {
