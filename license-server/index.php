@@ -174,7 +174,7 @@ label{font-size:12px;color:#93c5fd;display:block;margin-bottom:5px;font-weight:7
 .btn.blue{background:linear-gradient(135deg,#2563eb,#06b6d4)}.btn.red{background:#dc2626}.btn.gray{background:#374151}.btn.green{background:#16a34a}
 .mono{font-family:ui-monospace,Menlo,monospace}
 .badge{padding:3px 9px;border-radius:99px;font-size:11px;font-weight:800}
-.badge.green{background:rgba(34,197,94,.14);color:#86efac}.badge.red{background:rgba(239,68,68,.14);color:#fca5a5}.badge.gray{background:rgba(148,163,184,.14);color:#cbd5e1}
+.badge.green{background:rgba(34,197,94,.14);color:#86efac}.badge.red{background:rgba(239,68,68,.14);color:#fca5a5}.badge.gray{background:rgba(148,163,184,.14);color:#cbd5e1}.badge.orange{background:rgba(245,158,11,.14);color:#fbbf24}
 .alert{padding:11px 14px;border-radius:11px;margin-bottom:14px;font-weight:700;font-size:13px}
 .alert.ok{background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.3);color:#86efac}
 .alert.err{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
@@ -238,16 +238,24 @@ small{color:#8b949e}
 <h2>🌐 Web/domain đang chạy</h2>
 <?php $acts = $db->query("SELECT a.*, l.license_key, l.customer_name, l.status FROM ls_activations a JOIN ls_licenses l ON a.license_id=l.id ORDER BY a.last_seen DESC")->fetchAll(); ?>
 <div class="tblwrap"><table>
-<tr><th>Domain</th><th>License / Khách</th><th>Version</th><th>IP</th><th>Last seen</th><th></th></tr>
+<tr><th>Domain</th><th>License / Khách</th><th>Version</th><th>IP</th><th>Hoạt động</th><th></th></tr>
 <?php foreach($acts as $a):
   $mins = (time() - strtotime($a['last_seen'])) / 60;
-  $live = $mins < 60; ?>
+  if ($mins < 120)      { $badge = '<span class="badge green">● đang chạy</span>'; }
+  elseif ($mins < 1440) { $badge = '<span class="badge orange">gần đây</span>'; }
+  else                  { $badge = '<span class="badge gray">lâu chưa ghé</span>'; }
+  // Khoảng cách thời gian dễ đọc
+  if ($mins < 1)       $ago = 'vừa xong';
+  elseif ($mins < 60)  $ago = round($mins) . ' phút trước';
+  elseif ($mins < 1440) $ago = round($mins/60) . ' giờ trước';
+  else                 $ago = round($mins/1440) . ' ngày trước';
+?>
 <tr>
-<td><b><?=h($a['domain'])?></b> <?php if($live):?><span class="badge green">● live</span><?php else:?><span class="badge gray">offline</span><?php endif;?></td>
+<td><b><?=h($a['domain'])?></b> <?=$badge?></td>
 <td class="mono" style="font-size:12px"><?=h($a['license_key'])?><br><small><?=h($a['customer_name'])?></small></td>
 <td><?=h($a['app_version']?:'-')?></td>
 <td class="mono" style="font-size:12px"><?=h($a['ip'])?></td>
-<td><small><?=h($a['last_seen'])?></small></td>
+<td><small><?=$ago?><br><span style="color:#6b7681"><?=h($a['last_seen'])?></span></small></td>
 <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($csrf)?>"><input type="hidden" name="act" value="del_activation"><input type="hidden" name="id" value="<?=$a['id']?>"><button class="btn gray" onclick="return confirm('Xoá activation? (giải phóng slot domain)')">✕</button></form></td>
 </tr>
 <?php endforeach; if(!$acts):?><tr><td colspan="6" style="text-align:center;color:#8b949e;padding:24px">Chưa có web nào kích hoạt</td></tr><?php endif;?>
