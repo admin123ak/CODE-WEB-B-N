@@ -69,6 +69,94 @@ if (!function_exists('hclou_license_die')) {
     }
 }
 
+// Ghi LICENSE_KEY (+ server url nếu có) vào config.local.php
+if (!function_exists('hclou_license_write_key')) {
+    function hclou_license_write_key($key, $serverUrl = '') {
+        $cfg = (defined('APP_ROOT') ? APP_ROOT : __DIR__) . '/config.local.php';
+        if (!is_file($cfg) || !is_writable($cfg)) return false;
+        $src = file_get_contents($cfg);
+
+        $setDefine = function ($src, $name, $val) {
+            $rep = "define('" . $name . "', " . var_export($val, true) . ");";
+            $pat = "/define\\(\\s*['\"]" . preg_quote($name, '/') . "['\"]\\s*,\\s*.*?\\);/s";
+            if (preg_match($pat, $src)) {
+                return preg_replace($pat, $rep, $src, 1);
+            }
+            // chưa có → chèn sau <?php
+            if (preg_match('/^<\?php\s*\n?/', $src, $m)) {
+                return $m[0] . $rep . "\n" . substr($src, strlen($m[0]));
+            }
+            return $src . "\n" . $rep . "\n";
+        };
+
+        $src = $setDefine($src, 'LICENSE_KEY', $key);
+        if ($serverUrl !== '') $src = $setDefine($src, 'LICENSE_SERVER_URL', $serverUrl);
+        return file_put_contents($cfg, $src, LOCK_EX) !== false;
+    }
+}
+
+// Trang nhập license (khi chưa có key). Xử lý POST → verify → lưu → reload.
+if (!function_exists('hclou_license_activate')) {
+    function hclou_license_activate($domain, $ip, $ver) {
+        $err = '';
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_key'])) {
+            $newKey = trim($_POST['activate_key']);
+            $newUrl = trim($_POST['activate_url'] ?? '');
+            $srv = $newUrl !== '' ? $newUrl : (defined('LICENSE_SERVER_URL') ? LICENSE_SERVER_URL : '');
+            if ($newKey === '') {
+                $err = 'Vui lòng nhập license key.';
+            } else {
+                // verify thử với key vừa nhập
+                $resp = hclou_lic_http(rtrim($srv, '/') . '/api.php', [
+                    'action' => 'verify', 'license_key' => $newKey, 'domain' => $domain, 'ip' => $ip, 'version' => $ver,
+                ]);
+                if ($resp === null) {
+                    $err = 'Không kết nối được license server. Kiểm tra lại URL.';
+                } elseif (!hclou_lic_verify_sig($resp)) {
+                    $err = 'Phản hồi license server không hợp lệ (sai secret).';
+                } elseif (empty($resp['valid'])) {
+                    $map = ['not_found'=>'Key không tồn tại','suspended'=>'Key đã bị khoá','expired'=>'Key hết hạn','domain_limit'=>'Vượt số domain cho phép'];
+                    $err = $map[$resp['reason'] ?? ''] ?? 'License không hợp lệ.';
+                } else {
+                    // OK → lưu vào config.local.php
+                    if (hclou_license_write_key($newKey, $newUrl)) {
+                        // xoá cache cũ để lần sau verify lại sạch
+                        @unlink(hclou_lic_cache_path());
+                        header('Location: ' . (strtok($_SERVER['REQUEST_URI'], '?') ?: '/'));
+                        exit;
+                    }
+                    $err = 'Không ghi được config.local.php (kiểm tra quyền ghi file).';
+                }
+            }
+        }
+
+        $curUrl = defined('LICENSE_SERVER_URL') ? LICENSE_SERVER_URL : '';
+        http_response_code(200);
+        header('Content-Type: text/html; charset=utf-8');
+        $e = htmlspecialchars($err, ENT_QUOTES, 'UTF-8');
+        $cu = htmlspecialchars($curUrl, ENT_QUOTES, 'UTF-8');
+        echo '<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kích hoạt License</title>'
+           . '<style>*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at 20% 10%,rgba(37,99,235,.25),transparent 30%),#0b1020;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}'
+           . '.b{width:440px;max-width:100%;background:#161b22;border:1px solid #30363d;border-radius:18px;padding:30px}'
+           . '.i{width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,#2563eb,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px}'
+           . 'h1{text-align:center;font-size:20px;margin:0 0 4px}.s{text-align:center;color:#8b949e;font-size:13px;margin-bottom:20px}'
+           . 'label{display:block;font-size:12px;color:#9fb2cf;margin:12px 0 5px;font-weight:700}'
+           . 'input{width:100%;padding:12px;background:#0d1117;border:1px solid #30363d;border-radius:10px;color:#e6edf3;font-size:14px}'
+           . 'button{width:100%;margin-top:18px;padding:13px;border:0;border-radius:11px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;font-weight:800;cursor:pointer;font-size:15px}'
+           . '.err{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:10px;border-radius:10px;margin-bottom:12px;font-size:13px}'
+           . '.hint{color:#6e7681;font-size:12px;margin-top:14px;text-align:center}</style></head><body>'
+           . '<form class="b" method="POST">'
+           . '<div class="i">🔑</div><h1>Kích hoạt License</h1><div class="s">Nhập license key để bắt đầu sử dụng</div>'
+           . ($e ? '<div class="err">⚠️ ' . $e . '</div>' : '')
+           . '<label>License Key</label><input name="activate_key" placeholder="HCLOU-XXXX-XXXX-XXXX" autofocus required>'
+           . '<label>License Server URL</label><input name="activate_url" value="' . $cu . '" placeholder="https://license.tranvanhoang.com">'
+           . '<button type="submit">Kích hoạt</button>'
+           . '<div class="hint">Chưa có key? Liên hệ <b>Zalo 0868641019</b></div>'
+           . '</form></body></html>';
+        exit;
+    }
+}
+
 // Cổng kiểm tra license — gọi 1 lần trong config.php
 if (!function_exists('hclou_license_gate')) {
     function hclou_license_gate() {
@@ -83,6 +171,12 @@ if (!function_exists('hclou_license_gate')) {
         $ver    = '';
         $vf = (defined('APP_ROOT') ? APP_ROOT : __DIR__) . '/version.json';
         if (is_file($vf)) { $j = json_decode((string)@file_get_contents($vf), true); $ver = $j['version'] ?? ''; }
+
+        // CHƯA CÓ LICENSE KEY → hiện trang nhập key (chỉ với web, CLI thì bỏ qua)
+        if ($key === '' && php_sapi_name() !== 'cli') {
+            hclou_license_activate($domain, $ip, $ver);
+            // hclou_license_activate() hoặc redirect (đã lưu key) hoặc render form rồi exit
+        }
 
         $cacheFile = hclou_lic_cache_path();
         $now = time();
