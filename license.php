@@ -182,10 +182,10 @@ if (!function_exists('hclou_license_gate')) {
         $now = time();
         $cache = is_file($cacheFile) ? json_decode((string)@file_get_contents($cacheFile), true) : null;
 
-        // 1) Cache còn tươi (<30 phút) + hợp lệ → pass ngay (đỡ gọi server mỗi request).
-        //    30 phút: admin xoá/khoá license thì client phát hiện & bắt nhập lại trong ~nửa tiếng.
+        // 1) Cache còn tươi (<5 phút) + hợp lệ → pass ngay (đỡ gọi server mỗi request).
+        //    5 phút: admin xoá/khoá license thì client phát hiện & bắt nhập lại trong ~5 phút.
         if (is_array($cache) && !empty($cache['valid']) && !empty($cache['checked_at'])
-            && ($now - (int)$cache['checked_at'] < 1800)
+            && ($now - (int)$cache['checked_at'] < 300)
             && !empty($cache['unlock'])) {
             define('HCLOU_LICENSE_OK', $cache['unlock']);
             return;
