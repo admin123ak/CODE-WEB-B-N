@@ -151,19 +151,20 @@ $cntAct = $db->query("SELECT COUNT(*) FROM ls_activations")->fetchColumn();
 $cntRel = $db->query("SELECT COUNT(*) FROM ls_releases")->fetchColumn();
 ?><!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>License Server</title><style>
-*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Segoe UI,sans-serif;background:#0b1020;color:#e6edf3;font-size:14px}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Segoe UI,sans-serif;background:#0b1020;color:#e6edf3;font-size:14px;overflow-x:hidden}
 .top{display:flex;align-items:center;gap:14px;padding:14px 20px;background:#0f172a;border-bottom:1px solid #26354f;position:sticky;top:0;z-index:10}
 .top .brand{font-weight:900;font-size:16px}.top .brand span{color:#06b6d4}
 .top .sp{flex:1}.top a.lo{color:#fca5a5;text-decoration:none;font-weight:700;font-size:13px}
 .nav{display:flex;gap:6px;padding:14px 20px;flex-wrap:wrap}
 .nav a{padding:9px 16px;border-radius:10px;text-decoration:none;color:#aab8d0;font-weight:700;font-size:13px;background:#161b22;border:1px solid #26354f}
 .nav a.on{background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;border-color:transparent}
-.wrap{padding:0 20px 40px;max-width:1100px}
+.wrap{padding:0 20px 40px;max-width:1100px;width:100%;margin:0 auto}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .stat{background:#161b22;border:1px solid #26354f;border-radius:14px;padding:16px}.stat .n{font-size:26px;font-weight:900}.stat .l{color:#8b949e;font-size:12px;margin-top:4px}
 .card{background:#111827;border:1px solid #26354f;border-radius:14px;padding:18px;margin-bottom:18px}
 h2{font-size:16px;margin-bottom:12px;color:#dbeafe}h3{font-size:14px;margin-bottom:10px;color:#dbeafe}
-table{width:100%;border-collapse:collapse;font-size:13px;background:#111827;border:1px solid #26354f;border-radius:12px;overflow:hidden}
+.tblwrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;background:#111827;border:1px solid #26354f;border-radius:12px;overflow:hidden;min-width:560px}
 th{text-align:left;padding:11px 12px;background:#0f172a;color:#9fb7d7;font-size:11px;text-transform:uppercase;border-bottom:1px solid #26354f}
 td{padding:10px 12px;border-bottom:1px solid rgba(148,163,184,.1)}tr:last-child td{border:0}
 input,select,textarea{padding:9px 11px;background:#0d1117;border:1px solid #30363d;border-radius:9px;color:#e6edf3;font-size:13px;font-family:inherit}
@@ -211,7 +212,7 @@ small{color:#8b949e}
 </div></form></div>
 
 <?php $lics = $db->query("SELECT l.*, (SELECT COUNT(*) FROM ls_activations a WHERE a.license_id=l.id) acts FROM ls_licenses l ORDER BY l.id DESC")->fetchAll(); ?>
-<table>
+<div class="tblwrap"><table>
 <tr><th>Key</th><th>Khách</th><th>Domain</th><th>Hết hạn</th><th>TT</th><th>Sửa / Xoá</th></tr>
 <?php foreach($lics as $l): ?>
 <tr>
@@ -231,12 +232,12 @@ small{color:#8b949e}
 </td>
 </tr>
 <?php endforeach; if(!$lics):?><tr><td colspan="6" style="text-align:center;color:#8b949e;padding:24px">Chưa có license</td></tr><?php endif;?>
-</table>
+</table></div>
 
 <?php elseif($tab==='activations'): ?>
 <h2>🌐 Web/domain đang chạy</h2>
 <?php $acts = $db->query("SELECT a.*, l.license_key, l.customer_name, l.status FROM ls_activations a JOIN ls_licenses l ON a.license_id=l.id ORDER BY a.last_seen DESC")->fetchAll(); ?>
-<table>
+<div class="tblwrap"><table>
 <tr><th>Domain</th><th>License / Khách</th><th>Version</th><th>IP</th><th>Last seen</th><th></th></tr>
 <?php foreach($acts as $a):
   $mins = (time() - strtotime($a['last_seen'])) / 60;
@@ -250,7 +251,7 @@ small{color:#8b949e}
 <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($csrf)?>"><input type="hidden" name="act" value="del_activation"><input type="hidden" name="id" value="<?=$a['id']?>"><button class="btn gray" onclick="return confirm('Xoá activation? (giải phóng slot domain)')">✕</button></form></td>
 </tr>
 <?php endforeach; if(!$acts):?><tr><td colspan="6" style="text-align:center;color:#8b949e;padding:24px">Chưa có web nào kích hoạt</td></tr><?php endif;?>
-</table>
+</table></div>
 
 <?php elseif($tab==='releases'): ?>
 <div class="card"><h3>📤 Upload bản code mới (.zip)</h3>
@@ -265,7 +266,7 @@ small{color:#8b949e}
 </form></div>
 
 <?php $rels = $db->query("SELECT * FROM ls_releases ORDER BY id DESC")->fetchAll(); ?>
-<table>
+<div class="tblwrap"><table>
 <tr><th>Version</th><th>File</th><th>Changelog</th><th>Mới nhất</th><th>Ngày</th><th></th></tr>
 <?php foreach($rels as $r): ?>
 <tr>
@@ -277,7 +278,7 @@ small{color:#8b949e}
 <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($csrf)?>"><input type="hidden" name="act" value="del_release"><input type="hidden" name="id" value="<?=$r['id']?>"><button class="btn red" onclick="return confirm('Xoá bản này?')">🗑</button></form></td>
 </tr>
 <?php endforeach; if(!$rels):?><tr><td colspan="6" style="text-align:center;color:#8b949e;padding:24px">Chưa có bản code nào</td></tr><?php endif;?>
-</table>
+</table></div>
 
 <?php elseif($tab==='account'): ?>
 <div class="card" style="max-width:420px"><h3>🔒 Đổi mật khẩu</h3>
