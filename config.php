@@ -424,7 +424,14 @@ function hclouWriteConfigValues(array $updates, $admin = 'web_admin') {
         $pattern = "/define\\('" . preg_quote($key, '/') . "'\\s*,\\s*.*?\\);/";
         $count   = 0;
         $src     = preg_replace($pattern, $replacement, $src, 1, $count);
-        if ($count !== 1) throw new Exception("Không tìm thấy config {$key} trong config.local.php");
+        if ($count !== 1) {
+            // Key chưa có trong config.local.php → tự thêm vào trước thẻ đóng PHP (hoặc cuối file)
+            if (preg_match('/\?>\s*$/', $src)) {
+                $src = preg_replace('/\?>\s*$/', $replacement . "\n?>\n", $src, 1);
+            } else {
+                $src = rtrim($src) . "\n" . $replacement . "\n";
+            }
+        }
         $changed[$key] = ['old' => $old, 'new' => $newVal];
     }
 
