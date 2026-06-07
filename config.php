@@ -48,6 +48,8 @@ if (!defined('APP_TIMEZONE'))               define('APP_TIMEZONE', 'Asia/Ho_Chi_
 if (!defined('MBBANK_AUTO_APPROVE_ENABLED')) define('MBBANK_AUTO_APPROVE_ENABLED', true);
 if (!defined('FREE_GETKEY_ENABLED'))        define('FREE_GETKEY_ENABLED', true);
 if (!defined('FREE_SHORTLINK_LAYERS'))      define('FREE_SHORTLINK_LAYERS', 2);
+// GETKEY_REQUIRE_LINK: bật = bắt vượt link rút gọn; tắt = bấm nút hiện key luôn
+if (!defined('GETKEY_REQUIRE_LINK'))        define('GETKEY_REQUIRE_LINK', true);
 if (!defined('LAYMA_API_TOKEN'))            define('LAYMA_API_TOKEN', '7fc1aa570262544a7b80d1bc0ab3c4e6');
 if (!defined('YEUMONEY_API_TOKEN'))         define('YEUMONEY_API_TOKEN', '');
 if (!defined('ADMIN_SESSION_TTL'))          define('ADMIN_SESSION_TTL', 3600);
@@ -377,6 +379,7 @@ function hclouConfigEditableKeys() {
         'MBBANK_AUTO_APPROVE_ENABLED' => 'bool',
         'FREE_GETKEY_ENABLED'         => 'bool',
         'FREE_SHORTLINK_LAYERS'       => 'string',
+        'GETKEY_REQUIRE_LINK'         => 'bool',
         'MBBANK_HISTORY_API_KEY'      => 'string',
         'LAYMA_API_TOKEN'             => 'string',
         'LINK4M_API_TOKEN'            => 'string',

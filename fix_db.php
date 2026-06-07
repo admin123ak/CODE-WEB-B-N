@@ -65,6 +65,13 @@ if (!$col->fetchColumn()) {
     echo "✅ ADD games.download_url\n";
 } else { echo "⏭️ games.download_url có\n"; }
 
+// games.play_url
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='games' AND COLUMN_NAME='play_url'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `games` ADD `play_url` VARCHAR(500) DEFAULT NULL AFTER `download_url`");
+    echo "✅ ADD games.play_url\n";
+} else { echo "⏭️ games.play_url có\n"; }
+
 // free_key_claims.claim_token, short_url, is_claimed
 $col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='free_key_claims' AND COLUMN_NAME='claim_token'");
 if (!$col->fetchColumn()) {

@@ -10,72 +10,6 @@
 require_once '../config.php';
 session_start();
 
-// ==========================================
-// ADMIN I18N - VI/EN/ES
-// ==========================================
-$ADMIN_LANG_ALL = [
-    'vi' => [
-        'logout' => 'Thoát', 'dashboard' => 'Tổng quan', 'orders' => 'Đơn hàng',
-        'transactions' => 'Giao dịch', 'wallet' => 'Ví user', 'keys' => 'Keys',
-        'games' => 'Games', 'packages' => 'Gói Key', 'accounts' => 'Accounts',
-        'getfree' => 'GetKey Free', 'config' => 'Cấu hình', 'setup' => 'Setup',
-        'users' => 'Người dùng', 'web' => 'Web', 'sales' => 'Bán hàng',
-        'products' => 'Sản phẩm', 'system' => 'Hệ thống', 'control_center' => 'Control Center',
-        'total_users' => 'Tổng users', 'orders_pending' => 'Đơn chờ', 'orders_approved' => 'Đã duyệt',
-        'revenue' => 'Doanh thu', 'keys_active' => 'Key active', 'keys_avail' => 'Key trong pool',
-        'keys_total' => 'Tổng key', 'save' => 'Lưu', 'edit' => 'Sửa', 'delete' => 'Xoá',
-        'enable' => 'Bật', 'disable' => 'Tắt', 'add' => 'Thêm', 'add_new' => 'Thêm mới',
-        'cancel' => 'Huỷ', 'confirm' => 'Xác nhận', 'success' => 'Thao tac thanh cong!',
-        'language' => 'Ngôn ngữ', 'role_customer' => 'Khách hàng', 'role_reseller' => 'Reseller',
-        'role_admin' => 'Admin', 'discount' => 'Giảm giá', 'status' => 'Trang thai',
-        'created_at' => 'Ngày tạo', 'action' => 'Thao tác', 'amount' => 'Số tiền',
-    ],
-    'en' => [
-        'logout' => 'Logout', 'dashboard' => 'Dashboard', 'orders' => 'Orders',
-        'transactions' => 'Transactions', 'wallet' => 'User Wallet', 'keys' => 'Keys',
-        'games' => 'Games', 'packages' => 'Key Packages', 'accounts' => 'Accounts',
-        'getfree' => 'Get Free Key', 'config' => 'Config', 'setup' => 'Setup',
-        'users' => 'Users', 'web' => 'Web', 'sales' => 'Sales',
-        'products' => 'Products', 'system' => 'System', 'control_center' => 'Control Center',
-        'total_users' => 'Total users', 'orders_pending' => 'Pending orders', 'orders_approved' => 'Approved',
-        'revenue' => 'Revenue', 'keys_active' => 'Active keys', 'keys_avail' => 'Keys in pool',
-        'keys_total' => 'Total keys', 'save' => 'Save', 'edit' => 'Edit', 'delete' => 'Delete',
-        'enable' => 'On', 'disable' => 'Off', 'add' => 'Add', 'add_new' => 'Add new',
-        'cancel' => 'Cancel', 'confirm' => 'Confirm', 'success' => 'Operation successful!',
-        'language' => 'Language', 'role_customer' => 'Customer', 'role_reseller' => 'Reseller',
-        'role_admin' => 'Admin', 'discount' => 'Discount', 'status' => 'Status',
-        'created_at' => 'Created', 'action' => 'Action', 'amount' => 'Amount',
-    ],
-    'es' => [
-        'logout' => 'Salir', 'dashboard' => 'Panel', 'orders' => 'Pedidos',
-        'transactions' => 'Transacciones', 'wallet' => 'Billetera', 'keys' => 'Claves',
-        'games' => 'Juegos', 'packages' => 'Paquetes', 'accounts' => 'Cuentas',
-        'getfree' => 'Clave Gratis', 'config' => 'Configuración', 'setup' => 'Instalación',
-        'users' => 'Usuarios', 'web' => 'Web', 'sales' => 'Ventas',
-        'products' => 'Productos', 'system' => 'Sistema', 'control_center' => 'Centro de Control',
-        'total_users' => 'Total usuarios', 'orders_pending' => 'Pendientes', 'orders_approved' => 'Aprobados',
-        'revenue' => 'Ingresos', 'keys_active' => 'Claves activas', 'keys_avail' => 'Claves en pool',
-        'keys_total' => 'Total claves', 'save' => 'Guardar', 'edit' => 'Editar', 'delete' => 'Eliminar',
-        'enable' => 'Activar', 'disable' => 'Desactivar', 'add' => 'Añadir', 'add_new' => 'Añadir nuevo',
-        'cancel' => 'Cancelar', 'confirm' => 'Confirmar', 'success' => '¡Operación exitosa!',
-        'language' => 'Idioma', 'role_customer' => 'Cliente', 'role_reseller' => 'Distribuidor',
-        'role_admin' => 'Admin', 'discount' => 'Descuento', 'status' => 'Estado',
-        'created_at' => 'Creado', 'action' => 'Acción', 'amount' => 'Cantidad',
-    ],
-];
-// Lang switching: cookie + URL param
-if (isset($_GET['admin_lang']) && isset($ADMIN_LANG_ALL[$_GET['admin_lang']])) {
-    setcookie('admin_lang', $_GET['admin_lang'], time() + 86400 * 365, '/');
-    $_COOKIE['admin_lang'] = $_GET['admin_lang'];
-    $redirUrl = strtok($_SERVER['REQUEST_URI'], '?');
-    $qs = $_GET; unset($qs['admin_lang']);
-    header('Location: ' . $redirUrl . ($qs ? '?' . http_build_query($qs) : '')); exit;
-}
-$ADMIN_LANG = isset($_COOKIE['admin_lang']) && isset($ADMIN_LANG_ALL[$_COOKIE['admin_lang']])
-    ? $_COOKIE['admin_lang'] : 'vi';
-$AL = $ADMIN_LANG_ALL[$ADMIN_LANG];
-function _t($key) { global $AL; return $AL[$key] ?? $key; }
-
 // Admin auth: session + CSRF + timeout
 function admin_login_page($error = '') {
     $csrf = $_SESSION['admin_csrf'] ?? bin2hex(random_bytes(16));
@@ -408,8 +342,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $iconUrl = handleGameIconUpload();
             $cat = $_POST['category'] ?? 'key';
             $dlUrl = trim($_POST['download_url'] ?? '');
-            $db->prepare("INSERT INTO games (name,package_name,icon_url,download_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?,?)")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0]);
+            $playUrl = trim($_POST['play_url'] ?? '');
+            $db->prepare("INSERT INTO games (name,package_name,icon_url,download_url,play_url,type,category,root_type,sort_order) VALUES (?,?,?,?,?,?,?,?,?)")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$playUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0]);
             header("Location: ?tab=games&ok=1"); exit;
         } catch (Exception $e) {
             header("Location: ?tab=games&err=" . urlencode('Lỗi: ' . $e->getMessage())); exit;
@@ -435,12 +370,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $iconUrl = handleGameIconUpload();
         $cat = $_POST['category'] ?? 'key';
         $dlUrl = trim($_POST['download_url'] ?? '');
+        $playUrl = trim($_POST['play_url'] ?? '');
         if ($iconUrl) {
-            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, download_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, icon_url=?, download_url=?, play_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$iconUrl,$dlUrl,$playUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         } else {
-            $db->prepare("UPDATE games SET name=?, package_name=?, download_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
-               ->execute([$_POST['name'],$_POST['pkg'],$dlUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
+            $db->prepare("UPDATE games SET name=?, package_name=?, download_url=?, play_url=?, type=?, category=?, root_type=?, sort_order=?, is_active=? WHERE id=?")
+               ->execute([$_POST['name'],$_POST['pkg'],$dlUrl,$playUrl,$_POST['type'],$cat,$_POST['root'],$_POST['sort']??0,$_POST['is_active']??1,$_POST['id']]);
         }
         header("Location: ?tab=games&ok=1"); exit;
     }
@@ -697,11 +633,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 .admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}
 
 /* === Hamburger Nav === */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
-.admin-lang-pills{display:flex;gap:3px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
-.admin-lang-pill{display:flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:999px;font-size:14px;text-decoration:none;transition:all .15s;cursor:pointer;line-height:1}
-.admin-lang-pill:hover{background:rgba(255,255,255,.06)}
-.admin-lang-pill.active{background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 4px 12px rgba(59,130,246,.3)}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -712,14 +644,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
     <span></span><span></span><span></span>
   </button>
   <div class="topbar-logo">⚡ <span class="blue"><?= h(SITE_NAME) ?></span></div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div class="admin-lang-pills" role="group" aria-label="Language">
-      <a class="admin-lang-pill <?= $ADMIN_LANG==='vi'?'active':'' ?>" href="?admin_lang=vi" title="Tiếng Việt">🇻🇳</a>
-      <a class="admin-lang-pill <?= $ADMIN_LANG==='en'?'active':'' ?>" href="?admin_lang=en" title="English">🇬🇧</a>
-      <a class="admin-lang-pill <?= $ADMIN_LANG==='es'?'active':'' ?>" href="?admin_lang=es" title="Español">🇪🇸</a>
-    </div>
-    <div class="topbar-right" onclick="location='?logout=1'" title="<?= h(_t('logout')) ?>">🚪</div>
-  </div>
+  <div class="topbar-right" onclick="location='?logout=1'" title="Thoát">🚪</div>
 </div>
 
 <!-- Overlay -->
@@ -734,36 +659,36 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label"><?= h(_t('dashboard')) ?></div>
-  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard"><span class="nav-icon">📊</span> <?= h(_t('dashboard')) ?></a>
+  <div class="nav-group-label">Bảng điều khiển</div>
+  <a class="nav-item <?=$tab==='dashboard'?'active':''?>" href="?tab=dashboard"><span class="nav-icon">📊</span> Tổng quan</a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label"><?= h(_t('sales')) ?></div>
-  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders"><span class="nav-icon">🛒</span> <?= h(_t('orders')) ?> <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
-  <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx"><span class="nav-icon">💰</span> <?= h(_t('transactions')) ?></a>
-  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys"><span class="nav-icon">🎁</span> <?= h(_t('getfree')) ?></a>
+  <div class="nav-group-label">Đơn hàng</div>
+  <a class="nav-item <?=$tab==='orders'?'active':''?>" href="?tab=orders"><span class="nav-icon">🛒</span> Đơn hàng <?php if($stats['orders_pending']>0):?><span class="count"><?=$stats['orders_pending']?></span><?php endif?></a>
+  <a class="nav-item <?=$tab==='banktx'?'active':''?>" href="?tab=banktx"><span class="nav-icon">💰</span> Giao dịch</a>
+  <a class="nav-item <?=$tab==='freekeys'?'active':''?>" href="?tab=freekeys"><span class="nav-icon">🎁</span> GetKey Free</a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label"><?= h(_t('products')) ?></div>
-  <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games"><span class="nav-icon">🎮</span> <?= h(_t('games')) ?></a>
-  <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages"><span class="nav-icon">📦</span> <?= h(_t('packages')) ?></a>
-  <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts"><span class="nav-icon">🏪</span> <?= h(_t('accounts')) ?></a>
-  <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys"><span class="nav-icon">🔑</span> <?= h(_t('keys')) ?></a>
+  <div class="nav-group-label">Sản phẩm</div>
+  <a class="nav-item <?=$tab==='games'?'active':''?>" href="?tab=games"><span class="nav-icon">🎮</span> Games</a>
+  <a class="nav-item <?=$tab==='packages'?'active':''?>" href="?tab=packages"><span class="nav-icon">📦</span> Gói Key</a>
+  <a class="nav-item <?=$tab==='accounts'?'active':''?>" href="?tab=accounts"><span class="nav-icon">🏪</span> Accounts</a>
+  <a class="nav-item <?=$tab==='keys'?'active':''?>" href="?tab=keys"><span class="nav-icon">🔑</span> Keys</a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label"><?= h(_t('wallet')) ?></div>
-  <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet"><span class="nav-icon">👛</span> <?= h(_t('wallet')) ?></a>
+  <div class="nav-group-label">Tài chính</div>
+  <a class="nav-item <?=$tab==='wallet'?'active':''?>" href="?tab=wallet"><span class="nav-icon">👛</span> Ví user</a>
 </div>
 
 <div class="nav-group">
-  <div class="nav-group-label"><?= h(_t('system')) ?></div>
-  <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> <?= h(_t('config')) ?></a>
-  <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> <?= h(_t('setup')) ?></a>
-  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> <?= h(_t('users')) ?></a>
-  <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> <?= h(_t('web')) ?></a>
+  <div class="nav-group-label">Hệ thống</div>
+  <a class="nav-item <?=$tab==='sysconfig'?'active':''?>" href="?tab=sysconfig"><span class="nav-icon">⚙️</span> Config</a>
+  <a class="nav-item <?=$tab==='setup'?'active':''?>" href="?tab=setup"><span class="nav-icon">🧭</span> Setup</a>
+  <a class="nav-item <?=$tab==='users'?'active':''?>" href="?tab=users"><span class="nav-icon">👥</span> Users</a>
+  <a class="nav-item" href="../" target="_blank"><span class="nav-icon">🌐</span> Web</a>
   <a class="nav-item" href="?logout=1"><span class="nav-icon">🚪</span> Thoát</a>
 </div>
 
@@ -776,21 +701,21 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 <?php if($tab==='dashboard'): ?>
 <h1>📊 Dashboard</h1>
 <div class="stats-grid">
-  <div class="stat-card"><div class="stat-val blue"><?=$stats['users']?></div><div class="stat-label">👥 <?= h(_t("total_users")) ?></div></div>
-  <div class="stat-card"><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">🛒 <?= h(_t("orders_pending")) ?></div></div>
-  <div class="stat-card"><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">✅ <?= h(_t("orders_approved")) ?></div></div>
-  <div class="stat-card"><div class="stat-val green"><?=number_format($stats['revenue'],0,',','.')?> đ</div><div class="stat-label">💰 <?= h(_t("revenue")) ?></div></div>
-  <div class="stat-card"><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">📦 <?= h(_t("keys_avail")) ?></div></div>
-  <div class="stat-card"><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">🔑 <?= h(_t("keys_active")) ?></div></div>
-  <div class="stat-card"><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">🔑 <?= h(_t("keys_total")) ?></div></div>
+  <div class="stat-card"><div class="stat-val blue"><?=$stats['users']?></div><div class="stat-label">👥 Người dùng</div></div>
+  <div class="stat-card"><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">🛒 Chờ thanh toán</div></div>
+  <div class="stat-card"><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">✅ Đơn thành công</div></div>
+  <div class="stat-card"><div class="stat-val green"><?=number_format($stats['revenue'],0,',','.')?> đ</div><div class="stat-label">💰 Doanh thu</div></div>
+  <div class="stat-card"><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">📦 Key trong pool</div></div>
+  <div class="stat-card"><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">🔑 Key đang active</div></div>
+  <div class="stat-card"><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">🔑 Tổng keys</div></div>
 </div>
 
-<h2 style="font-size:16px;margin-bottom:12px">🛒 <?= h(_t("orders_pending_t")) ?></h2>
+<h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
 <?php
 $pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
 if($pending): ?>
 <table>
-<tr><th><?= h(_t("order_code")) ?></th><th><?= h(_t('user')) ?></th><th><?= h(_t("game_pkg")) ?></th><th><?= h(_t("key_created")) ?></th><th><?= h(_t("money")) ?></th><th><?= h(_t("time")) ?></th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Thời gian</th><th>Thao tác</th></tr>
 <?php foreach($pending as $o): ?>
 <tr>
   <td><b><?=h($o['order_code'])?></b></td>
@@ -831,13 +756,13 @@ $buildOrderUrl = function($s, $m) { $qs = ['tab'=>'orders','s'=>$s]; if ($m !== 
 </div>
 <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:13px;align-items:center">
   <span style="color:#8b949e">Phương thức:</span>
-  <a href="<?=h($buildOrderUrl($filter_status, ''))?>" class="btn <?=$filter_method===''?'btn-blue':'btn-gray'?>"><?= h(_t('tat_ca')) ?></a>
+  <a href="<?=h($buildOrderUrl($filter_status, ''))?>" class="btn <?=$filter_method===''?'btn-blue':'btn-gray'?>">Tất cả</a>
   <?php foreach($pmLabel as $m=>$l): ?>
   <a href="<?=h($buildOrderUrl($filter_status, $m))?>" class="btn <?=$filter_method===$m?'btn-blue':'btn-gray'?>"><?=$l?></a>
   <?php endforeach ?>
 </div>
 <table>
-<tr><th><?= h(_t('ma_don')) ?></th><th><?= h(_t('user')) ?></th><th><?= h(_t('game_goi')) ?></th><th>PT</th><th><?= h(_t('key_da_tao')) ?></th><th>Tiền</th><th><?= h(_t('trang_thai')) ?></th><th><?= h(_t('thoi_gian')) ?></th><?php if($filter_status==='pending'):?><th><?= h(_t('thao_tac')) ?></th><?php endif?></tr>
+<tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>PT</th><th>Key đã tạo</th><th>Tiền</th><th>Trạng thái</th><th>Thời gian</th><?php if($filter_status==='pending'):?><th>Thao tác</th><?php endif?></tr>
 <?php foreach($orders as $o): $cls=['pending'=>'orange','approved'=>'green','rejected'=>'red','cancelled'=>'gray'][$o['status']]??'gray'; $pm = $o['payment_method'] ?? 'mbbank'; ?>
 <tr>
   <td><b><?=h($o['order_code'])?></b></td>
@@ -912,7 +837,7 @@ $txSrcMap=[]; foreach($txSrcStats as $r){ $txSrcMap[$r['source']??'mbbank'] = $r
   <div class="alert" style="background:rgba(59,130,246,.10);border-color:rgba(59,130,246,.25);color:#bfdbfe">Cron poll mỗi phút: <span class="mono">cron/mbbank_poll.php</span> + <span class="mono">cron/crypto_poll.php</span>. Có ai chuyển khoản vào TK MBBank hoặc gửi USDT TRC20 vào ví là tự động xuất hiện ở bảng dưới. Nếu giao dịch không auto duyệt, kiểm tra cột <b>Ghi chú</b> + <b>Nội dung</b>.</div>
 </div>
 <div class="table-wrap"><table>
-<tr><th>ID</th><th>Nguồn</th><th><?= h(_t('thoi_gian')) ?></th><th><?= h(_t('ma_don')) ?></th><th>Số tiền</th><th><?= h(_t('trang_thai')) ?></th><th>Ghi chú</th><th>Nội dung</th><th>Đọc lúc</th><th>Xử lý lúc</th></tr>
+<tr><th>ID</th><th>Nguồn</th><th>Thời gian</th><th>Mã đơn</th><th>Số tiền</th><th>Trạng thái</th><th>Ghi chú</th><th>Nội dung</th><th>Đọc lúc</th><th>Xử lý lúc</th></tr>
 <?php foreach($txs as $tx): $cls=['seen'=>'blue','matched'=>'orange','approved'=>'green','ignored'=>'gray','error'=>'red'][$tx['status']]??'gray'; $src=$tx['source']??'mbbank'; ?>
 <tr>
 <td><?=$tx['id']?></td>
@@ -970,7 +895,7 @@ $buildWalletUrl = function($r, $q) { $qs = ['tab'=>'wallet']; if ($r !== '') $qs
 
 <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
   <span style="color:#8b949e">Lý do:</span>
-  <a href="<?=h($buildWalletUrl('', $bl_q))?>" class="btn <?=$bl_reason===''?'btn-blue':'btn-gray'?>"><?= h(_t('tat_ca')) ?></a>
+  <a href="<?=h($buildWalletUrl('', $bl_q))?>" class="btn <?=$bl_reason===''?'btn-blue':'btn-gray'?>">Tất cả</a>
   <?php foreach($reasonLabel as $r=>$l): ?>
   <a href="<?=h($buildWalletUrl($r, $bl_q))?>" class="btn <?=$bl_reason===$r?'btn-blue':'btn-gray'?>"><?=$l?></a>
   <?php endforeach ?>
@@ -980,12 +905,12 @@ $buildWalletUrl = function($r, $q) { $qs = ['tab'=>'wallet']; if ($r !== '') $qs
   <?php if($bl_reason!==''):?><input type="hidden" name="r" value="<?=h($bl_reason)?>"><?php endif ?>
   <input type="text" name="q" placeholder="Tìm username / full name / telegram_id" value="<?=h($bl_q)?>" style="flex:1;max-width:360px;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3">
   <button class="btn btn-blue" type="submit">🔍 Tìm</button>
-  <?php if($bl_q!==''):?><a href="<?=h($buildWalletUrl($bl_reason, ''))?>" class="btn btn-gray"><?= h(_t('xoa')) ?></a><?php endif?>
+  <?php if($bl_q!==''):?><a href="<?=h($buildWalletUrl($bl_reason, ''))?>" class="btn btn-gray">Xoá</a><?php endif?>
 </form>
 
 <div style="overflow-x:auto">
 <table>
-<tr><th>ID</th><th><?= h(_t('user')) ?></th><th>Số dư hiện tại</th><th>Lý do</th><th>Thay đổi</th><th>Sau giao dịch</th><th>Ref</th><th>Note</th><th><?= h(_t('thoi_gian')) ?></th></tr>
+<tr><th>ID</th><th>User</th><th>Số dư hiện tại</th><th>Lý do</th><th>Thay đổi</th><th>Sau giao dịch</th><th>Ref</th><th>Note</th><th>Thời gian</th></tr>
 <?php foreach($balanceLogs as $bl):
     $amt = (float)$bl['amount']; $reason = $bl['reason'];
     $reasonHtml = '<span class="badge ' . h($reasonColor[$reason] ?? 'gray') . '" style="font-size:11px">' . h($reasonLabel[$reason] ?? $reason) . '</span>';
@@ -1071,14 +996,14 @@ $buildTopupUrl = function($r, $q, $tm, $ts) {
 
 <div style="margin:14px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
   <span style="color:#8b949e">Method:</span>
-  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, '', $tr_status))?>" class="btn <?=$tr_method===''?'btn-blue':'btn-gray'?>"><?= h(_t('tat_ca')) ?></a>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, '', $tr_status))?>" class="btn <?=$tr_method===''?'btn-blue':'btn-gray'?>">Tất cả</a>
   <?php foreach($methodLabel as $m=>$l): ?>
   <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $m, $tr_status))?>" class="btn <?=$tr_method===$m?'btn-blue':'btn-gray'?>"><?=$l?></a>
   <?php endforeach ?>
 </div>
 <div style="margin:0 0 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
   <span style="color:#8b949e">Status:</span>
-  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $tr_method, ''))?>" class="btn <?=$tr_status===''?'btn-blue':'btn-gray'?>"><?= h(_t('tat_ca')) ?></a>
+  <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $tr_method, ''))?>" class="btn <?=$tr_status===''?'btn-blue':'btn-gray'?>">Tất cả</a>
   <?php foreach($statusLabel as $s=>$l): ?>
   <a href="<?=h($buildTopupUrl($bl_reason, $bl_q, $tr_method, $s))?>" class="btn <?=$tr_status===$s?'btn-blue':'btn-gray'?>"><?=$l?></a>
   <?php endforeach ?>
@@ -1086,7 +1011,7 @@ $buildTopupUrl = function($r, $q, $tm, $ts) {
 
 <div style="overflow-x:auto">
 <table>
-<tr><th>ID</th><th><?= h(_t('user')) ?></th><th>Method</th><th>Yêu cầu</th><th>Cộng thực</th><th><?= h(_t('status')) ?></th><th>Detail</th><th>Created</th><th>Processed</th></tr>
+<tr><th>ID</th><th>User</th><th>Method</th><th>Yêu cầu</th><th>Cộng thực</th><th>Status</th><th>Detail</th><th>Created</th><th>Processed</th></tr>
 <?php foreach($topups as $tr):
     $detail = '';
     if ($tr['method'] === 'mbbank') $detail = $tr['unique_code'] ?? '';
@@ -1123,7 +1048,7 @@ $buildTopupUrl = function($r, $q, $tm, $ts) {
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_keys_to_pool">
 <div class="form-row">
-  <div><label><?= h(_t('game')) ?></label>
+  <div><label>Game</label>
     <select name="key_game_id" id="keyGameSelect" required onchange="updatePkgOptions(this.value)">
       <option value="">-- Chọn game --</option>
       <?php $allGames = $db->query("SELECT * FROM games WHERE is_active=1 ORDER BY sort_order")->fetchAll();
@@ -1132,13 +1057,13 @@ $buildTopupUrl = function($r, $q, $tm, $ts) {
       <?php endforeach ?>
     </select>
   </div>
-  <div><label><?= h(_t('goi')) ?></label>
+  <div><label>Gói</label>
     <select name="key_package_id" id="keyPkgSelect" required>
       <option value="">-- Chọn game trước --</option>
     </select>
   </div>
 </div>
-<div style="margin-top:14px"><label><?= h(_t('danh_sach_key_moi_dong_1_key')) ?></label>
+<div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
   <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABC123&#10;DEF456&#10;GHI789" style="width:100%;font-family:monospace;font-size:13px;resize:vertical"></textarea>
 </div>
 <div style="margin-top:10px"><button class="btn btn-green" type="submit">➕ Thêm vào pool</button></div>
@@ -1171,7 +1096,7 @@ $poolCount = $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")-
 <p style="color:var(--muted);margin-bottom:10px">Tổng: <b style="color:var(--green)"><?=$poolCount?> key</b> sẵn sàng trong pool</p>
 <?php if($poolKeys): ?>
 <table>
-<tr><th><?= h(_t('key')) ?></th><th><?= h(_t('game')) ?></th><th><?= h(_t('goi')) ?></th><th>Ngày</th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>Key</th><th>Game</th><th>Gói</th><th>Ngày</th><th>Thao tác</th></tr>
 <?php foreach($poolKeys as $k): ?>
 <tr>
   <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
@@ -1195,7 +1120,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 ?>
 <?php if($usedKeys): ?>
 <table>
-<tr><th><?= h(_t('key')) ?></th><th><?= h(_t('user')) ?></th><th><?= h(_t('game_goi')) ?></th><th>Ngày</th><th><?= h(_t('trang_thai')) ?></th><th><?= h(_t('het_han')) ?></th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>Key</th><th>User</th><th>Game / Gói</th><th>Ngày</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr>
 <?php foreach($usedKeys as $k): $cls=['active'=>'green','expired'=>'orange','locked'=>'red','pending'=>'blue'][$k['status']]??'gray'; ?>
 <tr>
   <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
@@ -1226,21 +1151,22 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_game">
 <div class="form-row">
-  <div><label><?= h(_t('ten_game')) ?></label><input name="name" required placeholder="Free Fire"></div>
-  <div><label><?= h(_t('package_name')) ?></label><input name="pkg" required placeholder="com.dts.freefireth" style="width:220px"></div>
-  <div><label><?= h(_t('link_tai_download')) ?></label><input name="download_url" placeholder="https://t.me/..." style="width:240px"></div>
-  <div><label><?= h(_t('loai')) ?></label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
-  <div><label><?= h(_t('loai_category')) ?></label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
-  <div><label><?= h(_t('root_type')) ?></label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
-  <div><label><?= h(_t('thu_tu')) ?></label><input name="sort" type="number" value="0" style="width:70px"></div>
-  <div><label><?= h(_t('icon_pngjpg_max_2mb')) ?></label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+  <div><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
+  <div><label>Package name</label><input name="pkg" required placeholder="com.dts.freefireth" style="width:220px"></div>
+  <div><label>Link tải (download)</label><input name="download_url" placeholder="https://t.me/..." style="width:240px"></div>
+  <div><label>Link chạy/play (nút ▶)</label><input name="play_url" placeholder="https://..." style="width:240px"></div>
+  <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
+  <div><label>Loại Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
+  <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
+  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
 </div>
 </form>
 </div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
 <table>
-<tr><th>#</th><th><?= h(_t('icon')) ?></th><th><?= h(_t('ten_game')) ?></th><th>Package</th><th>Link tải</th><th><?= h(_t('loai')) ?></th><th>Category</th><th>Root</th><th><?= h(_t('thu_tu')) ?></th><th><?= h(_t('active')) ?></th><th><?= h(_t('doi_icon')) ?></th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Link tải</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
 <?php foreach($games as $g): ?>
 <tr>
 <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
@@ -1249,12 +1175,12 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><?php if(!empty($g['icon_url'])): ?><img src="<?=h($g['icon_url'])?>" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;background:#0d1117"><?php else: ?><span style="color:#8b949e;font-size:11px">-</span><?php endif ?></td>
   <td><input name="name" value="<?=h($g['name'])?>" required style="width:150px"></td>
   <td><input name="pkg" value="<?=h($g['package_name'])?>" required style="width:220px"></td>
-  <td><input name="download_url" value="<?=h($g['download_url'] ?? '')?>" placeholder="https://..." style="width:200px"></td>
+  <td><input name="download_url" value="<?=h($g['download_url'] ?? '')?>" placeholder="Link tải..." style="width:190px;margin-bottom:4px"><br><input name="play_url" value="<?=h($g['play_url'] ?? '')?>" placeholder="Link chạy ▶..." style="width:190px"></td>
   <td><select name="type"><option <?=$g['type']==='NORMAL'?'selected':''?>>NORMAL</option><option <?=$g['type']==='VIP'?'selected':''?>>VIP</option></select></td>
-  <td><select name="category"><option value="key" <?=($g['category']??'key')==='key'?'selected':''?>><?= h(_t('key')) ?></option><option value="account" <?=($g['category']??'key')==='account'?'selected':''?>>Acc</option><option value="both" <?=($g['category']??'key')==='both'?'selected':''?>>Both</option></select></td>
+  <td><select name="category"><option value="key" <?=($g['category']??'key')==='key'?'selected':''?>>Key</option><option value="account" <?=($g['category']??'key')==='account'?'selected':''?>>Acc</option><option value="both" <?=($g['category']??'key')==='both'?'selected':''?>>Both</option></select></td>
   <td><select name="root"><option <?=$g['root_type']==='Only Root'?'selected':''?>>Only Root</option><option <?=$g['root_type']==='Root & NoRoot'?'selected':''?>>Root & NoRoot</option><option <?=$g['root_type']==='NoRoot'?'selected':''?>>NoRoot</option></select></td>
   <td><input name="sort" type="number" value="<?=$g['sort_order']?>" style="width:70px"></td>
-  <td><select name="is_active"><option value="1" <?=$g['is_active']?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=!$g['is_active']?'selected':''?>><?= h(_t('tat')) ?></option></select></td>
+  <td><select name="is_active"><option value="1" <?=$g['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$g['is_active']?'selected':''?>>Tắt</option></select></td>
   <td><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="width:130px;font-size:11px"></td>
   <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
 </form>
@@ -1272,9 +1198,9 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_pkg">
 <div class="form-row">
-  <div><label><?= h(_t('game')) ?></label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Game</label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
   <div><label>Số ngày</label><input name="days" type="number" required placeholder="7" style="width:80px"></div>
-  <div><label><?= h(_t('gia_d')) ?></label><input name="price" type="number" required placeholder="75000"></div>
+  <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
   <div><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
 </div>
@@ -1282,7 +1208,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </div>
 <?php $pkgs = $db->query("SELECT p.*,g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id ORDER BY g.sort_order,p.days")->fetchAll(); ?>
 <table>
-<tr><th><?= h(_t('game')) ?></th><th>Tên gói</th><th>Số ngày</th><th><?= h(_t('gia')) ?></th><th><?= h(_t('loai')) ?></th><th><?= h(_t('active')) ?></th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>Game</th><th>Tên gói</th><th>Số ngày</th><th>Giá</th><th>Loại</th><th>Active</th><th>Thao tác</th></tr>
 <?php foreach($pkgs as $p): ?>
 <tr>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
@@ -1292,7 +1218,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><input name="days" type="number" value="<?=$p['days']?>" required style="width:80px"></td>
   <td><input name="price" type="number" value="<?=$p['price']?>" required style="width:110px"></td>
   <td><select name="key_type"><option <?=$p['key_type']==='Normal'?'selected':''?>>Normal</option><option <?=$p['key_type']==='VIP'?'selected':''?>>VIP</option></select></td>
-  <td><select name="is_active"><option value="1" <?=$p['is_active']?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=!$p['is_active']?'selected':''?>><?= h(_t('tat')) ?></option></select></td>
+  <td><select name="is_active"><option value="1" <?=$p['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$p['is_active']?'selected':''?>>Tắt</option></select></td>
   <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
 </form>
 <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray" type="submit"><?=$p['is_active']?'Tắt':'Bật'?></button></form>
@@ -1314,9 +1240,9 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_acc_game">
 <div class="form-row">
-  <div><label><?= h(_t('ten_game')) ?></label><input name="name" required placeholder="Liên Quân Mobile"></div>
-  <div><label><?= h(_t('thu_tu')) ?></label><input name="sort" type="number" value="0" style="width:70px"></div>
-  <div><label><?= h(_t('icon_pngjpg_max_2mb')) ?></label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+  <div><label>Tên game</label><input name="name" required placeholder="Liên Quân Mobile"></div>
+  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm game Acc</button></div>
 </div>
 </form>
@@ -1326,7 +1252,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <div class="form-card">
 <h3>🎯 Danh sách game Acc</h3>
 <table>
-<tr><th><?= h(_t('game')) ?></th><th><?= h(_t('loai_acc')) ?></th><th><?= h(_t('gia')) ?></th><th><?= h(_t('stock')) ?></th><th><?= h(_t('active')) ?></th><th>Hành động</th></tr>
+<tr><th>Game</th><th>Loại acc</th><th>Giá</th><th>Stock</th><th>Active</th><th>Hành động</th></tr>
 <?php foreach($accGames as $ag):
   $atS=$db->prepare("SELECT id,name,price,is_active FROM account_types WHERE game_id=? ORDER BY sort_order");
   $atS->execute([$ag['id']]);
@@ -1354,11 +1280,11 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="add_acc_type">
 <div class="form-row">
-  <div><label><?= h(_t('game_acc')) ?></label><select name="game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label><?= h(_t('ten_loai_acc')) ?></label><input name="name" required placeholder="Google, Facebook, Apple..." style="width:150px"></div>
-  <div><label><?= h(_t('gia_d')) ?></label><input name="price" type="number" required placeholder="50000" style="width:120px"></div>
-  <div><label><?= h(_t('mo_ta')) ?></label><input name="description" placeholder="Mô tả thêm (tùy chọn)" style="width:200px"></div>
-  <div><label><?= h(_t('thu_tu')) ?></label><input name="sort" type="number" value="0" style="width:70px"></div>
+  <div><label>Game Acc</label><select name="game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Tên loại acc</label><input name="name" required placeholder="Google, Facebook, Apple..." style="width:150px"></div>
+  <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="50000" style="width:120px"></div>
+  <div><label>Mô tả</label><input name="description" placeholder="Mô tả thêm (tùy chọn)" style="width:200px"></div>
+  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
 </div>
 </form>
@@ -1369,9 +1295,9 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
 <input type="hidden" name="act" value="import_accounts">
 <div class="form-row">
-  <div><label><?= h(_t('game_acc')) ?></label><select name="acc_game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label><?= h(_t('loai_acc')) ?></label><select name="acc_type_id"><?php foreach($typesAll as $t):?><option value="<?=$t['id']?>"><?=h($t["name"])?> (<?=h($t["game_name"])?>)</option><?php endforeach?></select></div>
-  <div style="flex:1"><label><?= h(_t('danh_sach_acc_moi_dong_tkmk_hoac_tkmk')) ?></label>
+  <div><label>Game Acc</label><select name="acc_game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
+  <div><label>Loại acc</label><select name="acc_type_id"><?php foreach($typesAll as $t):?><option value="<?=$t['id']?>"><?=h($t["name"])?> (<?=h($t["game_name"])?>)</option><?php endforeach?></select></div>
+  <div style="flex:1"><label>Danh sách acc (mỗi dòng: tk:mk hoặc tk|mk)</label>
     <textarea name="accounts" rows="6" placeholder="user1@gmail.com:pass123&#10;user2@gmail.com:pass456&#10;user3|pass789" style="width:100%;max-width:100%;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px;font-family:monospace;font-size:13px"></textarea>
   </div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">📥 Import</button></div>
@@ -1382,7 +1308,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <?php if($typesAll): ?>
 <h2>📋 Loại acc</h2>
 <table>
-<tr><th>#</th><th><?= h(_t('game')) ?></th><th><?= h(_t('ten_loai')) ?></th><th><?= h(_t('gia')) ?></th><th><?= h(_t('stock')) ?></th><th><?= h(_t('active')) ?></th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>#</th><th>Game</th><th>Tên loại</th><th>Giá</th><th>Stock</th><th>Active</th><th>Thao tác</th></tr>
 <?php foreach($typesAll as $t):
   $stock = $db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
   $stock->execute([$t['id']]);
@@ -1396,7 +1322,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
   <td><input name="name" value="<?=htmlspecialchars($t['name'])?>" required style="width:130px"></td>
   <td><input name="price" type="number" value="<?=$t['price']?>" required style="width:100px"></td>
   <td><b style="color:<?=$availCount>0?'#4ade80':'#f85149'?>"><?=$availCount?></b></td>
-  <td><select name="is_active"><option value="1" <?=$t['is_active']?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=!$t['is_active']?'selected':''?>><?= h(_t('tat')) ?></option></select></td>
+  <td><select name="is_active"><option value="1" <?=$t['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$t['is_active']?'selected':''?>>Tắt</option></select></td>
   <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
 </form>
 <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-gray"><?=$t['is_active']?'Tắt':'Bật'?></button></form>
@@ -1412,7 +1338,7 @@ if($accs):
 ?>
 <h2 style="margin-top:24px">📦 Danh sách Acc (200 gần nhất)</h2>
 <table>
-<tr><th>#</th><th><?= h(_t('game')) ?></th><th><?= h(_t('loai')) ?></th><th><?= h(_t('tai_khoan')) ?></th><th><?= h(_t('mat_khau')) ?></th><th><?= h(_t('trang_thai')) ?></th><th>Ngày</th><th><?= h(_t('thao_tac')) ?></th></tr>
+<tr><th>#</th><th>Game</th><th>Loại</th><th>Tài khoản</th><th>Mật khẩu</th><th>Trạng thái</th><th>Ngày</th><th>Thao tác</th></tr>
 <?php foreach($accs as $a): ?>
 <tr>
 <td><?=$a['id']?></td>
@@ -1421,9 +1347,9 @@ if($accs):
 <td style="font-family:monospace"><?=h($a['username'])?></td>
 <td style="font-family:monospace"><?=h($a['password'])?></td>
 <td>
-<?php if($a['status']=='available'): ?><span class="badge green"><?= h(_t('co_san')) ?></span>
-<?php elseif($a['status']=='pending'): ?><span class="badge orange"><?= h(_t('dang_cho')) ?></span>
-<?php else: ?><span class="badge gray"><?= h(_t('da_ban')) ?></span>
+<?php if($a['status']=='available'): ?><span class="badge green">Có sẵn</span>
+<?php elseif($a['status']=='pending'): ?><span class="badge orange">Đang chờ</span>
+<?php else: ?><span class="badge gray">Đã bán</span>
 <?php endif; ?>
 </td>
 <td><?=h($a['created_at'])?></td>
@@ -1444,7 +1370,7 @@ if($accs):
 <div class="form-card"><h3>➕ Thêm nhiều key free cùng lúc</h3>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_free_key">
 <div class="form-row">
-<div><label><?= h(_t('game')) ?></label>
+<div><label>Game</label>
   <select name="game_id" id="freeKeyGameSelect" required onchange="updateFreeKeyPkgOptions(this.value)">
     <option value="">-- Chọn game --</option>
     <?php foreach($gamesAll as $g): ?>
@@ -1452,13 +1378,13 @@ if($accs):
     <?php endforeach ?>
   </select>
 </div>
-<div><label><?= h(_t('goi')) ?></label>
+<div><label>Gói</label>
   <select name="package_id" id="freeKeyPkgSelect" required>
     <option value="">-- Chọn game trước --</option>
   </select>
 </div>
 </div>
-<div style="margin-top:14px"><label><?= h(_t('danh_sach_key_moi_dong_1_key')) ?></label>
+<div style="margin-top:14px"><label>Danh sách key (mỗi dòng 1 key)</label>
   <textarea name="key_codes" rows="6" required placeholder="Dán key vào đây, mỗi dòng 1 key...&#10;ABCDEF123&#10;XYZ456789&#10;HCLOU-FREE-001" style="width:100%;font-family:monospace;font-size:13px;resize:vertical;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px"></textarea>
 </div>
 <div style="margin-top:10px"><button class="btn btn-green" type="submit">➕ Thêm vào pool key free</button>
@@ -1483,7 +1409,7 @@ function updateFreeKeyPkgOptions(gameId) {
 </script>
 </div>
 <?php $fks=$db->query("SELECT fk.*,g.name game_name,p.name pkg_name,(SELECT COUNT(*) FROM free_key_claims c WHERE c.free_key_id=fk.id) claims FROM free_keys fk JOIN games g ON fk.game_id=g.id JOIN packages p ON fk.package_id=p.id ORDER BY fk.created_at DESC LIMIT 100")->fetchAll(); ?>
-<table><tr><th><?= h(_t('key')) ?></th><th><?= h(_t('gamegoi')) ?></th><th><?= h(_t('thoi_gian')) ?></th><th>Link</th><th><?= h(_t('claim')) ?></th><th><?= h(_t('tt')) ?></th><th><?= h(_t('action')) ?></th></tr>
+<table><tr><th>Key</th><th>Game/Gói</th><th>Thời gian</th><th>Link</th><th>Claim</th><th>TT</th><th>Action</th></tr>
 <?php foreach($fks as $fk): ?><tr>
 <td style="font-family:monospace"><?=htmlspecialchars($fk['key_code'])?></td><td><?=h($fk['game_name'])?><br><small style="color:#8b949e"><?=h($fk['pkg_name'])?> · <?=h($fk['key_type'])?></small></td>
 <td><small><?=date('d/m H:i',strtotime($fk['start_at']))?> → <?=date('d/m H:i',strtotime($fk['expire_at']))?></small></td>
@@ -1727,7 +1653,7 @@ function _hclouCronAgo($iso) {
   <h3>⏱️ Trạng thái Cron Jobs</h3>
   <p style="color:#8b949e;font-size:13px;margin-bottom:10px">Đọc snapshot từ <span class="mono">data/cron_status_*.json</span> (do <span class="mono">cron/run.php</span> ghi sau mỗi lần chạy). Đỏ = quá hạn / lỗi, xanh = OK.</p>
   <table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Job</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Schedule</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Lần cuối</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)"><?= h(_t('thoi_gian')) ?></th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Kết quả</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Detail</th></tr>
+    <tr><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Job</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Schedule</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Lần cuối</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Thời gian</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Kết quả</th><th style="text-align:left;padding:8px;color:#8b949e;border-bottom:1px solid var(--line)">Detail</th></tr>
   <?php foreach ($_cronJobs as $jkey => $jinfo):
     $jfile = APP_ROOT . '/data/cron_status_' . $jkey . '.json';
     $jdata = is_file($jfile) ? json_decode((string)@file_get_contents($jfile), true) : null;
@@ -1825,19 +1751,20 @@ function _hclouFormatBytes($b) {
 <div><label><?=$label?></label><input name="cfg[<?=$k?>]" value="<?=htmlspecialchars((string)hclouConfigValue($k))?>"></div>
 <?php endforeach; ?></div>
 <h3 style="margin-top:20px">API / Auto-bank / GetKey Free</h3><div class="form-row">
-<div style="flex:1;min-width:300px"><label><?= h(_t('mbbank_api_key')) ?></label><input style="width:100%" name="cfg[MBBANK_HISTORY_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('MBBANK_HISTORY_API_KEY'))?>" placeholder="Nhập API Key từ Queenvps"><small>API Queenvps: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code>. Liên hệ Zalo/Messenger/Hotline để lấy key.</small></div>
-<div><label>Auto-bank</label><select name="cfg[MBBANK_AUTO_APPROVE_ENABLED]"><option value="1" <?=MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=!MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>><?= h(_t('tat')) ?></option></select></div>
-<div><label><?= h(_t('getkey_free')) ?></label><select name="cfg[FREE_GETKEY_ENABLED]"><option value="1" <?=FREE_GETKEY_ENABLED?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=!FREE_GETKEY_ENABLED?'selected':''?>><?= h(_t('tat')) ?></option></select></div>
+<div style="flex:1;min-width:300px"><label>MBBANK API Key</label><input style="width:100%" name="cfg[MBBANK_HISTORY_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('MBBANK_HISTORY_API_KEY'))?>" placeholder="Nhập API Key từ Queenvps"><small>API Queenvps: <code>GET https://queenvps.com/api/historymb/{API_KEY}</code>. Liên hệ Zalo/Messenger/Hotline để lấy key.</small></div>
+<div><label>Auto-bank</label><select name="cfg[MBBANK_AUTO_APPROVE_ENABLED]"><option value="1" <?=MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!MBBANK_AUTO_APPROVE_ENABLED?'selected':''?>>Tắt</option></select></div>
+<div><label>GetKey Free</label><select name="cfg[FREE_GETKEY_ENABLED]"><option value="1" <?=FREE_GETKEY_ENABLED?'selected':''?>>Bật</option><option value="0" <?=!FREE_GETKEY_ENABLED?'selected':''?>>Tắt</option></select></div>
 <div><label>Số lớp vượt link</label><select name="cfg[FREE_SHORTLINK_LAYERS]"><?php $_curLayers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2; ?><option value="1" <?=$_curLayers===1?'selected':''?>>1 lớp (Layma)</option><option value="2" <?=$_curLayers===2?'selected':''?>>2 lớp (Layma + Link4M)</option></select></div>
-<div style="flex:1;min-width:260px"><label><?= h(_t('layma_token')) ?></label><input style="width:100%" name="cfg[LAYMA_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LAYMA_API_TOKEN'))?>" placeholder="7fc1aa570262544a7b80d1bc0ab3c4e6"><small>Lấy tại <a href="https://layma.net" target="_blank">layma.net</a> → Developer → API Token</small></div>
+<div><label>Bắt vượt link (getkey web)</label><select name="cfg[GETKEY_REQUIRE_LINK]"><?php $_reqLink = !defined('GETKEY_REQUIRE_LINK') || GETKEY_REQUIRE_LINK; ?><option value="1" <?=$_reqLink?'selected':''?>>Bật (phải vượt link)</option><option value="0" <?=!$_reqLink?'selected':''?>>Tắt (hiện key luôn)</option></select></div>
+<div style="flex:1;min-width:260px"><label>Layma token</label><input style="width:100%" name="cfg[LAYMA_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LAYMA_API_TOKEN'))?>" placeholder="7fc1aa570262544a7b80d1bc0ab3c4e6"><small>Lấy tại <a href="https://layma.net" target="_blank">layma.net</a> → Developer → API Token</small></div>
 <div style="flex:1;min-width:260px"><label>Link4M token (chỉ cần khi 2 lớp)</label><input style="width:100%" name="cfg[LINK4M_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('LINK4M_API_TOKEN'))?>"></div>
 </div>
 
 <h3 style="margin-top:20px">🪙 Binance USDT TRC20</h3>
 <div class="form-row">
-<div style="flex:1;min-width:300px"><label><?= h(_t('dia_chi_vi_usdt_trc20')) ?></label><input style="width:100%;font-family:monospace" name="cfg[USDT_TRC20_ADDRESS]" value="<?=htmlspecialchars((string)hclouConfigValue('USDT_TRC20_ADDRESS'))?>" placeholder="Tdxxxxxxxxxxxxxxxxxxxxxx (bắt đầu bằng T)"></div>
+<div style="flex:1;min-width:300px"><label>Địa chỉ ví USDT TRC20</label><input style="width:100%;font-family:monospace" name="cfg[USDT_TRC20_ADDRESS]" value="<?=htmlspecialchars((string)hclouConfigValue('USDT_TRC20_ADDRESS'))?>" placeholder="Tdxxxxxxxxxxxxxxxxxxxxxx (bắt đầu bằng T)"></div>
 <div style="flex:1;min-width:260px"><label>TronGrid API Key <span style="color:#8b949e;font-weight:400">(tuỳ chọn)</span></label><input style="width:100%;font-family:monospace" name="cfg[TRONGRID_API_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('TRONGRID_API_KEY'))?>" placeholder="Để trống vẫn dùng được, có key thì rate limit cao hơn"></div>
-<div><label>Auto-crypto</label><select name="cfg[CRYPTO_AUTO_APPROVE_ENABLED]"><option value="1" <?=(defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>><?= h(_t('bat')) ?></option><option value="0" <?=(!defined('CRYPTO_AUTO_APPROVE_ENABLED') || !CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>><?= h(_t('tat')) ?></option></select></div>
+<div><label>Auto-crypto</label><select name="cfg[CRYPTO_AUTO_APPROVE_ENABLED]"><option value="1" <?=(defined('CRYPTO_AUTO_APPROVE_ENABLED') && CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>>Bật</option><option value="0" <?=(!defined('CRYPTO_AUTO_APPROVE_ENABLED') || !CRYPTO_AUTO_APPROVE_ENABLED)?'selected':''?>>Tắt</option></select></div>
 </div>
 <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:12px;margin-top:8px;font-size:13px;line-height:1.7">
   <b style="color:#a5b4fc">📘 Cách lấy 2 thông số trên:</b><br>
@@ -1914,8 +1841,8 @@ foreach($cronJobs as $cj){
 <div class="warnbox">⚠️ Quan trọng nhất: <b>MBBANK Auto-bank</b> (mỗi 1 phút) — nếu không chạy, đơn thanh toán sẽ không tự duyệt. Setup xong, kiểm tra tại <a href="../setup_cron.php" target="_blank" style="color:#58a6ff">setup_cron.php</a>.</div>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
-<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit"><?= h(_t('chay_maintenance_ngay')) ?></button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
-<div class="form-card"><h3>🧾 Log thay đổi cấu hình</h3><table><tr><th>ID</th><th>Admin</th><th><?= h(_t('key')) ?></th><th>Old</th><th>New</th><th>Time</th></tr><?php foreach($logs as $l): ?><tr><td><?=$l['id']?></td><td><?=htmlspecialchars($l['admin'])?></td><td class="mono"><?=htmlspecialchars($l['config_key'])?></td><td><?=htmlspecialchars($l['old_value'] ?? '')?></td><td><?=htmlspecialchars($l['new_value'] ?? '')?></td><td class="mono"><?=htmlspecialchars($l['created_at'])?></td></tr><?php endforeach; if(!$logs): ?><tr><td colspan="6"><p>Chưa có log.</p></td></tr><?php endif; ?></table></div>
+<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
+<div class="form-card"><h3>🧾 Log thay đổi cấu hình</h3><table><tr><th>ID</th><th>Admin</th><th>Key</th><th>Old</th><th>New</th><th>Time</th></tr><?php foreach($logs as $l): ?><tr><td><?=$l['id']?></td><td><?=htmlspecialchars($l['admin'])?></td><td class="mono"><?=htmlspecialchars($l['config_key'])?></td><td><?=htmlspecialchars($l['old_value'] ?? '')?></td><td><?=htmlspecialchars($l['new_value'] ?? '')?></td><td class="mono"><?=htmlspecialchars($l['created_at'])?></td></tr><?php endforeach; if(!$logs): ?><tr><td colspan="6"><p>Chưa có log.</p></td></tr><?php endif; ?></table></div>
 
 <?php elseif($tab==='setup'): ?>
 <h1>🧭 Setup/API & Cấu hình hệ thống</h1>
@@ -2026,7 +1953,7 @@ $users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id
 ?>
 <div style="max-width:100%;overflow-x:auto">
 <table>
-<tr><th>ID</th><th><?= h(_t('telegram')) ?></th><th><?= h(_t('vai_tro')) ?></th><th><?= h(_t('giam_gia')) ?></th><th><?= h(_t('keys')) ?></th><th><?= h(_t('don')) ?></th><th><?= h(_t('luu')) ?></th></tr>
+<tr><th>ID</th><th>Telegram</th><th>Vai trò</th><th>Giảm giá</th><th>Keys</th><th>Đơn</th><th>Lưu</th></tr>
 <?php foreach($users as $u): ?>
 <tr>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="user_update"><input type="hidden" name="uid" value="<?=$u['id']?>">

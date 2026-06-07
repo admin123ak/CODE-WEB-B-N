@@ -385,9 +385,20 @@ function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_titl
     </div>
     <script>
     function copyKey(k){
+      function fallback(){
+        try{
+          var ta=document.createElement('textarea');
+          ta.value=k; ta.style.position='fixed'; ta.style.top='0'; ta.style.left='0'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          ta.setSelectionRange(0, k.length);
+          var ok=document.execCommand('copy');
+          document.body.removeChild(ta);
+          if(ok){ alert(<?= $jsCopied ?>); } else { prompt(<?= $jsPrompt ?>,k); }
+        }catch(e){ prompt(<?= $jsPrompt ?>,k); }
+      }
       if(navigator.clipboard&&navigator.clipboard.writeText){
-        navigator.clipboard.writeText(k).then(function(){alert(<?= $jsCopied ?>)}).catch(function(){prompt(<?= $jsPrompt ?>,k)});
-      } else { prompt(<?= $jsPrompt ?>,k); }
+        navigator.clipboard.writeText(k).then(function(){alert(<?= $jsCopied ?>)}).catch(fallback);
+      } else { fallback(); }
     }
     </script>
     <?php
@@ -474,7 +485,7 @@ $today  = date('Y-m-d');
 // để header('Location:') không bị "headers already sent".
 // =============================================
 
-// === POST: build short_url 2 lớp → 302 redirect ===
+// === POST: build short_url → 302 redirect ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $fk && $fk['is_active'] && strtotime($fk['expire_at']) >= time()) {
     // IP đã có key hôm nay → bỏ qua shortlink, redirect về trang gốc để hiện key cũ
     $chk = $db->prepare("SELECT id FROM free_key_web_claims WHERE ip_hash = ? AND claim_date = ? LIMIT 1");
@@ -484,23 +495,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $fk && $fk['is_active'] && strtotim
         exit;
     }
 
-    // Build/lấy short_url. Target = getkey.php?t=token
-    $shortUrl = $fk['short_url'] ?? null;
-    if (!$shortUrl) {
-        $target = SITE_URL . '/getkey.php?t=' . urlencode($fk['claim_token']);
-        try {
-            $shortUrl = buildFreeShortlink($target);
-            $db->prepare("UPDATE free_keys SET short_url = ? WHERE id = ?")->execute([$shortUrl, $fk['id']]);
-        } catch (Exception $e) {
-            error_log('[GETKEY_SHORT] ' . $e->getMessage());
-            // Không thoát ngay — để fall qua render error page bên dưới
-            $renderError = true;
-        }
+    // Toggle admin: nếu GETKEY_REQUIRE_LINK tắt → bỏ vượt link, vào thẳng claim hiện key
+    $requireLink = !defined('GETKEY_REQUIRE_LINK') || GETKEY_REQUIRE_LINK;
+    if (!$requireLink) {
+        header('Location: ' . SITE_URL . '/getkey.php?t=' . urlencode($fk['claim_token']));
+        exit;
+    }
+
+    // FIX 2-lớp: KHÔNG dùng short_url cache cũ (có thể là 1 lớp từ lần trước).
+    // Luôn build lại theo FREE_SHORTLINK_LAYERS hiện tại để đúng số lớp admin chọn.
+    $target = SITE_URL . '/getkey.php?t=' . urlencode($fk['claim_token']);
+    try {
+        $shortUrl = buildFreeShortlink($target);
+        $db->prepare("UPDATE free_keys SET short_url = ? WHERE id = ?")->execute([$shortUrl, $fk['id']]);
+    } catch (Exception $e) {
+        error_log('[GETKEY_SHORT] ' . $e->getMessage());
+        $shortUrl = $fk['short_url'] ?? null; // fallback link cũ nếu API lỗi
     }
     if (!empty($shortUrl)) {
         header('Location: ' . $shortUrl);
         exit;
     }
+    $renderError = true;
 }
 
 // === GET ?t=: user vừa vượt 2 lớp về → claim atomic, lưu state để render ===

@@ -496,12 +496,20 @@ function updateQtyDisplay(){
 function updPlayBtn(){
   var btn=document.getElementById('playBtn');
   if(!btn)return;
-  if(selGame&&selGame.package_name){ btn.classList.remove('disabled'); }
+  // Bật nếu có play_url tuỳ chỉnh HOẶC package_name (fallback CH Play)
+  if(selGame&&(selGame.play_url||selGame.package_name)){ btn.classList.remove('disabled'); }
   else { btn.classList.add('disabled'); }
 }
 function openPlayLink(){
-  if(!selGame||!selGame.package_name){ toast(T.chonGameTruoc,'error'); return; }
-  window.open(PLAY_BASE+encodeURIComponent(selGame.package_name),'_blank');
+  if(!selGame){ toast(T.chonGameTruoc,'error'); return; }
+  // Ưu tiên play_url tuỳ chỉnh (mỗi game/bản 1 link riêng), fallback CH Play
+  var url=selGame.play_url || (selGame.package_name?PLAY_BASE+encodeURIComponent(selGame.package_name):'');
+  if(!url){ toast(T.chonGameTruoc,'error'); return; }
+  try{
+    if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){
+      window.Telegram.WebApp.openLink(url);
+    } else { window.open(url,'_blank'); }
+  }catch(e){ window.open(url,'_blank'); }
 }
 function updDlBtn(){
   var btn=document.getElementById('dlBtn');
