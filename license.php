@@ -14,11 +14,11 @@
 // --- Cấu hình nhúng cứng (obfuscate nhẹ để khó sửa nhanh) ---
 // LICENSE_SERVER_URL: đổi sang domain license server thật của bạn.
 if (!defined('LICENSE_SERVER_URL')) {
-    define('LICENSE_SERVER_URL', base64_decode('aHR0cHM6Ly9saWNlbnNlLnRyYW52YW5ob2FuZy5jb20=')); // https://license.tranvanhoang.com
+    define('LICENSE_SERVER_URL', base64_decode('aHR0cHM6Ly90ZWFtY3JhY2subGlua3BjLm5ldA==')); // https://teamcrack.linkpc.net
 }
 // LICENSE_PUBLIC_SECRET: PHẢI khớp LS_SIGNING_SECRET trên license server.
 if (!defined('LICENSE_PUBLIC_SECRET')) {
-    define('LICENSE_PUBLIC_SECRET', 'CHANGE_ME_must_match_server_LS_SIGNING_SECRET');
+    define('LICENSE_PUBLIC_SECRET', 'fbefa6242e8fc94fcfeac66ba363280d8d68594b35b50ae538062a0090358f42');
 }
 
 if (!function_exists('hclou_lic_cache_path')) {
