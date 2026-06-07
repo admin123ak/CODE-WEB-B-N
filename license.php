@@ -97,8 +97,8 @@ if (!function_exists('hclou_license_write_key')) {
 
 // Trang nhập license (khi chưa có key). Xử lý POST → verify → lưu → reload.
 if (!function_exists('hclou_license_activate')) {
-    function hclou_license_activate($domain, $ip, $ver) {
-        $err = '';
+    function hclou_license_activate($domain, $ip, $ver, $presetErr = '') {
+        $err = $presetErr;
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_key'])) {
             $newKey = trim($_POST['activate_key']);
             $newUrl = trim($_POST['activate_url'] ?? '');
@@ -182,9 +182,10 @@ if (!function_exists('hclou_license_gate')) {
         $now = time();
         $cache = is_file($cacheFile) ? json_decode((string)@file_get_contents($cacheFile), true) : null;
 
-        // 1) Cache còn tươi (<24h) + hợp lệ → pass ngay (đỡ gọi server mỗi request)
+        // 1) Cache còn tươi (<3h) + hợp lệ → pass ngay (đỡ gọi server mỗi request).
+        //    Để 3h: nếu admin xoá/khoá license thì client phát hiện trong ~3 tiếng.
         if (is_array($cache) && !empty($cache['valid']) && !empty($cache['checked_at'])
-            && ($now - (int)$cache['checked_at'] < 86400)
+            && ($now - (int)$cache['checked_at'] < 3 * 3600)
             && !empty($cache['unlock'])) {
             define('HCLOU_LICENSE_OK', $cache['unlock']);
             return;
@@ -196,9 +197,15 @@ if (!function_exists('hclou_license_gate')) {
         ]);
 
         if ($resp !== null && is_array($resp)) {
-            if (!hclou_lic_verify_sig($resp)) hclou_license_die('bad_sig');
+            if (!hclou_lic_verify_sig($resp)) {
+                if (php_sapi_name() !== 'cli') hclou_license_activate($domain, $ip, $ver, 'Sai secret giữa client và server. Kiểm tra LICENSE_PUBLIC_SECRET / URL server.');
+                hclou_license_die('bad_sig');
+            }
             if (empty($resp['valid'])) {
                 @unlink($cacheFile);
+                $emap = ['not_found'=>'Key không tồn tại','suspended'=>'Key đã bị khoá','expired'=>'Key đã hết hạn','domain_limit'=>'Vượt số domain cho phép','empty_key'=>'Chưa nhập key'];
+                $emsg = $emap[$resp['reason'] ?? ''] ?? 'License không hợp lệ.';
+                if (php_sapi_name() !== 'cli') hclou_license_activate($domain, $ip, $ver, $emsg);
                 hclou_license_die($resp['reason'] ?? 'invalid');
             }
             // Hợp lệ → derive unlock từ sig (không hard-code được)
@@ -223,11 +230,11 @@ if (!function_exists('hclou_license_gate')) {
             return;
         }
 
+        // Server chết + không có cache hợp lệ → web cho nhập lại / sửa URL, CLI thì die
+        if (php_sapi_name() !== 'cli') hclou_license_activate($domain, $ip, $ver, 'Không kết nối được license server. Kiểm tra URL hoặc thử lại.');
         hclou_license_die('offline');
     }
 }
-
-// HTTP POST tới license server, trả mảng JSON hoặc null
 if (!function_exists('hclou_lic_http')) {
     function hclou_lic_http($url, array $params) {
         if (!function_exists('curl_init')) return null;

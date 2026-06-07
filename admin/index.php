@@ -764,6 +764,18 @@ table{width:100%;border-collapse:separate;border-spacing:0;background:var(--pane
 </div>
 
 <div class="main-content">
+<?php
+// Banner báo có bản cập nhật (hiện mọi tab trừ tab update)
+if ($tab !== 'update') {
+    $_uLic = @json_decode((string)@file_get_contents(APP_ROOT.'/data/.lic'), true);
+    $_uCur = @json_decode((string)@file_get_contents(APP_ROOT.'/version.json'), true)['version'] ?? '1.0.0';
+    if (is_array($_uLic) && !empty($_uLic['latest']) && version_compare($_uLic['latest'], $_uCur, '>')):
+?>
+<div class="alert" style="background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(251,191,36,.08));border:1px solid rgba(245,158,11,.4);color:#fde68a;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <span>🎉 Có bản cập nhật mới <b>v<?=h($_uLic['latest'])?></b> (đang dùng v<?=h($_uCur)?>)</span>
+  <a href="?tab=update" class="btn btn-blue" style="text-decoration:none">🔄 Cập nhật ngay</a>
+</div>
+<?php endif; } ?>
 <?php if(isset($_GET['ok'])): ?><div class="alert alert-green">✅ Thao tác thành công!</div><?php endif ?>
 <?php if(isset($_GET['err'])): ?><div class="alert" style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#fca5a5">⚠️ <?=htmlspecialchars($_GET['err'])?></div><?php endif ?>
 
