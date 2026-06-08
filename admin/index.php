@@ -1319,7 +1319,7 @@ table img[alt]{box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid var(--lx-lin
 
 <!-- Topbar -->
 <div class="topbar">
-  <button class="hamburger" id="menuBtn" type="button" aria-label="Menu">
+  <button class="hamburger" id="menuBtn" type="button" aria-label="Menu" onclick="toggleNav()">
     <span></span><span></span><span></span>
   </button>
   <div class="topbar-logo">⚡ <span class="blue"><?= h(SITE_NAME) ?></span></div>
@@ -1327,7 +1327,14 @@ table img[alt]{box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid var(--lx-lin
 </div>
 
 <!-- Overlay -->
-<div class="nav-overlay" id="navOverlay"></div>
+<div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
+
+<!-- Nav JS định nghĩa SỚM (trước nội dung tab) để nếu tab có lỗi PHP, nút vẫn mở được -->
+<script>
+function openNav(){var s=document.getElementById('sidebarNav'),o=document.getElementById('navOverlay'),b=document.getElementById('menuBtn');if(s)s.classList.add('open');if(o)o.classList.add('show');if(b)b.classList.add('open');}
+function closeNav(){var s=document.getElementById('sidebarNav'),o=document.getElementById('navOverlay'),b=document.getElementById('menuBtn');if(s)s.classList.remove('open');if(o)o.classList.remove('show');if(b)b.classList.remove('open');}
+function toggleNav(){var s=document.getElementById('sidebarNav');if(!s)return;if(s.classList.contains('open'))closeNav();else openNav();}
+</script>
 
 <!-- Sidebar Nav -->
 <div class="sidebar-nav" id="sidebarNav">
@@ -2883,32 +2890,9 @@ $users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id
 <footer class="admin-footer">Copyright by HCLOU Server · Telegram @hcloucom · Địa chỉ: Thành phố Quảng Ngãi</footer>
 
 <script>
-/* ===== Sidebar nav: state tường minh, bind chắc chắn (fix lúc mở lúc không) ===== */
-function _navEls(){ return {
-  s:document.getElementById('sidebarNav'),
-  o:document.getElementById('navOverlay'),
-  b:document.getElementById('menuBtn')
-};}
-function openNav(){ var e=_navEls(); if(!e.s)return; e.s.classList.add('open'); if(e.o)e.o.classList.add('show'); if(e.b)e.b.classList.add('open'); }
-function closeNav(){ var e=_navEls(); if(!e.s)return; e.s.classList.remove('open'); if(e.o)e.o.classList.remove('show'); if(e.b)e.b.classList.remove('open'); }
-function toggleNav(){ var s=document.getElementById('sidebarNav'); if(!s)return; if(s.classList.contains('open'))closeNav(); else openNav(); }
+/* ===== Sidebar nav: bind thêm (openNav/closeNav/toggleNav đã định nghĩa sớm ở topbar) ===== */
 (function(){
   function bind(){
-    var b=document.getElementById('menuBtn'), o=document.getElementById('navOverlay');
-    if(b && !b._navBound){
-      b._navBound=1;
-      var _last=0;
-      function fire(ev){
-        ev.preventDefault(); ev.stopPropagation();
-        var now=Date.now();
-        if(now-_last<350)return;  // chống double-fire (touchend + click cùng 1 chạm)
-        _last=now;
-        toggleNav();
-      }
-      b.addEventListener('touchend',fire,{passive:false});
-      b.addEventListener('click',fire);
-    }
-    if(o && !o._navBound){ o._navBound=1; o.addEventListener('click',closeNav); }
     // Đóng nav khi bấm vào 1 mục (điều hướng) — tránh kẹt trạng thái open
     document.querySelectorAll('#sidebarNav .nav-item').forEach(function(a){
       if(a._navBound)return; a._navBound=1;
