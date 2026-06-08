@@ -749,6 +749,24 @@ $stats = [
     'keys_available' => $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")->fetchColumn(),
     'keys_total' => $db->query("SELECT COUNT(*) FROM `keys`")->fetchColumn(),
 ];
+// Số liệu bổ sung cho dashboard (chỉ tính khi mở tab dashboard để đỡ tốn query)
+if (($_GET['tab'] ?? 'dashboard') === 'dashboard') {
+    $stats['revenue_today']  = (int)($db->query("SELECT SUM(amount) FROM orders WHERE status='approved' AND DATE(approved_at)=CURDATE()")->fetchColumn() ?? 0);
+    $stats['orders_today']   = (int)$db->query("SELECT COUNT(*) FROM orders WHERE DATE(created_at)=CURDATE()")->fetchColumn();
+    $stats['users_today']    = (int)$db->query("SELECT COUNT(*) FROM users WHERE DATE(created_at)=CURDATE()")->fetchColumn();
+    $stats['games_active']   = (int)$db->query("SELECT COUNT(*) FROM games WHERE is_active=1")->fetchColumn();
+    // Doanh thu 7 ngày gần nhất (cho sparkline)
+    $rev7 = array_fill(0, 7, 0);
+    $rows = $db->query("SELECT DATE(approved_at) d, SUM(amount) s FROM orders WHERE status='approved' AND approved_at>=DATE_SUB(CURDATE(),INTERVAL 6 DAY) GROUP BY DATE(approved_at)")->fetchAll(PDO::FETCH_KEY_PAIR);
+    for ($i = 0; $i < 7; $i++) {
+        $d = date('Y-m-d', strtotime('-' . (6 - $i) . ' day'));
+        $rev7[$i] = (int)($rows[$d] ?? 0);
+    }
+    $stats['rev7'] = $rev7;
+    // Tỉ lệ duyệt
+    $totalOrders = (int)$db->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+    $stats['approve_rate'] = $totalOrders > 0 ? round($stats['orders_approved'] / $totalOrders * 100) : 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -1161,6 +1179,104 @@ body > form.card button:hover{filter:brightness(1.08);transform:translateY(-1px)
   .filters{flex-direction:column;align-items:stretch}
   .filters input,.filters select,.filters .btn{width:100%!important;min-width:0}
 }
+
+/* ============================================================
+   ✦ DASHBOARD PRO — hero + KPI + section
+   ============================================================ */
+/* Hero: doanh thu + biểu đồ */
+.dash-hero{
+  display:grid;grid-template-columns:1.1fr 1fr;gap:18px;margin-bottom:22px;
+}
+.dash-hero-main,.dash-hero-chart{
+  position:relative;overflow:hidden;border-radius:var(--lx-radius-lg);
+  border:1px solid var(--lx-line);padding:24px 26px;
+  background:linear-gradient(155deg,rgba(26,36,58,.9),rgba(14,20,34,.82));
+  box-shadow:var(--lx-glow);animation:lxFade .45s cubic-bezier(.4,0,.2,1) both;
+}
+.dash-hero-main:before{
+  content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;
+  background:radial-gradient(circle,rgba(99,102,241,.28),transparent 70%);
+}
+.dh-label{color:var(--lx-muted);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;position:relative}
+.dh-value{font-family:'Plus Jakarta Sans',sans-serif;font-size:38px;font-weight:800;letter-spacing:-.03em;margin:8px 0 12px;color:#fff;position:relative;line-height:1}
+.dh-value .dh-unit{font-size:20px;color:var(--lx-gold);margin-left:6px;font-weight:700}
+.dh-sub{display:flex;gap:8px;flex-wrap:wrap;position:relative}
+.dh-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--lx-line2);color:#cbd9ef}
+.dh-chip.up{background:rgba(52,211,153,.13);border-color:rgba(52,211,153,.3);color:#6ee7b7}
+.dash-hero-chart{display:flex;flex-direction:column;justify-content:center}
+.dhc-title{color:var(--lx-muted);font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
+.spark{width:100%;height:64px;display:block;overflow:visible}
+.dhc-days{display:flex;justify-content:space-between;margin-top:8px}
+.dhc-days span{font-size:9.5px;color:#5f7390;font-weight:600}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px;margin-bottom:26px}
+.kpi{
+  position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;
+  padding:17px 18px;border-radius:18px;border:1px solid var(--lx-line);
+  background:linear-gradient(150deg,rgba(24,33,54,.85),rgba(14,20,34,.78));
+  box-shadow:var(--lx-glow);transition:.25s cubic-bezier(.4,0,.2,1);
+  animation:lxFade .4s cubic-bezier(.4,0,.2,1) both;
+}
+.kpi:hover{transform:translateY(-3px);border-color:var(--lx-line2);box-shadow:0 26px 60px -20px rgba(0,0,0,.8)}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--c),var(--c2));box-shadow:0 0 16px var(--c)}
+.kpi-ico{
+  width:46px;height:46px;flex:0 0 46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;
+  background:rgba(255,255,255,.06); /* fallback máy cũ */
+  background:linear-gradient(140deg,color-mix(in srgb,var(--c) 22%,transparent),color-mix(in srgb,var(--c) 6%,transparent));
+  border:1px solid rgba(255,255,255,.12);
+  border:1px solid color-mix(in srgb,var(--c) 30%,transparent);
+}
+.kpi-body{min-width:0;flex:1}
+.kpi-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:25px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff}
+.kpi-lbl{font-size:11.5px;color:var(--lx-muted);font-weight:600;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-meta{margin-left:auto;font-size:11px;font-weight:800;color:var(--c);background:rgba(255,255,255,.08);background:color-mix(in srgb,var(--c) 14%,transparent);padding:3px 8px;border-radius:8px;white-space:nowrap}
+.kpi-meta.up{color:#6ee7b7;background:rgba(52,211,153,.14)}
+
+/* Section head (tiêu đề + count + link) */
+.dash-section-head{display:flex;align-items:center;gap:11px;margin:24px 0 14px}
+.dash-section-head h2{font-size:16px!important}
+.sec-count{background:linear-gradient(135deg,#f43f5e,#fb7185);color:#fff;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;box-shadow:0 2px 8px rgba(244,63,94,.4)}
+.sec-link{margin-left:auto;font-size:12px;font-weight:700;color:var(--lx-cyan)!important;text-decoration:none!important;padding:5px 12px;border-radius:9px;border:1px solid var(--lx-line2);transition:.18s}
+.sec-link:hover{background:rgba(62,214,224,.1);border-color:var(--lx-cyan)}
+
+/* Empty state đẹp */
+.dash-empty{text-align:center;padding:44px 20px;border:1px dashed var(--lx-line2);border-radius:var(--lx-radius);background:rgba(16,23,40,.4)}
+.dash-empty .de-ico{font-size:46px;margin-bottom:10px}
+.dash-empty .de-txt{font-size:16px;font-weight:800;color:#dbe6f5;font-family:'Plus Jakarta Sans',sans-serif}
+.dash-empty .de-sub{font-size:12.5px;color:var(--lx-muted);margin-top:5px}
+
+/* Mobile dashboard */
+@media(max-width:760px){
+  .dash-hero{grid-template-columns:1fr;gap:13px}
+  .dh-value{font-size:32px}
+  .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+  .kpi{padding:14px;gap:11px}
+  .kpi-ico{width:40px;height:40px;flex-basis:40px;font-size:18px}
+  .kpi-num{font-size:21px}
+}
+@media(max-width:420px){
+  .kpi-grid{grid-template-columns:1fr}
+}
+
+/* ============================================================
+   ✦ BẢNG GAMES/GÓI gọn lại — chống rối khi nhiều dòng
+   ============================================================ */
+/* Bảng edit-inline: cho cuộn ngang mượt, ô input gọn, không vỡ hàng */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--lx-radius);margin-bottom:18px}
+.tbl-scroll table{margin:0;min-width:920px}
+.tbl-scroll::-webkit-scrollbar{height:8px}
+/* Input trong bảng: chiều cao thấp hơn, gọn */
+table input,table select{height:36px!important;font-size:12.5px!important;padding:0 10px!important;border-radius:9px!important}
+table input[type=file]{height:auto!important;padding:6px 8px!important;font-size:11px!important}
+table td{vertical-align:middle}
+/* Mỗi dòng game: nền xen kẽ nhẹ cho dễ đọc */
+table tr:nth-child(even) td{background:rgba(255,255,255,.012)}
+table tr:hover td{background:rgba(99,102,241,.07)!important}
+/* Nhóm nút trong 1 ô: bọc flex gọn */
+td:last-child{white-space:nowrap}
+/* Icon game tròn đẹp */
+table img[alt]{box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid var(--lx-line2)}
 </style>
 </head>
 <body>
@@ -1243,17 +1359,101 @@ if ($tab !== 'update') {
 
 <?php if($tab==='dashboard'): ?>
 <h1>📊 Dashboard</h1>
-<div class="stats-grid">
-  <div class="stat-card"><span class="stat-icon">👥</span><div class="stat-val blue"><?=$stats['users']?></div><div class="stat-label">Người dùng</div></div>
-  <div class="stat-card"><span class="stat-icon">🛒</span><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">Chờ thanh toán</div></div>
-  <div class="stat-card"><span class="stat-icon">✅</span><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">Đơn thành công</div></div>
-  <div class="stat-card"><span class="stat-icon">💰</span><div class="stat-val green" style="font-size:24px"><?=number_format($stats['revenue'],0,',','.')?><small style="font-size:14px;opacity:.7"> đ</small></div><div class="stat-label">Doanh thu</div></div>
-  <div class="stat-card"><span class="stat-icon">📦</span><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">Key trong pool</div></div>
-  <div class="stat-card"><span class="stat-icon">🔑</span><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">Key đang active</div></div>
-  <div class="stat-card"><span class="stat-icon">🗝️</span><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">Tổng keys</div></div>
+
+<?php
+// ----- Sparkline doanh thu 7 ngày -----
+$rev7 = $stats['rev7'] ?? array_fill(0,7,0);
+$rmax = max($rev7); $rmax = $rmax > 0 ? $rmax : 1;
+$spW = 260; $spH = 56; $n = count($rev7); $step = $spW / max(1,$n-1);
+$pts = [];
+foreach ($rev7 as $i => $v) {
+    $x = round($i * $step, 1);
+    $y = round($spH - ($v / $rmax) * ($spH - 8) - 4, 1);
+    $pts[] = "$x,$y";
+}
+$polyline = implode(' ', $pts);
+$areaPath = "M0,$spH L" . implode(' L', $pts) . " L$spW,$spH Z";
+?>
+
+<!-- ===== Hero: Doanh thu + biểu đồ 7 ngày ===== -->
+<div class="dash-hero">
+  <div class="dash-hero-main">
+    <div class="dh-label">💰 Tổng doanh thu</div>
+    <div class="dh-value"><?=number_format($stats['revenue'],0,',','.')?><span class="dh-unit">đ</span></div>
+    <div class="dh-sub">
+      <span class="dh-chip up">+<?=number_format($stats['revenue_today']??0,0,',','.')?>đ hôm nay</span>
+      <span class="dh-chip"><?=$stats['orders_today']??0?> đơn hôm nay</span>
+    </div>
+  </div>
+  <div class="dash-hero-chart">
+    <div class="dhc-title">Doanh thu 7 ngày</div>
+    <svg viewBox="0 0 <?=$spW?> <?=$spH?>" preserveAspectRatio="none" class="spark">
+      <defs>
+        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(99,102,241,.45)"/>
+          <stop offset="100%" stop-color="rgba(99,102,241,0)"/>
+        </linearGradient>
+        <linearGradient id="sparkLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#6366f1"/>
+          <stop offset="100%" stop-color="#22d3ee"/>
+        </linearGradient>
+      </defs>
+      <path d="<?=$areaPath?>" fill="url(#sparkFill)"/>
+      <polyline points="<?=$polyline?>" fill="none" stroke="url(#sparkLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <?php foreach($pts as $i=>$pt){ [$px,$py]=explode(',',$pt); ?>
+      <circle cx="<?=$px?>" cy="<?=$py?>" r="<?= $i===count($pts)-1 ? 3.5 : 2 ?>" fill="<?= $i===count($pts)-1 ? '#22d3ee' : '#6366f1' ?>"/>
+      <?php } ?>
+    </svg>
+    <div class="dhc-days">
+      <?php for($i=6;$i>=0;$i--): ?><span><?=date('d/m',strtotime("-$i day"))?></span><?php endfor ?>
+    </div>
+  </div>
 </div>
 
-<h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
+<!-- ===== KPI grid ===== -->
+<div class="kpi-grid">
+  <div class="kpi" style="--c:#fbbf24;--c2:#f59e0b">
+    <div class="kpi-ico">🛒</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['orders_pending']?></div><div class="kpi-lbl">Chờ thanh toán</div></div>
+  </div>
+  <div class="kpi" style="--c:#34d399;--c2:#10b981">
+    <div class="kpi-ico">✅</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['orders_approved']?></div><div class="kpi-lbl">Đơn thành công</div></div>
+    <div class="kpi-meta"><?=$stats['approve_rate']??0?>%</div>
+  </div>
+  <div class="kpi" style="--c:#5b9dff;--c2:#3b82f6">
+    <div class="kpi-ico">👥</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['users']?></div><div class="kpi-lbl">Người dùng</div></div>
+    <?php if(($stats['users_today']??0)>0):?><div class="kpi-meta up">+<?=$stats['users_today']?></div><?php endif?>
+  </div>
+  <div class="kpi" style="--c:#a78bfa;--c2:#8b5cf6">
+    <div class="kpi-ico">🎮</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['games_active']??0?></div><div class="kpi-lbl">Game đang bán</div></div>
+  </div>
+  <div class="kpi" style="--c:#34d399;--c2:#059669">
+    <div class="kpi-ico">📦</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['keys_available']?></div><div class="kpi-lbl">Key trong pool</div></div>
+  </div>
+  <div class="kpi" style="--c:#5b9dff;--c2:#06b6d4">
+    <div class="kpi-ico">🔑</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['keys_active']?></div><div class="kpi-lbl">Key đang active</div></div>
+  </div>
+  <div class="kpi" style="--c:#94a3b8;--c2:#64748b">
+    <div class="kpi-ico">🗝️</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['keys_total']?></div><div class="kpi-lbl">Tổng keys</div></div>
+  </div>
+  <div class="kpi" style="--c:#fbbf24;--c2:#d97706">
+    <div class="kpi-ico">📈</div>
+    <div class="kpi-body"><div class="kpi-num"><?=$stats['orders_today']??0?></div><div class="kpi-lbl">Đơn hôm nay</div></div>
+  </div>
+</div>
+
+<!-- ===== Đơn chờ thanh toán ===== -->
+<div class="dash-section-head">
+  <h2 style="margin:0;border:0;padding:0">🛒 Đơn chờ thanh toán</h2>
+  <?php $pendCount = (int)$stats['orders_pending']; if($pendCount>0):?><span class="sec-count"><?=$pendCount?></span><?php endif?>
+  <a href="?tab=orders" class="sec-link">Xem tất cả →</a>
+</div>
 <?php
 $pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,COALESCE(p.hours,0) as hours,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
 if($pending): ?>
@@ -1274,7 +1474,9 @@ if($pending): ?>
 </tr>
 <?php endforeach ?>
 </table>
-<?php else: ?><p style="color:#8b949e">Không có đơn nào chờ thanh toán ✅</p><?php endif ?>
+<?php else: ?>
+<div class="dash-empty"><div class="de-ico">🎉</div><div class="de-txt">Không có đơn nào chờ thanh toán</div><div class="de-sub">Tất cả đơn đã được xử lý xong</div></div>
+<?php endif ?>
 
 <?php elseif($tab==='orders'): ?>
 <h1>🛒 Quản lý đơn hàng</h1>
@@ -1710,6 +1912,8 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </form>
 </div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
+<p style="color:var(--lx-muted);font-size:12.5px;margin-bottom:10px">📋 Tổng <b style="color:#7db3ff"><?=count($games)?></b> game · vuốt ngang để xem hết cột</p>
+<div class="tbl-scroll">
 <table>
 <tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Link tải</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
 <?php foreach($games as $g): ?>
@@ -1734,6 +1938,7 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 </tr>
 <?php endforeach ?>
 </table>
+</div>
 
 <?php elseif($tab==='packages'): ?>
 <h1>📦 Quản lý Gói cước</h1>
