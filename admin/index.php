@@ -661,8 +661,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $za->close();
             @unlink($zipPath);
 
-            logInfo('Admin auto-update', ['extracted' => $extracted]);
-            header("Location: ?tab=update&ok=updated&n=" . $extracted); exit;
+            // 5. Cập nhật version.json = latest_version từ server (để hết báo "cần update")
+            $newVer = '';
+            if (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL')) {
+                $cu = rtrim(LICENSE_SERVER_URL,'/').'/api.php?action=check_update&license_key='.urlencode(LICENSE_KEY).'&current_version=0';
+                $ch=curl_init($cu); curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>8,CURLOPT_SSL_VERIFYPEER=>false,CURLOPT_SSL_VERIFYHOST=>0]);
+                $rr=@json_decode((string)curl_exec($ch),true); curl_close($ch);
+                if(is_array($rr) && !empty($rr['latest_version'])) $newVer = $rr['latest_version'];
+            }
+            if ($newVer !== '') {
+                @file_put_contents(APP_ROOT.'/version.json', json_encode(['version'=>$newVer]));
+            }
+            // Xóa cache .lic để badge/banner cập nhật lại ngay (latest đã = current)
+            @unlink(APP_ROOT.'/data/.lic');
+
+            logInfo('Admin auto-update', ['extracted' => $extracted, 'version' => $newVer]);
+            header("Location: ?tab=update&ok=updated&n=" . $extracted . "&v=" . urlencode($newVer)); exit;
         } catch (Throwable $e) {
             header("Location: ?tab=update&err=" . urlencode('Update lỗi: ' . $e->getMessage())); exit;
         }
@@ -2035,7 +2049,7 @@ if (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL'
 }
 ?>
 <?php if(isset($_GET['ok']) && $_GET['ok']==='updated'): ?>
-<div class="okbox">✅ Cập nhật thành công! Đã ghi <?=(int)($_GET['n']??0)?> file. <b>Tải lại trang</b> để dùng bản mới.</div>
+<div class="okbox">✅ Cập nhật thành công lên <b>v<?=h($_GET['v'] ?? '')?></b>! Đã ghi <?=(int)($_GET['n']??0)?> file. <b>Tải lại trang</b> để dùng bản mới.</div>
 <?php endif; ?>
 <div class="form-card">
   <h3>Phiên bản</h3>
@@ -2112,6 +2126,30 @@ function closeNav(){
   document.getElementById('navOverlay').classList.remove('show');
   document.getElementById('menuBtn').classList.remove('open');
 }
+function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; try{sessionStorage.setItem('upd_dismiss','1')}catch(e){} } }
 </script>
+
+<?php
+// Modal thông báo cập nhật (hiện 1 lần/phiên, mọi tab trừ tab update)
+if ($tab !== 'update') {
+    $_mLic = @json_decode((string)@file_get_contents(APP_ROOT.'/data/.lic'), true);
+    $_mCur = @json_decode((string)@file_get_contents(APP_ROOT.'/version.json'), true)['version'] ?? '1.0.0';
+    if (is_array($_mLic) && !empty($_mLic['latest']) && version_compare($_mLic['latest'], $_mCur, '>')):
+?>
+<div id="updModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:400px;width:100%;background:#161b22;border:1px solid #30363d;border-radius:18px;padding:28px;text-align:center">
+    <div style="font-size:46px;margin-bottom:10px">🎉</div>
+    <h2 style="font-size:19px;margin-bottom:8px;color:#fde68a">Có bản cập nhật mới!</h2>
+    <p style="color:#9fb2cf;font-size:14px;line-height:1.6;margin-bottom:20px">Phiên bản <b style="color:#4ade80">v<?=h($_mLic['latest'])?></b> đã sẵn sàng.<br>Bạn đang dùng v<?=h($_mCur)?>.</p>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeUpdModal()" style="flex:1;padding:12px;border:1px solid #30363d;border-radius:11px;background:transparent;color:#9fb2cf;font-weight:700;cursor:pointer;font-size:14px">Để sau</button>
+      <a href="?tab=update" style="flex:1;padding:12px;border-radius:11px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;font-weight:800;text-decoration:none;font-size:14px;display:flex;align-items:center;justify-content:center">🔄 Cập nhật ngay</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){ try{ if(!sessionStorage.getItem('upd_dismiss')){ document.getElementById('updModal').style.display='flex'; } }catch(e){ document.getElementById('updModal').style.display='flex'; } })();
+</script>
+<?php endif; } ?>
 </body>
 </html>
