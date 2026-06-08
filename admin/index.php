@@ -854,14 +854,20 @@ td form{margin:0}
 }
 body{
   font-family:'Inter','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  background:var(--lx-bg0)!important;
+  color:var(--lx-text)!important;
+  -webkit-font-smoothing:antialiased;letter-spacing:.01em;
+  position:relative;
+}
+/* Nền gradient tách ra pseudo-element fixed -> cuộn mượt trên mobile,
+   KHÔNG dùng background-attachment:fixed (gây kẹt scroll trên iOS/Android) */
+body:after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:
     radial-gradient(1100px 620px at 78% -8%,rgba(99,102,241,.16),transparent 60%),
     radial-gradient(900px 540px at 8% 8%,rgba(34,211,238,.10),transparent 55%),
     radial-gradient(700px 700px at 95% 100%,rgba(167,139,250,.10),transparent 60%),
-    linear-gradient(180deg,var(--lx-bg0),var(--lx-bg1) 45%,var(--lx-bg0))!important;
-  background-attachment:fixed!important;
-  color:var(--lx-text)!important;
-  -webkit-font-smoothing:antialiased;letter-spacing:.01em;
+    linear-gradient(180deg,var(--lx-bg0),var(--lx-bg1) 45%,var(--lx-bg0));
 }
 
 /* ---------- Topbar: glass + viền sáng ---------- */
@@ -1046,6 +1052,16 @@ select option{background:#0c1322!important}
 
 /* Giảm tải hiệu ứng cho máy yếu */
 @media(prefers-reduced-motion:reduce){.stat-card,.form-card,table,.guide-card{animation:none!important}}
+
+/* Mobile: tắt backdrop-filter (gây giật/kẹt scroll) + giảm animation */
+@media(max-width:768px){
+  .form-card,table,.stat-card,.sidebar-nav,th{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .form-card{background:linear-gradient(180deg,#141c2e,#0e1422)!important}
+  table{background:#121a2c!important}
+  .stat-card,.form-card,table,.guide-card{animation:none!important}
+  body{overflow-x:hidden}
+  .main-content{overflow-x:hidden}
+}
 
 /* ============================================================
    ✦ FORM POLISH — trau chuốt form sang trọng (CSS thuần)
