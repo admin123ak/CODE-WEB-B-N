@@ -320,3 +320,64 @@ html[lang="es"] .web-sub{font-size:13px;line-height:1.5}
 html[lang="es"] .free-badge,html[lang="es"] .free-claimed-meta{font-size:11px}
 html[lang="es"] .pkg-mode{font-size:10.5px;line-height:1.35}
 html[lang="es"] button.confirm-btn,html[lang="es"] .buy-btn{font-size:14px;letter-spacing:0}
+
+/* ============================================================
+   ✦ LUXURY POLISH — nâng độ sang trọng mini app khách
+   ============================================================ */
+/* Nền sâu hơn, nhiều lớp ánh sáng tinh tế */
+#app{background:
+  radial-gradient(900px 480px at 18% -4%,rgba(99,102,241,.14),transparent 55%),
+  radial-gradient(760px 460px at 86% 12%,rgba(167,139,250,.10),transparent 50%),
+  radial-gradient(700px 600px at 50% 104%,rgba(34,211,238,.07),transparent 55%),
+  var(--bg)!important}
+
+/* Header: glass tinh tế + viền sáng dưới */
+.app-header{position:relative}
+.app-header:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(120,160,255,.28),transparent)}
+
+/* Card chung: viền gradient mảnh + bóng sâu */
+.stats-card,.kcard,.pkg-row,.game-card,.free-card,.hist-order,.profile-card,.mbox{
+  position:relative;
+  box-shadow:0 10px 36px -12px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.05) inset!important;
+}
+.stats-card:before,.kcard:before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(150deg,rgba(255,255,255,.12),transparent 42%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6}
+
+/* Gói: hover/active nổi bật hơn */
+.pkg-row{transition:transform .2s var(--ease-spring),border-color .2s,box-shadow .2s!important}
+.pkg-row:active{transform:scale(.985)}
+.pkg-row.on{box-shadow:0 0 0 1px var(--cyan),0 12px 30px -10px rgba(34,211,238,.4)!important}
+
+/* Nút mua: gradient sâu + glow */
+.buy-btn{background:linear-gradient(135deg,#6366f1,#22d3ee)!important;
+  box-shadow:0 14px 34px -12px rgba(99,102,241,.6)!important;transition:.2s var(--ease-spring)!important}
+.buy-btn:active{transform:scale(.97)}
+.buy-btn.go{background:linear-gradient(135deg,#059669,#10b981)!important;box-shadow:0 14px 34px -12px rgba(16,185,129,.6)!important}
+
+/* Bottom nav: kính sâu + mục active glow */
+.bottom-nav{box-shadow:0 -6px 44px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.05) inset!important}
+.nav-tab.active{position:relative}
+
+/* Số liệu thống kê: chữ to gradient nhẹ */
+.stats-card .stat-num,.stats-card b{text-shadow:0 0 18px rgba(120,160,255,.2)}
+
+/* Badge / pill mềm hơn */
+.role-badge{box-shadow:0 2px 8px rgba(0,0,0,.25)}
+
+/* Scrollbar tinh tế */
+::-webkit-scrollbar-thumb{background:rgba(120,160,255,.22);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:rgba(120,160,255,.4)}
+
+/* Tiêu đề section: gradient chữ sang */
+.sec-title{letter-spacing:-.02em}
+
+/* Modal/popup khách: nền kính sâu */
+.mbox{backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3)}
+
+/* Mobile: giữ hiệu năng */
+@media(max-width:768px){
+  .stats-card:before,.kcard:before{display:none}
+}
