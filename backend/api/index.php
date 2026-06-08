@@ -359,7 +359,7 @@ switch ($action) {
     // Topup pending (để hiện banner khi user out modal)
     case 'topup_pending':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
-        $stmt = $db->prepare("SELECT id, method, amount_requested, unique_code, crypto_amount, usdt_vnd_rate, created_at FROM topup_requests WHERE user_id=? AND status='pending' AND created_at >= (NOW() - INTERVAL 30 MINUTE) ORDER BY id DESC LIMIT 5");
+        $stmt = $db->prepare("SELECT id, method, amount_requested, unique_code, crypto_amount, usdt_vnd_rate, created_at FROM topup_requests WHERE user_id=? AND status='pending' AND created_at >= (NOW() - INTERVAL 15 MINUTE) ORDER BY id DESC LIMIT 5");
         $stmt->execute([(int)$user['id']]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$r) {

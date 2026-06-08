@@ -75,7 +75,7 @@ function topupCreateRequest(
         (user_id, method, amount_requested, status, unique_code, crypto_amount, usdt_vnd_rate,
          card_telco, card_face_value, card_serial, card_code,
          provider_request_id, note, expires_at, created_at)
-        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NOW())")
+        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NOW())")
        ->execute([
            $user_id, $method, $amount_requested, $unique_code,
            $extra['crypto_amount']   ?? null,

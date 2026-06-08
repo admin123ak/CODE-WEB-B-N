@@ -1739,9 +1739,11 @@ async function loadAccTypes(){
         var hasDisc=dp<ap;
         var priceHtml=hasDisc?'<span style="text-decoration:line-through;opacity:.5;font-size:11px">'+fmtMoney(ap)+'đ</span> <span style="color:var(--green2)">'+fmtMoney(dp)+'đ</span>':fmtMoney(ap)+'đ';
         var sel=(selAccType&&selAccType.id==t.id)?' on':'';
+        var desc=(t.description&&String(t.description).trim()!=='')?escapeHtml(t.description):'';
+        var subLine=desc?(desc+stockTag):('Acc '+escapeHtml(t.name)+stockTag);
         html+='<div class="pkg-row'+sel+'" onclick="pickAccType('+t.id+',this)">'
-          +'<div><div class="pkg-days">'+escapeHtml(t.name)+'</div>'
-          +'<div class="pkg-mode" style="font-size:11px;color:var(--text2)">Acc '+escapeHtml(t.name)+stockTag+'</div></div>'
+          +'<div style="min-width:0;flex:1"><div class="pkg-days">'+escapeHtml(t.name)+'</div>'
+          +'<div class="pkg-mode" style="font-size:11px;color:var(--text2);line-height:1.4">'+subLine+'</div></div>'
           +'<div class="pkg-cost">'+priceHtml+'</div></div>';
       });
       el.innerHTML=html;

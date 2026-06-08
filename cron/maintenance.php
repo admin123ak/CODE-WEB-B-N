@@ -46,14 +46,13 @@ function runMaintenance(PDO $db): array {
         throw $e;
     }
 
-    // Huỷ topup_requests pending quá 30 phút (bank: 30p, binance: 30p, card: cho callback xử lý)
-    // Card có thể callback chậm — chỉ huỷ bank + binance
+    // Huỷ topup_requests pending quá 15 phút (bank + binance). Card cho callback xử lý riêng.
     try {
         $stmt = $db->prepare("UPDATE topup_requests
-            SET status='expired', note=CONCAT(COALESCE(note,''),' [auto-expired after 30 minutes]'), processed_at=NOW()
+            SET status='expired', note=CONCAT(COALESCE(note,''),' [auto-expired after 15 minutes]'), processed_at=NOW()
             WHERE status='pending'
               AND method IN ('mbbank','binance')
-              AND created_at < (NOW() - INTERVAL 30 MINUTE)");
+              AND created_at < (NOW() - INTERVAL 15 MINUTE)");
         $stmt->execute();
         $out['expired_topups'] = $stmt->rowCount();
     } catch (Throwable $e) {
