@@ -381,3 +381,15 @@ html[lang="es"] button.confirm-btn,html[lang="es"] .buy-btn{font-size:14px;lette
 @media(max-width:768px){
   .stats-card:before,.kcard:before{display:none}
 }
+
+/* Chữ tiêu đề section (Mua Key mới, Key của bạn...) rõ & sáng hơn — bớt mờ */
+.sec-title{
+  background:linear-gradient(135deg,#ffffff 0%,#bcd4ff 100%)!important;
+  -webkit-background-clip:text!important;background-clip:text!important;
+  -webkit-text-fill-color:transparent!important;
+  text-shadow:0 0 18px rgba(140,180,255,.18);
+}
+/* Nhãn nav dưới rõ hơn khi chưa chọn */
+.nav-tab{color:rgba(170,186,210,.82)!important}
+.nav-tab.active{color:#fff!important}
+.nav-lbl{font-weight:750}

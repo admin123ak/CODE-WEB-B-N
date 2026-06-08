@@ -142,7 +142,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($act === 'save_config') {
         try {
+            $oldLayers = defined('FREE_SHORTLINK_LAYERS') ? (string)FREE_SHORTLINK_LAYERS : '2';
             $changes = hclouWriteConfigValues($_POST['cfg'] ?? [], $_SESSION['admin_name'] ?? 'web_admin');
+            // Nếu đổi số lớp vượt link (hoặc token) → xoá cache link cũ để lần sau tạo lại theo cấu hình mới
+            $newLayers = (string)($_POST['cfg']['FREE_SHORTLINK_LAYERS'] ?? $oldLayers);
+            $tokenChanged = isset($_POST['cfg']['LINK4M_API_TOKEN']) || isset($_POST['cfg']['LAYMA_API_TOKEN']);
+            if ($newLayers !== $oldLayers || $tokenChanged) {
+                try {
+                    $db->exec("UPDATE free_keys SET short_url=NULL");
+                    $db->exec("UPDATE free_key_claims SET short_url=NULL WHERE is_claimed=0");
+                } catch (Exception $ce) { /* bảng có thể chưa có cột, bỏ qua */ }
+            }
             header("Location: ?tab=sysconfig&ok=1&changed=" . count($changes)); exit;
         } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
     }
@@ -335,19 +345,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $start = date('Y-m-d H:i:s');
         $exp   = date('Y-m-d H:i:s', strtotime("+{$p['days']} days"));
 
-        $ins = $db->prepare("INSERT INTO free_keys (key_code,game_id,package_id,days,key_type,is_active,start_at,expire_at,claim_token,short_url) VALUES (?,?,?,?,?,1,?,?,?,NULL)");
-        $added = 0; $errs = [];
+        $ins = $db->prepare("INSERT INTO free_keys (key_code,game_id,package_id,days,key_type,is_active,start_at,expire_at,claim_token,short_url) VALUES (?,?,?,?,?,1,?,?,?,?)");
+        $added = 0; $errs = []; $linkFail = 0;
         foreach ($lines as $code) {
             $code = trim($code);
             if ($code === '') continue;
             try {
                 $token = bin2hex(random_bytes(24));
-                $ins->execute([$code, $game_id, $package_id, $p['days'], $p['key_type'], $start, $exp, $token]);
+                // Tự tạo link rút gọn ngay khi thêm vào pool (theo số lớp đang cấu hình)
+                $short = null;
+                try { $short = buildFreeShortlink(SITE_URL . '/getkey.php?t=' . urlencode($token)); }
+                catch (Exception $le) { $linkFail++; }
+                $ins->execute([$code, $game_id, $package_id, $p['days'], $p['key_type'], $start, $exp, $token, $short]);
                 $added++;
             } catch (Exception $e) {
                 $errs[] = $code . ': ' . substr($e->getMessage(), 0, 60);
             }
         }
+        if ($linkFail > 0) $errs[] = "{$linkFail} key chưa tạo được link (bấm 'Tạo lại link') — kiểm tra token Link4M/Layma";
         if ($added === 0) {
             header("Location: ?tab=freekeys&err=" . urlencode('Không thêm được key nào: ' . implode(' | ', $errs))); exit;
         }

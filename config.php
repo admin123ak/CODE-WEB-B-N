@@ -289,25 +289,35 @@ function shortenYeuMoney($longUrl, &$debug = null) {
 }
 
 function buildFreeShortlink($claimUrl, &$debug = null) {
-    // Layers: 1 = chỉ Layma rút gọn claim trực tiếp
-    //         2 = Link4M(claim) -> Layma(Link4M) — user vượt Layma -> tới Link4M -> vượt Link4M -> tới claim
+    // Layers: 1 = chỉ Link4M rút gọn claim trực tiếp (ưu tiên Link4M)
+    //         2 = Link4M(claim) -> Layma(Link4M): user vượt Layma -> tới Link4M -> vượt Link4M -> ra key
     $layers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2;
     if ($layers < 1) $layers = 1;
     if ($layers > 2) $layers = 2;
 
     $debug = ['layers' => $layers];
 
-    // ===== 1 lớp: chỉ Layma =====
+    $link4mToken = defined('LINK4M_API_TOKEN') ? LINK4M_API_TOKEN : '';
+    $hasLink4m   = ($link4mToken !== '' && strpos($link4mToken, 'your_') !== 0);
+
+    // ===== 1 lớp: ưu tiên Link4M, fallback Layma nếu chưa cấu hình/Link4M lỗi =====
     if ($layers === 1) {
+        if ($hasLink4m) {
+            $only = shortenLink4M($claimUrl, $dL);
+            $debug['link4m'] = $dL;
+            if ($only) return $only;
+            error_log('[buildFreeShortlink] 1 lop: Link4M fail, fallback Layma');
+        } else {
+            $debug['link4m'] = ['skipped' => 'LINK4M_API_TOKEN chưa cấu hình'];
+        }
         $only = shortenLayma($claimUrl, $d1);
-        $debug['layma'] = $d1;
-        if (!$only) throw new Exception('Layma API không tạo được link. Kiểm tra LAYMA_API_TOKEN.');
+        $debug['layma_fallback'] = $d1;
+        if (!$only) throw new Exception('Không tạo được link (Link4M & Layma đều lỗi). Kiểm tra token.');
         return $only;
     }
 
     // ===== 2 lớp: Link4M(claim) -> Layma(Link4M) =====
-    $link4mToken = defined('LINK4M_API_TOKEN') ? LINK4M_API_TOKEN : '';
-    if ($link4mToken === '' || strpos($link4mToken, 'your_') === 0) {
+    if (!$hasLink4m) {
         // Chưa cấu hình Link4M → tự fallback xuống 1 lớp Layma
         $debug['link4m'] = ['skipped' => 'LINK4M_API_TOKEN chưa cấu hình'];
         $only = shortenLayma($claimUrl, $d2);
