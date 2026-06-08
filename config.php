@@ -316,7 +316,10 @@ function buildFreeShortlink($claimUrl, &$debug = null) {
         return $only;
     }
 
-    // ===== 2 lớp: Link4M(claim) -> Layma(Link4M) =====
+    // ===== 2 lớp: user vượt Link4M TRƯỚC -> rồi Layma -> ra key =====
+    //   inner = Layma(claim)         (link Layma trỏ tới claim)
+    //   outer = Link4M(inner)        (link Link4M trỏ tới link Layma) -> trả về cho user
+    //   Luồng: click Link4M -> vượt Link4M -> tới Layma -> vượt Layma -> claim key
     if (!$hasLink4m) {
         // Chưa cấu hình Link4M → tự fallback xuống 1 lớp Layma
         $debug['link4m'] = ['skipped' => 'LINK4M_API_TOKEN chưa cấu hình'];
@@ -326,24 +329,24 @@ function buildFreeShortlink($claimUrl, &$debug = null) {
         return $only;
     }
 
-    // Lớp trong: Link4M rút gọn claim URL
-    $inner = shortenLink4M($claimUrl, $dL4);
-    $debug['link4m'] = $dL4;
+    // Lớp trong: Layma rút gọn claim URL
+    $inner = shortenLayma($claimUrl, $dLa);
+    $debug['layma'] = $dLa;
     if (!$inner) {
-        // Link4M fail → fallback 1 lớp Layma (không chết hệ thống)
-        error_log('[buildFreeShortlink] Link4M fail, fallback 1 lop Layma');
-        $only = shortenLayma($claimUrl, $d3);
-        $debug['layma_fallback'] = $d3;
-        if (!$only) throw new Exception('Cả Link4M lẫn Layma đều lỗi.');
+        // Layma fail → thử Link4M 1 lớp trực tiếp
+        error_log('[buildFreeShortlink] Layma (lop trong) fail, dùng Link4M 1 lop');
+        $only = shortenLink4M($claimUrl, $d3);
+        $debug['link4m_fallback'] = $d3;
+        if (!$only) throw new Exception('Cả Layma lẫn Link4M đều lỗi.');
         return $only;
     }
 
-    // Lớp ngoài: Layma rút gọn link Link4M
-    $outer = shortenLayma($inner, $dLa);
-    $debug['layma_wrap'] = $dLa;
+    // Lớp ngoài: Link4M rút gọn link Layma (user vượt cái này trước)
+    $outer = shortenLink4M($inner, $dL4);
+    $debug['link4m_wrap'] = $dL4;
     if (!$outer || $outer === $inner) {
-        error_log('[buildFreeShortlink] Layma wrap fail, dùng Link4M trực tiếp');
-        return $inner; // ít nhất vẫn 1 lớp Link4M
+        error_log('[buildFreeShortlink] Link4M wrap fail, dùng Layma trực tiếp');
+        return $inner; // ít nhất vẫn 1 lớp Layma
     }
     return $outer;
 }
