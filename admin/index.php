@@ -18,8 +18,33 @@ function admin_login_page($error = '') {
     $_SESSION['admin_csrf'] = $csrf;
     $err = $error ? '<div class="err">'.htmlspecialchars($error).'</div>' : '';
     echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HCLOU SERVER Admin</title>
-        <style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;background:radial-gradient(circle at 20% 10%,rgba(31,111,235,.35),transparent 28%),radial-gradient(circle at 85% 20%,rgba(139,92,246,.28),transparent 30%),#070b14;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden}.card{width:410px;max-width:100%;background:linear-gradient(180deg,rgba(22,27,34,.94),rgba(13,17,23,.97));border:1px solid rgba(88,166,255,.22);border-radius:28px;padding:30px;box-shadow:0 24px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(18px)}.logo{width:68px;height:68px;border-radius:22px;background:linear-gradient(135deg,#1f6feb,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px;box-shadow:0 0 30px rgba(31,111,235,.45)}h1{text-align:center;font-size:24px;margin-bottom:6px}.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:24px}.field{margin-bottom:14px}label{display:block;color:#8b949e;font-size:12px;font-weight:800;margin:0 0 7px 2px}input{width:100%;padding:14px 15px;background:#0d1117;border:1px solid #30363d;border-radius:14px;color:#e6edf3;font-size:15px;outline:none}input:focus{border-color:#58a6ff;box-shadow:0 0 0 4px rgba(88,166,255,.12)}button{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#1f6feb,#8b5cf6);color:#fff;font-size:15px;font-weight:950;cursor:pointer;box-shadow:0 12px 30px rgba(31,111,235,.28)}.hint{margin-top:16px;text-align:center;color:#6e7681;font-size:12px}.err{background:rgba(239,68,68,.13);border:1px solid rgba(239,68,68,.35);color:#fca5a5;padding:11px 13px;border-radius:13px;margin-bottom:14px;font-size:13px;font-weight:750}.admin-footer{margin:26px 0 4px;text-align:center;color:rgba(127,144,170,.48);font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.72;text-shadow:0 0 14px rgba(125,211,252,.14)}.admin-footer:before{content:"";display:block;width:120px;height:1px;background:linear-gradient(90deg,transparent,rgba(125,211,252,.28),transparent);margin:0 auto 12px}</style></head>
-        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label>Mật khẩu quản trị</label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password" autofocus></div><button>Đăng nhập an toàn</button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
+        <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@700;800&display=swap">
+        <style>*{margin:0;padding:0;box-sizing:border-box}
+        @keyframes lxIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+        @keyframes lxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+        body{min-height:100vh;font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eef3fb;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;-webkit-font-smoothing:antialiased;
+          background:radial-gradient(1000px 600px at 78% -10%,rgba(99,102,241,.22),transparent 58%),radial-gradient(820px 520px at 10% 12%,rgba(34,211,238,.14),transparent 55%),radial-gradient(680px 680px at 92% 100%,rgba(167,139,250,.14),transparent 60%),linear-gradient(180deg,#070a12,#0a0f1c 50%,#070a12)}
+        body:before{content:"";position:fixed;inset:0;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px);background-size:42px 42px;mask:radial-gradient(800px 600px at 50% 40%,#000,transparent);pointer-events:none}
+        .card{position:relative;width:420px;max-width:100%;padding:34px 30px 26px;border-radius:26px;animation:lxIn .55s cubic-bezier(.4,0,.2,1) both;
+          background:linear-gradient(180deg,rgba(20,28,46,.92),rgba(10,15,28,.96));border:1px solid rgba(130,165,220,.22);
+          box-shadow:0 34px 100px -22px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(26px)}
+        .card:before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,255,255,.18),transparent 42%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8}
+        .logo{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#6366f1,#22d3ee);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 18px;box-shadow:0 0 40px rgba(99,102,241,.55),inset 0 1px 0 rgba(255,255,255,.25);animation:lxFloat 4s ease-in-out infinite}
+        h1{font-family:"Plus Jakarta Sans",sans-serif;text-align:center;font-size:25px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;background:linear-gradient(135deg,#fff,#c7d2fe);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+        .sub{text-align:center;color:#8ba0c4;font-size:12.5px;letter-spacing:.04em;margin-bottom:26px}
+        .field{margin-bottom:14px}
+        label{display:block;color:#9fb4d6;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0 0 8px 2px}
+        input{width:100%;height:50px;padding:0 16px;background:rgba(7,11,20,.8);border:1px solid rgba(130,165,220,.22);border-radius:14px;color:#eef3fb;font-size:15px;outline:none;font-family:inherit;transition:.2s}
+        input:focus{border-color:#3ed6e0;box-shadow:0 0 0 4px rgba(62,214,224,.14),0 10px 30px -12px rgba(62,214,224,.5);background:rgba(7,11,20,.95)}
+        input::placeholder{color:#5d6f8e}
+        button{width:100%;height:50px;margin-top:6px;border:none;border-radius:14px;background:linear-gradient(135deg,#6366f1,#22d3ee);color:#fff;font-size:15px;font-weight:800;letter-spacing:.02em;cursor:pointer;box-shadow:0 16px 38px -12px rgba(99,102,241,.65);transition:.2s}
+        button:hover{filter:brightness(1.1);transform:translateY(-1.5px);box-shadow:0 22px 48px -14px rgba(99,102,241,.8)}
+        button:active{transform:scale(.98)}
+        .hint{margin-top:18px;text-align:center;color:#6b7d9c;font-size:11.5px;line-height:1.5}
+        .err{background:linear-gradient(135deg,rgba(248,113,113,.14),rgba(248,113,113,.05));border:1px solid rgba(248,113,113,.34);color:#fca5a5;padding:11px 14px;border-radius:13px;margin-bottom:15px;font-size:13px;font-weight:600}
+        .admin-footer{margin:26px 0 4px;text-align:center;color:rgba(139,160,196,.42);font-size:11px;font-weight:600;letter-spacing:.05em}.admin-footer:before{content:"";display:block;width:130px;height:1px;background:linear-gradient(90deg,transparent,rgba(232,200,121,.3),transparent);margin:0 auto 12px}</style></head>
+        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label>Mật khẩu quản trị</label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password" autofocus></div><button>🔐 Đăng nhập an toàn</button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
 }
 
 if (isset($_GET['logout'])) {
@@ -1021,6 +1046,105 @@ select option{background:#0c1322!important}
 
 /* Giảm tải hiệu ứng cho máy yếu */
 @media(prefers-reduced-motion:reduce){.stat-card,.form-card,table,.guide-card{animation:none!important}}
+
+/* ============================================================
+   ✦ FORM POLISH — trau chuốt form sang trọng (CSS thuần)
+   ============================================================ */
+/* Header form: icon + tiêu đề + đường kẻ accent */
+.form-card h3{
+  display:flex;align-items:center;gap:9px;
+  font-size:15.5px!important;letter-spacing:-.01em!important;
+}
+.form-card h3:first-letter{font-size:1.05em}
+
+/* form-row → grid responsive, các field đều nhau, label nổi rõ */
+.form-row{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
+  gap:16px 18px!important;align-items:end!important;
+}
+/* mỗi field bọc trong <div> — cho khoảng cách + label trên input */
+.form-row > div{display:flex;flex-direction:column;gap:0;min-width:0}
+.form-row label,.form-card label{
+  display:block;margin-bottom:7px!important;
+  color:#9fb4d6!important;font-size:11px!important;font-weight:700!important;
+  letter-spacing:.04em!important;text-transform:uppercase;
+}
+
+/* Input/select/textarea: cao đều, bo mềm, nền tối, focus sáng */
+.form-card input,.form-card select,.form-card textarea,
+.filters input,.filters select{
+  width:100%!important;height:44px;
+  background:rgba(7,11,20,.78)!important;
+  border:1px solid rgba(130,165,220,.2)!important;border-radius:12px!important;
+  color:#eef3fb!important;padding:0 14px!important;font-size:13.5px!important;
+  transition:.18s cubic-bezier(.4,0,.2,1)!important;
+}
+.form-card textarea{height:auto!important;min-height:120px;padding:12px 14px!important;line-height:1.55;resize:vertical}
+.form-card input:hover,.form-card select:hover,.form-card textarea:hover{border-color:rgba(130,165,220,.34)!important}
+.form-card input:focus,.form-card select:focus,.form-card textarea:focus{
+  border-color:var(--lx-cyan)!important;
+  box-shadow:0 0 0 3px rgba(62,214,224,.15),0 8px 24px -10px rgba(62,214,224,.4)!important;
+  background:rgba(7,11,20,.95)!important;
+}
+/* Select: mũi tên custom */
+.form-card select,.filters select{
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237b96c8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")!important;
+  background-repeat:no-repeat!important;background-position:right 13px center!important;
+  padding-right:36px!important;
+}
+
+/* Nút submit trong form: to hơn, rõ hơn */
+.form-card > div:last-child .btn,
+.form-card button[type=submit]:not(.btn-sm){
+  height:44px;padding:0 22px!important;font-size:13px!important;font-weight:800!important;border-radius:12px!important;
+}
+/* Khoảng cách khối nút cuối form */
+.form-card form > div[style*="margin-top:10px"],
+.form-card > div[style*="margin-top:10px"]{margin-top:18px!important}
+
+/* Nút nhỏ trong bảng (action) — kích thước đều, tròn mềm */
+td .btn{height:34px;min-width:34px;padding:0 11px!important;border-radius:10px!important}
+td form{display:inline-flex!important;vertical-align:middle}
+td form+form{margin-left:6px!important}
+
+/* Filters bar: thanh lọc thành 1 khối glass gọn */
+.filters{
+  display:flex!important;gap:10px!important;flex-wrap:wrap;align-items:center;
+  background:rgba(16,23,40,.5);border:1px solid var(--lx-line);
+  border-radius:14px;padding:12px 14px!important;margin-bottom:18px!important;
+}
+.filters input,.filters select{height:40px;min-width:170px;flex:0 1 auto}
+.filters .btn{height:40px}
+
+/* Toggle Bật/Tắt trong bảng: dạng pill nhẹ */
+td .btn-gray{background:rgba(255,255,255,.05)!important;border:1px solid var(--lx-line2)!important;color:#c7d4ea!important;font-weight:700!important}
+td .btn-gray:hover{background:rgba(255,255,255,.1)!important}
+
+/* ---------- LOGIN PAGE (render riêng, không có .form-card) ---------- */
+body > form.card{
+  background:linear-gradient(180deg,rgba(20,28,46,.95),rgba(10,15,28,.97))!important;
+  border:1px solid rgba(130,165,220,.2)!important;border-radius:26px!important;
+  box-shadow:0 30px 90px -20px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.06)!important;
+  backdrop-filter:blur(24px)!important;
+}
+body > form.card .logo{
+  background:linear-gradient(135deg,#6366f1,#22d3ee)!important;
+  box-shadow:0 0 36px rgba(99,102,241,.5),inset 0 1px 0 rgba(255,255,255,.2)!important;
+  border-radius:20px!important;
+}
+body > form.card h1{font-family:'Plus Jakarta Sans',sans-serif;background:linear-gradient(135deg,#fff,#c7d2fe);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body > form.card input{height:48px;background:rgba(7,11,20,.8)!important;border-radius:13px!important}
+body > form.card button{background:linear-gradient(135deg,#6366f1,#22d3ee)!important;border-radius:13px!important;box-shadow:0 14px 34px -10px rgba(99,102,241,.6)!important;transition:.2s}
+body > form.card button:hover{filter:brightness(1.08);transform:translateY(-1px)}
+
+/* Form-row trên mobile: 1 cột */
+@media(max-width:640px){
+  .form-row{grid-template-columns:1fr!important}
+  .filters{flex-direction:column;align-items:stretch}
+  .filters input,.filters select,.filters .btn{width:100%!important;min-width:0}
+}
 </style>
 </head>
 <body>
