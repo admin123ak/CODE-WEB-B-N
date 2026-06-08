@@ -481,9 +481,10 @@ function hclouWriteRawDefine($key, $value) {
     $replacement = "define('{$key}', " . var_export((string)$value, true) . ");";
     $pattern = "/define\\(\\s*'" . preg_quote($key, '/') . "'\\s*,\\s*.*?\\);/s";
     $count = 0;
-    $src = preg_replace($pattern, $replacement, $src, 1, $count);
+    // preg_replace_callback: trả về replacement NGUYÊN VĂN (không diễn giải $1, $2... trong hash mật khẩu)
+    $src = preg_replace_callback($pattern, function() use ($replacement) { return $replacement; }, $src, 1, $count);
     if ($count !== 1) {
-        if (preg_match('/\?>\s*$/', $src)) $src = preg_replace('/\?>\s*$/', $replacement . "\n?>\n", $src, 1);
+        if (preg_match('/\?>\s*$/', $src)) $src = preg_replace_callback('/\?>\s*$/', function() use ($replacement) { return $replacement . "\n?>\n"; }, $src, 1);
         else $src = rtrim($src) . "\n" . $replacement . "\n";
     }
     @copy($configFile, $configFile . '.bk_admincred_' . date('Ymd_His'));
@@ -513,11 +514,12 @@ function hclouWriteConfigValues(array $updates, $admin = 'web_admin') {
         if ((string)$old === (string)$newVal) continue;
         $pattern = "/define\\('" . preg_quote($key, '/') . "'\\s*,\\s*.*?\\);/";
         $count   = 0;
-        $src     = preg_replace($pattern, $replacement, $src, 1, $count);
+        // preg_replace_callback để giá trị chứa $ (vd token, hash) không bị hiểu nhầm là backreference
+        $src     = preg_replace_callback($pattern, function() use ($replacement) { return $replacement; }, $src, 1, $count);
         if ($count !== 1) {
             // Key chưa có trong config.local.php → tự thêm vào trước thẻ đóng PHP (hoặc cuối file)
             if (preg_match('/\?>\s*$/', $src)) {
-                $src = preg_replace('/\?>\s*$/', $replacement . "\n?>\n", $src, 1);
+                $src = preg_replace_callback('/\?>\s*$/', function() use ($replacement) { return $replacement . "\n?>\n"; }, $src, 1);
             } else {
                 $src = rtrim($src) . "\n" . $replacement . "\n";
             }
