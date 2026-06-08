@@ -235,22 +235,28 @@ function pickShortUrl($json, $raw = '') {
 }
 
 function shortenLink4M($longUrl, &$debug = null) {
-    $st = 'https://link4m.co/st?api=' . rawurlencode(LINK4M_API_TOKEN) . '&url=' . rawurlencode($longUrl);
     $debug = [];
-    $res = httpJsonRequest($st);
-    $raw = (string)$res['raw'];
-    $debug[] = ['endpoint' => $st, 'code' => $res['code'], 'ok' => $res['ok'], 'short' => $st, 'raw' => substr($raw, 0, 220)];
-    if ($res['code'] >= 200 && $res['code'] < 400 && stripos($raw, 'Vượt') !== false) return $st;
+    $token = defined('LINK4M_API_TOKEN') ? LINK4M_API_TOKEN : '';
+    if ($token === '') { $debug[] = ['error' => 'LINK4M_API_TOKEN chưa cấu hình']; return ''; }
 
+    // API CHÍNH THỨC: https://link4m.co/api-shorten/v2?api=TOKEN&url=URL
+    // Trả về: {"status":"success","shortenedUrl":"https://link4m.com/xxxxxx"}  (domain link4m.com!)
+    $ep = 'https://link4m.co/api-shorten/v2?api=' . rawurlencode($token) . '&url=' . rawurlencode($longUrl);
+    $res = httpJsonRequest($ep);
+    $raw = (string)$res['raw'];
+    $debug[] = ['endpoint' => $ep, 'code' => $res['code'], 'raw' => substr($raw, 0, 220)];
+    if (is_array($res['json']) && (($res['json']['status'] ?? '') === 'success') && !empty($res['json']['shortenedUrl'])) {
+        return (string)$res['json']['shortenedUrl'];
+    }
+
+    // Fallback: endpoint cũ /api (chấp nhận cả link4m.co LẪN link4m.com)
     foreach ([
-        'https://link4m.co/api?api=' . rawurlencode(LINK4M_API_TOKEN) . '&url=' . rawurlencode($longUrl),
-        'https://my.link4m.com/api?api=' . rawurlencode(LINK4M_API_TOKEN) . '&url=' . rawurlencode($longUrl),
-    ] as $ep) {
-        $res = httpJsonRequest($ep);
-        $u = pickShortUrl($res['json'], '');
-        if (!$u && is_string($res['raw']) && preg_match('~https?://[^\s"\'<>]+~', $res['raw'], $m)) $u = $m[0];
-        $debug[] = ['endpoint' => $ep, 'code' => $res['code'], 'ok' => $res['ok'], 'short' => $u, 'raw' => substr((string)$res['raw'], 0, 220)];
-        if ($u && $u !== $longUrl && preg_match('~^https?://([^/]+\.)?link4m\.co/~i', $u)) return $u;
+        'https://link4m.co/api?api=' . rawurlencode($token) . '&url=' . rawurlencode($longUrl),
+    ] as $ep2) {
+        $r2 = httpJsonRequest($ep2);
+        $u  = pickShortUrl($r2['json'], $r2['raw']);
+        $debug[] = ['endpoint' => $ep2, 'code' => $r2['code'], 'short' => $u, 'raw' => substr((string)$r2['raw'], 0, 220)];
+        if ($u && $u !== $longUrl && preg_match('~^https?://([^/]+\.)?link4m\.(co|com)/~i', $u)) return $u;
     }
     return '';
 }
