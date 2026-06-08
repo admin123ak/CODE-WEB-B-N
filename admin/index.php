@@ -1277,6 +1277,42 @@ table tr:hover td{background:rgba(99,102,241,.07)!important}
 td:last-child{white-space:nowrap}
 /* Icon game tròn đẹp */
 table img[alt]{box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid var(--lx-line2)}
+
+/* ============================================================
+   ✦ MODAL EDIT — popup tạo/sửa chuyên nghiệp
+   ============================================================ */
+.amodal-ov{position:fixed;inset:0;z-index:9990;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;
+  background:rgba(6,10,20,.7);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .25s;overflow-y:auto}
+.amodal-ov.show{opacity:1;pointer-events:auto}
+.amodal{width:100%;max-width:560px;margin:auto;border-radius:22px;position:relative;
+  background:linear-gradient(180deg,#161f33,#0e1422);border:1px solid var(--lx-line2);
+  box-shadow:0 40px 110px -24px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.04);
+  transform:translateY(18px) scale(.97);transition:transform .3s cubic-bezier(.34,1.4,.6,1);overflow:hidden}
+.amodal-ov.show .amodal{transform:none}
+.amodal-head{display:flex;align-items:center;gap:11px;padding:20px 22px;border-bottom:1px solid var(--lx-line);
+  background:linear-gradient(180deg,rgba(99,102,241,.1),transparent)}
+.amodal-head .am-ico{width:40px;height:40px;flex:0 0 40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;
+  background:linear-gradient(140deg,rgba(99,102,241,.28),rgba(34,211,238,.1));border:1px solid rgba(99,102,241,.35)}
+.amodal-head h3{margin:0!important;border:0!important;padding:0!important;font-family:'Plus Jakarta Sans',sans-serif;font-size:17px!important;font-weight:800!important;color:#fff!important}
+.amodal-head .am-sub{font-size:11.5px;color:var(--lx-muted);margin-top:2px}
+.amodal-x{margin-left:auto;width:34px;height:34px;border-radius:10px;border:1px solid var(--lx-line2);background:rgba(255,255,255,.04);color:#9fb4d6;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.18s}
+.amodal-x:hover{background:rgba(248,113,113,.16);border-color:rgba(248,113,113,.4);color:#fca5a5}
+.amodal-body{padding:22px;max-height:calc(100vh - 220px);overflow-y:auto}
+.amodal-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 16px}
+.amodal-grid .full{grid-column:1/-1}
+.amodal-field label{display:block;margin-bottom:7px;color:#9fb4d6;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.amodal-field input,.amodal-field select,.amodal-field textarea{width:100%!important;height:44px;background:rgba(7,11,20,.8)!important;border:1px solid var(--lx-line2)!important;border-radius:11px!important;color:#eef3fb!important;padding:0 14px!important;font-size:13.5px!important;transition:.18s}
+.amodal-field textarea{height:auto!important;min-height:90px;padding:11px 14px!important;line-height:1.5;resize:vertical;font-family:ui-monospace,monospace}
+.amodal-field input:focus,.amodal-field select:focus,.amodal-field textarea:focus{border-color:var(--lx-cyan)!important;box-shadow:0 0 0 3px rgba(62,214,224,.15)!important;background:rgba(7,11,20,.95)!important}
+.amodal-foot{display:flex;gap:11px;padding:18px 22px;border-top:1px solid var(--lx-line);background:rgba(8,12,22,.5)}
+.amodal-foot .btn{flex:1;height:46px;font-size:14px!important;font-weight:800!important;border-radius:12px!important}
+.am-cur-icon{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--lx-muted)}
+.am-cur-icon img{width:38px;height:38px;border-radius:9px;object-fit:cover;border:1px solid var(--lx-line2)}
+/* Nút action gọn trong bảng read-only */
+.row-act{display:inline-flex;gap:6px}
+.btn-icon{width:34px;height:34px;padding:0!important;display:inline-flex;align-items:center;justify-content:center;border-radius:10px!important;font-size:14px!important}
+@media(max-width:560px){.amodal-grid{grid-template-columns:1fr}.amodal-ov{padding:16px 12px}}
 </style>
 </head>
 <body>
@@ -1892,93 +1928,150 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <?php endif ?>
 
 <?php elseif($tab==='games'): ?>
-<h1>🎮 Quản lý Games</h1>
-<div class="form-card">
-<h3>➕ Thêm game mới</h3>
-<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-<input type="hidden" name="act" value="add_game">
-<div class="form-row">
-  <div><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
-  <div><label>Package name</label><input name="pkg" required placeholder="com.dts.freefireth" style="width:220px"></div>
-  <div><label>Link tải (download)</label><input name="download_url" placeholder="https://t.me/..." style="width:240px"></div>
-  <div><label>Link chạy/play (nút ▶)</label><input name="play_url" placeholder="https://..." style="width:240px"></div>
-  <div><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
-  <div><label>Loại Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
-  <div><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
-  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
-  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
-  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
-</div>
-</form>
-</div>
 <?php $games = $db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
-<p style="color:var(--lx-muted);font-size:12.5px;margin-bottom:10px">📋 Tổng <b style="color:#7db3ff"><?=count($games)?></b> game · vuốt ngang để xem hết cột</p>
+<div class="dash-section-head">
+  <h1 style="margin:0">🎮 Quản lý Games</h1>
+  <span class="sec-count" style="background:linear-gradient(135deg,#6366f1,#22d3ee)"><?=count($games)?></span>
+  <button class="btn btn-blue" style="margin-left:auto" onclick="amOpen('mGameAdd')">➕ Thêm game</button>
+</div>
+
 <div class="tbl-scroll">
 <table>
-<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Link tải</th><th>Loại</th><th>Category</th><th>Root</th><th>Thứ tự</th><th>Active</th><th>Đổi icon</th><th>Thao tác</th></tr>
-<?php foreach($games as $g): ?>
+<tr><th>#</th><th>Icon</th><th>Tên game</th><th>Package</th><th>Loại</th><th>Category</th><th>Thứ tự</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
+<?php foreach($games as $g): $cat=$g['category']??'key'; $catLbl=['key'=>'🔑 Key','account'=>'👤 Acc','both'=>'🔑👤 Cả 2'][$cat]??$cat; ?>
 <tr>
-<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-  <input type="hidden" name="act" value="edit_game"><input type="hidden" name="id" value="<?=$g['id']?>">
-  <td><?=$g['id']?></td>
-  <td><?php if(!empty($g['icon_url'])): ?><img src="<?=h($g['icon_url'])?>" alt="" style="width:36px;height:36px;border-radius:8px;object-fit:cover;background:#0d1117"><?php else: ?><span style="color:#8b949e;font-size:11px">-</span><?php endif ?></td>
-  <td><input name="name" value="<?=h($g['name'])?>" required style="width:150px"></td>
-  <td><input name="pkg" value="<?=h($g['package_name'])?>" required style="width:220px"></td>
-  <td><input name="download_url" value="<?=h($g['download_url'] ?? '')?>" placeholder="Link tải..." style="width:190px;margin-bottom:4px"><br><input name="play_url" value="<?=h($g['play_url'] ?? '')?>" placeholder="Link chạy ▶..." style="width:190px"></td>
-  <td><select name="type"><option <?=$g['type']==='NORMAL'?'selected':''?>>NORMAL</option><option <?=$g['type']==='VIP'?'selected':''?>>VIP</option></select></td>
-  <td><select name="category"><option value="key" <?=($g['category']??'key')==='key'?'selected':''?>>Key</option><option value="account" <?=($g['category']??'key')==='account'?'selected':''?>>Acc</option><option value="both" <?=($g['category']??'key')==='both'?'selected':''?>>Both</option></select></td>
-  <td><select name="root"><option <?=$g['root_type']==='Only Root'?'selected':''?>>Only Root</option><option <?=$g['root_type']==='Root & NoRoot'?'selected':''?>>Root & NoRoot</option><option <?=$g['root_type']==='NoRoot'?'selected':''?>>NoRoot</option></select></td>
-  <td><input name="sort" type="number" value="<?=$g['sort_order']?>" style="width:70px"></td>
-  <td><select name="is_active"><option value="1" <?=$g['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$g['is_active']?'selected':''?>>Tắt</option></select></td>
-  <td><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="width:130px;font-size:11px"></td>
-  <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
-</form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-gray" type="submit"><?=$g['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá game này? Các gói/order/key liên quan có thể bị ảnh hưởng.')">🗑 Xoá</button></form></td>
+  <td style="color:var(--lx-muted)"><?=$g['id']?></td>
+  <td><?php if(!empty($g['icon_url'])): ?><img src="<?=h($g['icon_url'])?>" alt="" style="width:38px;height:38px;border-radius:10px;object-fit:cover;background:#0d1117"><?php else: ?><span style="display:inline-flex;width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);align-items:center;justify-content:center;font-size:16px">🎮</span><?php endif ?></td>
+  <td><b style="color:#fff"><?=h($g['name'])?></b></td>
+  <td><span class="mono" style="font-size:11.5px;color:var(--lx-muted)"><?=h($g['package_name'])?></span></td>
+  <td><span class="badge <?=$g['type']==='VIP'?'orange':'gray'?>"><?=h($g['type'])?></span></td>
+  <td><span style="font-size:12px"><?=$catLbl?></span></td>
+  <td style="text-align:center"><?=$g['sort_order']?></td>
+  <td><?php if($g['is_active']): ?><span class="badge green">● Bật</span><?php else: ?><span class="badge gray">○ Tắt</span><?php endif ?></td>
+  <td style="text-align:right"><div class="row-act" style="justify-content:flex-end">
+    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mGameEdit",<?=json_encode(["id"=>$g["id"],"name"=>$g["name"],"pkg"=>$g["package_name"],"download_url"=>$g["download_url"]??"","play_url"=>$g["play_url"]??"","type"=>$g["type"],"category"=>$cat,"root"=>$g["root_type"],"sort"=>$g["sort_order"],"is_active"=>$g["is_active"],"_icon"=>$g["icon_url"]??"","_title"=>$g["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-gray btn-icon" type="submit" title="<?=$g['is_active']?'Tắt':'Bật'?>"><?=$g['is_active']?'⏸':'▶'?></button></form>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$g['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá game &quot;<?=h($g['name'])?>&quot;? Các gói/order/key liên quan có thể bị ảnh hưởng.')">🗑</button></form>
+  </div></td>
 </tr>
 <?php endforeach ?>
 </table>
 </div>
 
+<!-- Modal: Thêm game -->
+<div class="amodal-ov" id="mGameAdd">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">🎮</div><div><h3>Thêm game mới</h3><div class="am-sub">Tạo game bán key/acc</div></div><button class="amodal-x" onclick="amClose('mGameAdd')">✕</button></div>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_game">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Tên game</label><input name="name" required placeholder="Free Fire"></div>
+        <div class="amodal-field full"><label>Package name</label><input name="pkg" required placeholder="com.dts.freefireth"></div>
+        <div class="amodal-field full"><label>Link tải (download)</label><input name="download_url" placeholder="https://t.me/..."></div>
+        <div class="amodal-field full"><label>Link chạy/play (nút ▶)</label><input name="play_url" placeholder="https://..."></div>
+        <div class="amodal-field"><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
+        <div class="amodal-field"><label>Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
+        <div class="amodal-field"><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
+        <div class="amodal-field"><label>Thứ tự</label><input name="sort" type="number" value="0"></div>
+        <div class="amodal-field full"><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mGameAdd')">Huỷ</button><button class="btn btn-blue" type="submit">➕ Thêm game</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Sửa game -->
+<div class="amodal-ov" id="mGameEdit">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">✏️</div><div><h3>Sửa game</h3><div class="am-sub" data-am-sub>—</div></div><button class="amodal-x" onclick="amClose('mGameEdit')">✕</button></div>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="edit_game"><input type="hidden" name="id" value="">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Tên game</label><input name="name" required></div>
+        <div class="amodal-field full"><label>Package name</label><input name="pkg" required></div>
+        <div class="amodal-field full"><label>Link tải (download)</label><input name="download_url" placeholder="https://t.me/..."></div>
+        <div class="amodal-field full"><label>Link chạy/play (nút ▶)</label><input name="play_url" placeholder="https://..."></div>
+        <div class="amodal-field"><label>Loại</label><select name="type"><option>NORMAL</option><option>VIP</option></select></div>
+        <div class="amodal-field"><label>Category</label><select name="category"><option value="key">Bán Key</option><option value="account">Bán Acc</option><option value="both">Cả Key + Acc</option></select></div>
+        <div class="amodal-field"><label>Root type</label><select name="root"><option>Only Root</option><option>Root & NoRoot</option><option>NoRoot</option></select></div>
+        <div class="amodal-field"><label>Thứ tự</label><input name="sort" type="number"></div>
+        <div class="amodal-field"><label>Trạng thái</label><select name="is_active"><option value="1">Bật</option><option value="0">Tắt</option></select></div>
+        <div class="amodal-field full"><label>Đổi icon (chọn file mới)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><div class="am-cur-icon" data-cur-icon style="margin-top:8px"></div></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mGameEdit')">Huỷ</button><button class="btn btn-blue" type="submit">💾 Lưu thay đổi</button></div>
+    </form>
+  </div>
+</div>
+
 <?php elseif($tab==='packages'): ?>
-<h1>📦 Quản lý Gói cước</h1>
-<?php $games = $db->query("SELECT * FROM games ORDER BY is_active DESC, sort_order")->fetchAll(); ?>
-<div class="form-card">
-<h3>➕ Thêm gói mới</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-<input type="hidden" name="act" value="add_pkg">
-<div class="form-row">
-  <div><label>Game</label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label>Số ngày</label><input name="days" type="number" value="0" min="0" style="width:80px"></div>
-  <div><label>Số giờ</label><input name="hours" type="number" value="0" min="0" style="width:80px"></div>
-  <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
-  <div><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
-  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
+<?php $games = $db->query("SELECT * FROM games ORDER BY is_active DESC, sort_order")->fetchAll();
+$pkgs = $db->query("SELECT p.*,g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id ORDER BY g.sort_order,p.days")->fetchAll();
+$gameOpts = '';
+foreach($games as $g){ $gameOpts .= '<option value="'.$g['id'].'">'.h($g['name']).'</option>'; }
+?>
+<div class="dash-section-head">
+  <h1 style="margin:0">📦 Quản lý Gói cước</h1>
+  <span class="sec-count" style="background:linear-gradient(135deg,#6366f1,#22d3ee)"><?=count($pkgs)?></span>
+  <button class="btn btn-blue" style="margin-left:auto" onclick="amOpen('mPkgAdd')">➕ Thêm gói</button>
 </div>
-<small style="color:#9fb2cf;font-size:11px">Có thể nhập kết hợp ngày + giờ (vd 0 ngày 6 giờ = gói 6h dùng thử). Tổng phải > 0.</small>
-</form>
-</div>
-<?php $pkgs = $db->query("SELECT p.*,g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id ORDER BY g.sort_order,p.days")->fetchAll(); ?>
+
+<div class="tbl-scroll">
 <table>
-<tr><th>Game</th><th>Tên gói</th><th>Ngày</th><th>Giờ</th><th>Giá</th><th>Loại</th><th>Active</th><th>Thao tác</th></tr>
+<tr><th>Game</th><th>Tên gói</th><th>Thời hạn</th><th>Giá</th><th>Loại</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
 <?php foreach($pkgs as $p): ?>
 <tr>
-<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-  <input type="hidden" name="act" value="edit_pkg"><input type="hidden" name="id" value="<?=$p['id']?>">
-  <td><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>" <?=$p['game_id']==$g['id']?'selected':''?>><?=h($g["name"])?></option><?php endforeach?></select></td>
-  <td><input name="name" value="<?=htmlspecialchars($p['name'])?>" required style="width:120px"></td>
-  <td><input name="days" type="number" value="<?=$p['days']?>" min="0" style="width:65px"></td>
-  <td><input name="hours" type="number" value="<?=$p['hours']??0?>" min="0" style="width:65px"></td>
-  <td><input name="price" type="number" value="<?=$p['price']?>" required style="width:110px"></td>
-  <td><select name="key_type"><option <?=$p['key_type']==='Normal'?'selected':''?>>Normal</option><option <?=$p['key_type']==='VIP'?'selected':''?>>VIP</option></select></td>
-  <td><select name="is_active"><option value="1" <?=$p['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$p['is_active']?'selected':''?>>Tắt</option></select></td>
-  <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
-</form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray" type="submit"><?=$p['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá gói này?')">🗑</button></form></td>
+  <td><b style="color:#fff"><?=h($p['game_name'])?></b></td>
+  <td><?=h($p['name'])?></td>
+  <td><span class="badge blue"><?=h(hclouFmtDur($p['days'], $p['hours']??0))?></span></td>
+  <td><b style="color:#6ee7b7"><?=number_format($p['price'],0,',','.')?>đ</b></td>
+  <td><span class="badge <?=$p['key_type']==='VIP'?'orange':'gray'?>"><?=h($p['key_type'])?></span></td>
+  <td><?php if($p['is_active']): ?><span class="badge green">● Bật</span><?php else: ?><span class="badge gray">○ Tắt</span><?php endif ?></td>
+  <td style="text-align:right"><div class="row-act" style="justify-content:flex-end">
+    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mPkgEdit",<?=json_encode(["id"=>$p["id"],"game_id"=>$p["game_id"],"name"=>$p["name"],"days"=>$p["days"],"hours"=>$p["hours"]??0,"price"=>$p["price"],"key_type"=>$p["key_type"],"is_active"=>$p["is_active"],"_title"=>$p["game_name"]." · ".$p["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray btn-icon" type="submit" title="<?=$p['is_active']?'Tắt':'Bật'?>"><?=$p['is_active']?'⏸':'▶'?></button></form>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá gói này?')">🗑</button></form>
+  </div></td>
 </tr>
 <?php endforeach ?>
 </table>
+</div>
+
+<!-- Modal: Thêm gói -->
+<div class="amodal-ov" id="mPkgAdd">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">📦</div><div><h3>Thêm gói mới</h3><div class="am-sub">Gói key cho game</div></div><button class="amodal-x" onclick="amClose('mPkgAdd')">✕</button></div>
+    <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_pkg">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Game</label><select name="game_id"><?=$gameOpts?></select></div>
+        <div class="amodal-field"><label>Số ngày</label><input name="days" type="number" value="0" min="0"></div>
+        <div class="amodal-field"><label>Số giờ</label><input name="hours" type="number" value="0" min="0"></div>
+        <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
+        <div class="amodal-field"><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
+        <div class="amodal-field full"><small style="color:#9fb2cf;font-size:11.5px">💡 Có thể kết hợp ngày + giờ (vd 0 ngày 6 giờ = gói 6h dùng thử). Tổng phải &gt; 0.</small></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mPkgAdd')">Huỷ</button><button class="btn btn-blue" type="submit">➕ Thêm gói</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Sửa gói -->
+<div class="amodal-ov" id="mPkgEdit">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">✏️</div><div><h3>Sửa gói</h3><div class="am-sub" data-am-sub>—</div></div><button class="amodal-x" onclick="amClose('mPkgEdit')">✕</button></div>
+    <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="edit_pkg"><input type="hidden" name="id" value="">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Game</label><select name="game_id"><?=$gameOpts?></select></div>
+        <div class="amodal-field full"><label>Tên gói</label><input name="name" required></div>
+        <div class="amodal-field"><label>Số ngày</label><input name="days" type="number" min="0"></div>
+        <div class="amodal-field"><label>Số giờ</label><input name="hours" type="number" min="0"></div>
+        <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required></div>
+        <div class="amodal-field"><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
+        <div class="amodal-field"><label>Trạng thái</label><select name="is_active"><option value="1">Bật</option><option value="0">Tắt</option></select></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mPkgEdit')">Huỷ</button><button class="btn btn-blue" type="submit">💾 Lưu thay đổi</button></div>
+    </form>
+  </div>
+</div>
 
 
 <?php elseif($tab==='accounts'): ?>
@@ -2824,6 +2917,27 @@ function toggleNav(){ var s=document.getElementById('sidebarNav'); if(!s)return;
   else bind();
 })();
 function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; var v=m.getAttribute('data-v')||'1'; try{sessionStorage.setItem('upd_dismiss_'+v,'1')}catch(e){} } }
+
+/* ===== MODAL EDIT (tạo/sửa popup) ===== */
+function amOpen(id,data){
+  var ov=document.getElementById(id); if(!ov)return;
+  if(data){ // điền sẵn field cho form sửa
+    var form=ov.querySelector('form');
+    if(form){ Object.keys(data).forEach(function(k){
+      var el=form.elements[k];
+      if(el && el.type!=='file'){ el.value=data[k]; }
+    }); }
+    // hiện icon hiện tại nếu có
+    var ci=ov.querySelector('[data-cur-icon]');
+    if(ci){ ci.innerHTML = data._icon ? ('<img src="'+data._icon+'" alt=""> Icon hiện tại — chọn file mới để thay') : 'Chưa có icon'; }
+    // tiêu đề phụ
+    var st=ov.querySelector('[data-am-sub]'); if(st && data._title){ st.textContent=data._title; }
+  }
+  ov.classList.add('show'); document.body.style.overflow='hidden';
+}
+function amClose(id){ var ov=document.getElementById(id); if(ov){ov.classList.remove('show'); document.body.style.overflow='';} }
+document.addEventListener('click',function(e){ if(e.target.classList && e.target.classList.contains('amodal-ov')) amClose(e.target.id); });
+document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ document.querySelectorAll('.amodal-ov.show').forEach(function(o){amClose(o.id);}); } });
 
 /* ===== TOAST + CONFIRM MODAL (admin global) ===== */
 (function(){
