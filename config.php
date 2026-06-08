@@ -289,30 +289,53 @@ function shortenYeuMoney($longUrl, &$debug = null) {
 }
 
 function buildFreeShortlink($claimUrl, &$debug = null) {
-    // Layers: 1 = 1 lần Layma, 2 = 2 lần Layma lồng nhau (vượt 2 link rút gọn)
+    // Layers: 1 = chỉ Layma rút gọn claim trực tiếp
+    //         2 = Link4M(claim) -> Layma(Link4M) — user vượt Layma -> tới Link4M -> vượt Link4M -> tới claim
     $layers = defined('FREE_SHORTLINK_LAYERS') ? (int)FREE_SHORTLINK_LAYERS : 2;
     if ($layers < 1) $layers = 1;
     if ($layers > 2) $layers = 2;
 
     $debug = ['layers' => $layers];
 
-    // Lớp 1: Layma rút gọn claim url
-    $layer1 = shortenLayma($claimUrl, $d1);
-    $debug['layma_1'] = $d1;
-    if (!$layer1) throw new Exception('Layma API không tạo được link. Kiểm tra LAYMA_API_TOKEN.');
-
-    if ($layers === 1) return $layer1;
-
-    // Lớp 2: Layma rút gọn TIẾP link đã rút gọn → tạo url Layma KHÁC
-    // Khi user click link layer2 → vượt link → tới layer1 → vượt link → tới claim
-    $layer2 = shortenLayma($layer1, $d2);
-    $debug['layma_2'] = $d2;
-    if (!$layer2 || $layer2 === $layer1) {
-        // Fail/trùng link → fallback Layma 1 lớp (không throw)
-        error_log('[buildFreeShortlink] Layma 2 lop fail, fallback 1 lop. Debug: ' . json_encode($d2));
-        return $layer1;
+    // ===== 1 lớp: chỉ Layma =====
+    if ($layers === 1) {
+        $only = shortenLayma($claimUrl, $d1);
+        $debug['layma'] = $d1;
+        if (!$only) throw new Exception('Layma API không tạo được link. Kiểm tra LAYMA_API_TOKEN.');
+        return $only;
     }
-    return $layer2;
+
+    // ===== 2 lớp: Link4M(claim) -> Layma(Link4M) =====
+    $link4mToken = defined('LINK4M_API_TOKEN') ? LINK4M_API_TOKEN : '';
+    if ($link4mToken === '' || strpos($link4mToken, 'your_') === 0) {
+        // Chưa cấu hình Link4M → tự fallback xuống 1 lớp Layma
+        $debug['link4m'] = ['skipped' => 'LINK4M_API_TOKEN chưa cấu hình'];
+        $only = shortenLayma($claimUrl, $d2);
+        $debug['layma_fallback'] = $d2;
+        if (!$only) throw new Exception('Layma API không tạo được link.');
+        return $only;
+    }
+
+    // Lớp trong: Link4M rút gọn claim URL
+    $inner = shortenLink4M($claimUrl, $dL4);
+    $debug['link4m'] = $dL4;
+    if (!$inner) {
+        // Link4M fail → fallback 1 lớp Layma (không chết hệ thống)
+        error_log('[buildFreeShortlink] Link4M fail, fallback 1 lop Layma');
+        $only = shortenLayma($claimUrl, $d3);
+        $debug['layma_fallback'] = $d3;
+        if (!$only) throw new Exception('Cả Link4M lẫn Layma đều lỗi.');
+        return $only;
+    }
+
+    // Lớp ngoài: Layma rút gọn link Link4M
+    $outer = shortenLayma($inner, $dLa);
+    $debug['layma_wrap'] = $dLa;
+    if (!$outer || $outer === $inner) {
+        error_log('[buildFreeShortlink] Layma wrap fail, dùng Link4M trực tiếp');
+        return $inner; // ít nhất vẫn 1 lớp Link4M
+    }
+    return $outer;
 }
 
 // =============================================
