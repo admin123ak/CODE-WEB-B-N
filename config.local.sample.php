@@ -18,7 +18,7 @@
 
 // --- License (bắt buộc — code không chạy nếu sai) ---
 define('LICENSE_KEY', '');                                  // Key admin cấp từ License Server
-define('LICENSE_SERVER_URL', 'https://license.tranvanhoang.com'); // Domain license server
+define('LICENSE_SERVER_URL', 'https://teamcrack.linkpc.net'); // Domain license server
 
 // --- Database ---
 define('DB_HOST', '127.0.0.1');

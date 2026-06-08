@@ -283,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['installer']['db_user'] = trim($_POST['db_user']);
                 $_SESSION['installer']['db_pass'] = $_POST['db_pass'];
                 $_SESSION['installer']['license_key']        = trim($_POST['license_key'] ?? '');
-                $_SESSION['installer']['license_server_url'] = trim($_POST['license_server_url'] ?? 'https://license.tranvanhoang.com');
+                $_SESSION['installer']['license_server_url'] = trim($_POST['license_server_url'] ?? 'https://teamcrack.linkpc.net');
 
                 // Import schema
                 $count = importSqlFile($result, APP_ROOT . '/database.sql');
@@ -338,7 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Ghi config.local.php
                 $written = writeConfigLocal([
                     'LICENSE_KEY'              => $i['license_key'] ?? '',
-                    'LICENSE_SERVER_URL'       => $i['license_server_url'] ?? 'https://license.tranvanhoang.com',
+                    'LICENSE_SERVER_URL'       => $i['license_server_url'] ?? 'https://teamcrack.linkpc.net',
                     'DB_HOST'                  => $i['db_host'],
                     'DB_NAME'                  => $i['db_name'],
                     'DB_USER'                  => $i['db_user'],
@@ -494,7 +494,7 @@ foreach ($checks as $name => $ok) {
 <input type="hidden" name="action" value="check_db">
 <div class="form-group"><label>🔑 License Key</label><input type="text" name="license_key" value="<?= htmlspecialchars($_POST['license_key'] ?? '') ?>" required placeholder="HCLOU-XXXX-XXXX-XXXX">
 <div class="hint">Key được cấp khi mua source. Liên hệ Zalo 0868641019.</div></div>
-<div class="form-group"><label>License Server URL</label><input type="text" name="license_server_url" value="<?= htmlspecialchars($_POST['license_server_url'] ?? 'https://license.tranvanhoang.com') ?>" required></div>
+<div class="form-group"><label>License Server URL</label><input type="text" name="license_server_url" value="<?= htmlspecialchars($_POST['license_server_url'] ?? 'https://teamcrack.linkpc.net') ?>" required></div>
 <div class="form-group"><label>Host</label><input type="text" name="db_host" value="<?= htmlspecialchars($_POST['db_host'] ?? '127.0.0.1') ?>" required></div>
 <div class="form-group"><label>Tên database</label><input type="text" name="db_name" value="<?= htmlspecialchars($_POST['db_name'] ?? '') ?>" required>
 <div class="hint">Phải tạo sẵn database trống trên cPanel trước. Installer sẽ tự import schema.</div></div>

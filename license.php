@@ -149,7 +149,7 @@ if (!function_exists('hclou_license_activate')) {
            . '<div class="i">🔑</div><h1>Kích hoạt License</h1><div class="s">Nhập license key để bắt đầu sử dụng</div>'
            . ($e ? '<div class="err">⚠️ ' . $e . '</div>' : '')
            . '<label>License Key</label><input name="activate_key" placeholder="HCLOU-XXXX-XXXX-XXXX" autofocus required>'
-           . '<label>License Server URL</label><input name="activate_url" value="' . $cu . '" placeholder="https://license.tranvanhoang.com">'
+           . '<label>License Server URL</label><input name="activate_url" value="' . $cu . '" placeholder="https://teamcrack.linkpc.net">'
            . '<button type="submit">Kích hoạt</button>'
            . '<div class="hint">Chưa có key? Liên hệ <b>Zalo 0868641019</b></div>'
            . '</form></body></html>';
