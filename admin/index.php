@@ -375,7 +375,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($act === 'regen_free_link') {
         $stmt=$db->prepare("SELECT * FROM free_keys WHERE id=?"); $stmt->execute([$_POST['id']]); $fk=$stmt->fetch();
-        if ($fk) { try { $short=buildFreeShortlink(SITE_URL.'/claim.php?t='.$fk['claim_token']); $db->prepare("UPDATE free_keys SET short_url=? WHERE id=?")->execute([$short,$fk['id']]); } catch (Exception $e) { header("Location: ?tab=freekeys&err=" . urlencode($e->getMessage())); exit; } }
+        if ($fk) {
+            try {
+                $dbg = null;
+                $short=buildFreeShortlink(SITE_URL.'/getkey.php?t='.$fk['claim_token'], $dbg);
+                $db->prepare("UPDATE free_keys SET short_url=? WHERE id=?")->execute([$short,$fk['id']]);
+                // Báo rõ link dùng API nào để admin biết Link4M có chạy không
+                $api = (stripos($short,'link4m')!==false) ? 'Link4M' : ((stripos($short,'layma')!==false) ? 'Layma' : 'khác');
+                $lyr = $dbg['layers'] ?? '?';
+                header("Location: ?tab=freekeys&msg=" . urlencode("Đã tạo link {$lyr} lớp · domain ngoài: {$api}")); exit;
+            } catch (Exception $e) { header("Location: ?tab=freekeys&err=" . urlencode($e->getMessage())); exit; }
+        }
         header("Location: ?tab=freekeys&ok=1"); exit;
     }
 
@@ -2726,7 +2736,7 @@ foreach($cronJobs as $cj){
 <div class="warnbox">⚠️ Quan trọng nhất: <b>MBBANK Auto-bank</b> (mỗi 1 phút) — nếu không chạy, đơn thanh toán sẽ không tự duyệt. Setup xong, kiểm tra tại <a href="../setup_cron.php" target="_blank" style="color:#58a6ff">setup_cron.php</a>.</div>
 <div style="margin-top:18px"><button class="btn btn-green" type="submit">💾 Lưu cấu hình</button></div>
 </form>
-<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, và huỷ đơn pending quá 30 phút.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
+<div class="form-card"><h3>🧹 Bảo trì nhanh</h3><p>Tự chuyển key hết hạn sang expired, xoá key expired quá 3 ngày không gia hạn, <b>huỷ đơn pending quá 15 phút</b> (trả key/acc về pool), và hết hạn topup pending quá 30 phút. <b style="color:#fbbf24">Cần cron <span class="mono">job=maintenance</span> chạy mỗi 5 phút thì mới tự động</b> — nếu chưa setup cron, bấm nút dưới để chạy tay.</p><form method="POST" style="margin-top:12px"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="run_maintenance"><button class="btn btn-blue" type="submit">Chạy maintenance ngay</button></form><?php if(isset($_GET['maint'])):?><div class="codebox"><?=htmlspecialchars($_GET['maint'])?></div><?php endif; ?></div>
 <div class="form-card"><h3>🧾 Log thay đổi cấu hình</h3><table><tr><th>ID</th><th>Admin</th><th>Key</th><th>Old</th><th>New</th><th>Time</th></tr><?php foreach($logs as $l): ?><tr><td><?=$l['id']?></td><td><?=htmlspecialchars($l['admin'])?></td><td class="mono"><?=htmlspecialchars($l['config_key'])?></td><td><?=htmlspecialchars($l['old_value'] ?? '')?></td><td><?=htmlspecialchars($l['new_value'] ?? '')?></td><td class="mono"><?=htmlspecialchars($l['created_at'])?></td></tr><?php endforeach; if(!$logs): ?><tr><td colspan="6"><p>Chưa có log.</p></td></tr><?php endif; ?></table></div>
 
 <?php elseif($tab==='setup'): ?>
