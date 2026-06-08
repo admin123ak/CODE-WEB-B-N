@@ -170,7 +170,7 @@
           <span class="buy-sub" id="buySub" data-i18n="noPackageSelected">Chưa chọn gói</span>
         </button>
       </div>
-      <div class="note-txt">&#x26A0;&#xFE0F; Kh&#xF4;ng nh&#x1EAD;n card: N&#x1EBF;u kh&#xF4;ng c&#xF3; t&#xE0;i kho&#x1EA3;n ng&#xE2;n h&#xE0;ng, t&#x1EA1;o m&#xE3; QR v&#xE0; nh&#x1EDD; ng&#x01B0;&#x1EDD;i kh&#xE1;c qu&#xE9;t h&#x1ED9; &#x111;&#x1EC3; nh&#x1EAD;n key.</div>
+      <div class="note-txt">&#x1F4B3; Khi n&#x1EA1;p b&#x1EB1;ng th&#x1EBB; c&#xE0;o, ti&#x1EC1;n th&#x1EEB;a c&#x1EE7;a b&#x1EA1;n s&#x1EBD; &#x111;&#x01B0;&#x1EE3;c th&#xEA;m v&#xE0;o s&#x1ED1; d&#x01B0; t&#xE0;i kho&#x1EA3;n v&#xE0; c&#xF3; th&#x1EC3; ti&#x1EBF;p t&#x1EE5;c s&#x1EED; d&#x1EE5;ng cho l&#x1EA7;n mua ti&#x1EBF;p theo!</div>
     </div>
 
     <div class="key-head">
