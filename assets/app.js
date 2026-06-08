@@ -434,7 +434,7 @@ async function loadPkgs(gid){
       var sel=(selPkg&&selPkg.id==='free')?' on':'';
       html+='<div class="pkg-row free'+sel+'" onclick="pickPkg(\'free\',this)">'
         +'<div><div class="pkg-days">🎁 '+escapeHtml(p.name)+'</div>'
-        +'<div class="pkg-mode">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+' · '+T.vuotLinkNhan+'</div></div>'
+        +'<div class="pkg-mode">'+T.goiNgay+fmtDur(p.days,p.hours)+' · '+T.vuotLinkNhan+'</div></div>'
         +'<div class="pkg-cost">'+T.mienPhi+'</div></div>';
       return;
     }
@@ -450,7 +450,7 @@ async function loadPkgs(gid){
     }
     var priceHtml=hasDisc?'<span style="text-decoration:line-through;opacity:.5;font-size:11px">'+fmtMoney(priceVnd)+'\u0111</span> <span style="color:var(--green2)">'+fmtMoney(discPrice)+'\u0111</span>':fmtMoney(priceVnd)+'\u0111';
     html+='<div class="pkg-row'+sel+'" onclick="pickPkg('+(parseInt(p.id,10)||0)+',this)">'
-      +'<div><div class="pkg-days">'+T.goiNgay+(parseInt(p.days,10)||0)+T.ngay+'</div>'
+      +'<div><div class="pkg-days">'+T.goiNgay+fmtDur(p.days,p.hours)+'</div>'
       +'<div class="pkg-mode">'+T.cheDoKey+escapeHtml(p.key_type)+T.keyMode+'</div></div>'
       +'<div class="pkg-cost">'+priceHtml+usdtTag+'</div></div>';
   });
@@ -539,7 +539,7 @@ function updBuyBtn(){
       var unitPrice=discountedPrice(parseInt(selPkg.price,10)||0);
       var totalPrice=unitPrice*selQty;
       var total=selQty>1?fmtMoney(totalPrice)+'\u0111 x'+selQty:'';
-      sub.textContent=selPkg.days+T.ngay+' | '+fmtMoney(unitPrice)+'\u0111'+(total?' | '+total:'');
+      sub.textContent=fmtDur(selPkg.days,selPkg.hours)+' | '+fmtMoney(unitPrice)+'\u0111'+(total?' | '+total:'');
     }
   } else {
     btn.classList.remove('go');
@@ -773,7 +773,7 @@ async function buyWithBalance(){
   buying=false;
   if(btn){
     var unit=discountedPrice(parseInt(selPkg.price,10)||0);
-    btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+fmtMoney(unit*selQty)+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
+    btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+fmtDur(selPkg.days,selPkg.hours)+' | '+fmtMoney(unit*selQty)+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
     btn.classList.add('go');
   }
   try{ closeModal('topupModal'); }catch(e){}
@@ -821,7 +821,7 @@ async function confirmCreateOrder(){
   btn.classList.add('go');
   var restUnit=discountedPrice(parseInt(selPkg.price,10)||0);
   var restTotal=fmtMoney(restUnit*selQty);
-  btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+selPkg.days+T.ngay+' | '+restTotal+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
+  btn.innerHTML='<span>'+T.muaNgay+'</span><span class="buy-sub">'+fmtDur(selPkg.days,selPkg.hours)+' | '+restTotal+'đ'+(selQty>1?' x'+selQty:'')+'</span>';
   if(res.success) showPay(res);
   else { toast(res.error||T.loiTaoDon,'error'); if(res.order_code){ await loadPendingPayments(); setTimeout(function(){resumePay(0);},350); } }
 }
@@ -1243,7 +1243,7 @@ function renderKeys(keys){
       +'</div></div>'
       +'<div class="kgrid">'
       +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
-      +'<div class="kbox"><div class="kbox-lbl">Số ngày</div><div class="kbox-val">'+(parseInt(k.days,10)||0)+' ngày</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Thời hạn</div><div class="kbox-val">'+fmtDur(k.days,k.hours)+'</div></div>'
       +'</div>';
     if(k.status==='active'){
       html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div></div>';
@@ -1314,6 +1314,8 @@ async function doDelete(id){
 }
 
 function fmtMoney(n){return Number(n).toLocaleString('vi-VN');}
+// Format thời hạn gói: days/hours -> "X ngày Yh" | "X ngày" | "Y giờ" | "—"
+function fmtDur(d,h){d=parseInt(d,10)||0;h=parseInt(h,10)||0;var hr=(T.gio||(LANG==='en'?' hour(s)':LANG==='es'?' hora(s)':' giờ'));var dy=T.ngay||' ngày';if(d>0&&h>0)return d+dy+' '+h+'h';if(d>0)return d+dy;if(h>0)return h+hr;return '—';}
 function pad(n){return String(n).padStart(2,'0');}
 function fmtDate(d){if(!d)return'--';var dt=new Date(d.replace(' ','T'));return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear();}
 function fmtDateFull(d){if(!d)return'--';var dt=new Date(d.replace(' ','T'));return dt.getDate()+'/'+(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());}
@@ -1553,7 +1555,7 @@ async function loadHistory(){
           +'<span class="hist-badge '+badgeCls+'">'+escapeHtml(statusText)+'</span></div>'
           +'<div class="hist-detail">'
           +'<span><span>'+escapeHtml(T.histGame)+'</span><b>'+escapeHtml(o.game_name)+'</b></span>'
-          +'<span><span>'+escapeHtml(T.histPkg)+'</span><b>'+escapeHtml(o.pkg_name)+' ('+(parseInt(o.days,10)||0)+' '+escapeHtml(T.histPkgDays)+')</b></span>'
+          +'<span><span>'+escapeHtml(T.histPkg)+'</span><b>'+escapeHtml(o.pkg_name)+' ('+fmtDur(o.days,o.hours)+')</b></span>'
           +'<span><span>'+escapeHtml(T.histCreated)+'</span><b>'+escapeHtml(fmtDate(o.created_at))+'</b></span>'
           +'</div>'
           +'<div class="hist-amount">'+fmtMoney(o.amount)+'₫</div></div>';
