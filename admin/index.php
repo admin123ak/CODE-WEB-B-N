@@ -2236,6 +2236,84 @@ function closeNav(){
   document.getElementById('menuBtn').classList.remove('open');
 }
 function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; var v=m.getAttribute('data-v')||'1'; try{sessionStorage.setItem('upd_dismiss_'+v,'1')}catch(e){} } }
+
+/* ===== TOAST + CONFIRM MODAL (admin global) ===== */
+(function(){
+  // Toast container
+  var tc=document.createElement('div'); tc.id='aToastBox';
+  tc.style.cssText='position:fixed;top:64px;right:18px;z-index:9998;display:flex;flex-direction:column;gap:9px;max-width:calc(100% - 36px);width:340px;pointer-events:none';
+  document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(tc);});
+  window.aToast=function(msg,type){
+    type=type||'info';
+    var colors={success:['#16a34a','#22c55e','✓'],error:['#dc2626','#ef4444','✕'],warn:['#d97706','#f59e0b','⚠'],info:['#0284c7','#06b6d4','ℹ']};
+    var c=colors[type]||colors.info;
+    var t=document.createElement('div');
+    t.style.cssText='background:linear-gradient(135deg,'+c[0]+',rgba(15,23,42,.96));border:1px solid rgba(255,255,255,.12);border-left:4px solid '+c[1]+';color:#fff;padding:12px 14px;border-radius:13px;box-shadow:0 12px 36px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.4);font-size:13px;font-weight:700;display:flex;align-items:center;gap:10px;pointer-events:auto;transform:translateX(120%);opacity:0;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .25s;backdrop-filter:blur(12px)';
+    t.innerHTML='<span style="font-size:18px;font-weight:900;color:'+c[1]+'">'+c[2]+'</span><span style="flex:1;line-height:1.45">'+msg+'</span><span style="cursor:pointer;opacity:.7;font-size:18px;padding:0 4px" onclick="this.parentNode.style.transform=\'translateX(120%)\';this.parentNode.style.opacity=\'0\';setTimeout(function(){t.remove()},300)">×</span>';
+    tc.appendChild(t);
+    requestAnimationFrame(function(){t.style.transform='translateX(0)';t.style.opacity='1';});
+    setTimeout(function(){t.style.transform='translateX(120%)';t.style.opacity='0';setTimeout(function(){t.remove();},350);},4500);
+  };
+  // Confirm modal — Promise based
+  window.aConfirm=function(msg,opts){
+    opts=opts||{};
+    return new Promise(function(resolve){
+      var ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;background:rgba(8,12,24,.74);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .25s;backdrop-filter:blur(4px)';
+      var dangerCol=opts.danger?'linear-gradient(135deg,#dc2626,#ef4444)':'linear-gradient(135deg,#2563eb,#06b6d4)';
+      var icon=opts.danger?'⚠️':(opts.icon||'❓');
+      ov.innerHTML='<div style="background:linear-gradient(180deg,#182235,#111827);border:1px solid #334765;border-radius:20px;padding:26px 24px 20px;max-width:400px;width:100%;box-shadow:0 32px 96px rgba(0,0,0,.55);transform:scale(.92);transition:transform .25s cubic-bezier(.34,1.56,.64,1);text-align:center"><div style="font-size:42px;margin-bottom:10px">'+icon+'</div><div style="font-size:15.5px;font-weight:800;color:#dbeafe;line-height:1.5;margin-bottom:18px">'+msg+'</div><div style="display:flex;gap:10px"><button type="button" class="aCfBtn aCfCancel" style="flex:1;padding:11px 16px;border:1px solid #334765;background:transparent;color:#9fb2cf;border-radius:11px;font-weight:800;font-size:13px;cursor:pointer">'+(opts.cancel||'Huỷ')+'</button><button type="button" class="aCfBtn aCfOk" style="flex:1;padding:11px 16px;border:0;background:'+dangerCol+';color:#fff;border-radius:11px;font-weight:900;font-size:13px;cursor:pointer">'+(opts.ok||'Đồng ý')+'</button></div></div>';
+      document.body.appendChild(ov);
+      requestAnimationFrame(function(){ov.style.opacity='1';ov.firstElementChild.style.transform='scale(1)';});
+      function close(val){ov.style.opacity='0';ov.firstElementChild.style.transform='scale(.92)';setTimeout(function(){ov.remove();resolve(val);},220);}
+      ov.querySelector('.aCfCancel').onclick=function(){close(false);};
+      ov.querySelector('.aCfOk').onclick=function(){close(true);};
+      ov.addEventListener('click',function(e){if(e.target===ov)close(false);});
+    });
+  };
+  // Intercept native window.confirm để xài modal đẹp.
+  // Pattern phổ biến trong admin: <button onclick="return confirm('...')">.
+  // Khi click → DOM tự gọi onclick handler; nếu trả false thì submit bị huỷ.
+  // Mình intercept click capture phase trước, hiện modal, rồi tự submit form.
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest('button,a,input[type=submit]');
+    if(!btn || btn.dataset._cfApproved==='1')return;
+    var oc=btn.getAttribute('onclick')||'';
+    var m=oc.match(/return\s+confirm\s*\(\s*['"]([\s\S]*?)['"]\s*\)/);
+    if(!m)return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var msg=m[1].replace(/\\n/g,' ').replace(/\\'/g,"'").replace(/\\"/g,'"');
+    var danger=/xoá|xoa|xóa|delete|reject|từ chối|tu choi|huỷ|huy|tắt|tat|lock|khoá|khoa/i.test(msg);
+    aConfirm(msg,{danger:danger}).then(function(ok){
+      if(!ok)return;
+      btn.dataset._cfApproved='1';
+      // Click lại; onclick trả về true (bỏ qua confirm) thì submit/redirect tiếp
+      btn.removeAttribute('onclick');
+      if(btn.form && (btn.type==='submit'||btn.tagName==='INPUT')){btn.form.submit();}
+      else{btn.click();}
+      setTimeout(function(){btn.setAttribute('onclick',oc);delete btn.dataset._cfApproved;},300);
+    });
+  },true);
+  // Form có data-confirm
+  document.addEventListener('submit',function(e){
+    var f=e.target;
+    var msg=f.getAttribute('data-confirm');
+    if(!msg || f.dataset._cfApproved==='1')return;
+    e.preventDefault();
+    aConfirm(msg,{danger:f.hasAttribute('data-confirm-danger')}).then(function(ok){
+      if(ok){f.dataset._cfApproved='1';f.submit();}
+    });
+  },true);
+  // Auto-toast từ URL ?ok=&err=&msg=
+  document.addEventListener('DOMContentLoaded',function(){
+    var u=new URL(location.href);
+    var ok=u.searchParams.get('ok'),err=u.searchParams.get('err'),msg=u.searchParams.get('msg');
+    if(err){aToast(decodeURIComponent(err),'error');}
+    else if(msg){aToast(decodeURIComponent(msg),'info');}
+    else if(ok && ok!=='updated'){aToast('✓ Thao tác thành công','success');}
+  });
+})();
 </script>
 
 <?php
