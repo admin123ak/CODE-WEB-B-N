@@ -188,7 +188,47 @@
     'Chưa có log.': { en: 'No logs.', es: 'Sin registros.' },
     'Không có đơn nào chờ thanh toán ✅': { en: 'No pending orders ✅', es: 'Sin pedidos pendientes ✅' },
     'sẵn sàng trong pool': { en: 'ready in pool', es: 'listas en el pool' },
-    'Tự xoá sau 3 ngày nếu không gia hạn': { en: 'Auto-deleted after 3 days if not renewed', es: 'Auto-eliminado tras 3 días sin renovar' }
+    'Tự xoá sau 3 ngày nếu không gia hạn': { en: 'Auto-deleted after 3 days if not renewed', es: 'Auto-eliminado tras 3 días sin renovar' },
+
+    // ===== Bổ sung: Đơn hàng / Giao dịch =====
+    'Phương thức:': { en: 'Method:', es: 'Método:' },
+    'Phương thức': { en: 'Method', es: 'Método' },
+    'Cron poll mỗi phút:': { en: 'Cron poll every minute:', es: 'Cron poll cada minuto:' },
+    'Lỗi xử lý': { en: 'Processing Error', es: 'Error de Proceso' },
+    'Tổng giao dịch đã đọc': { en: 'Total Transactions Read', es: 'Total Transacciones Leídas' },
+    'Bị bỏ qua': { en: 'Skipped', es: 'Omitido' },
+
+    // ===== Bổ sung: dropdown chung =====
+    '-- Chọn game --': { en: '-- Select game --', es: '-- Elegir juego --' },
+    '-- Chọn game trước --': { en: '-- Select game first --', es: '-- Elige juego primero --' },
+    '-- Chọn gói --': { en: '-- Select package --', es: '-- Elegir paquete --' },
+
+    // ===== Bổ sung: Games =====
+    'Bán Key': { en: 'Sell Key', es: 'Vender Clave' },
+    'Bán Acc': { en: 'Sell Account', es: 'Vender Cuenta' },
+    'Cả Key + Acc': { en: 'Both Key + Account', es: 'Clave + Cuenta' },
+    'Link chạy/play (nút ▶)': { en: 'Run/Play link (▶ button)', es: 'Enlace de ejecución (botón ▶)' },
+
+    // ===== Bổ sung: Keys =====
+    'Tổng:': { en: 'Total:', es: 'Total:' },
+    'key vào pool.': { en: 'keys to pool.', es: 'claves al pool.' },
+    'Đã thêm': { en: 'Added', es: 'Añadido' },
+    '✅ Thành công!': { en: '✅ Success!', es: '✅ ¡Éxito!' },
+
+    // ===== Bổ sung: Ví user =====
+    'Credit hôm nay': { en: 'Credit Today', es: 'Crédito Hoy' },
+    'Debit hôm nay': { en: 'Debit Today', es: 'Débito Hoy' },
+    'Còn pending 24h': { en: 'Pending 24h', es: 'Pendiente 24h' },
+    'Tổng request 24h': { en: 'Total Requests 24h', es: 'Total Solicitudes 24h' },
+    'Tổng số dư hệ thống': { en: 'Total System Balance', es: 'Saldo Total del Sistema' },
+    'User có số dư > 0': { en: 'Users with balance > 0', es: 'Usuarios con saldo > 0' },
+
+    // ===== Bổ sung: Update =====
+    'Phiên bản': { en: 'Version', es: 'Versión' },
+    'Có bản cập nhật mới!': { en: 'New update available!', es: '¡Nueva actualización!' },
+    '🎉 Có bản cập nhật mới': { en: '🎉 New update available', es: '🎉 Nueva actualización' },
+    '✔️ Bạn đang dùng bản mới nhất.': { en: '✔️ You are on the latest version.', es: '✔️ Tienes la última versión.' },
+    '⬇️ Cập nhật ngay lên v': { en: '⬇️ Update now to v', es: '⬇️ Actualizar a v' }
   };
 
   var LANGS = ['vi', 'en', 'es'];
