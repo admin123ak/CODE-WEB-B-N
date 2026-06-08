@@ -2361,5 +2361,6 @@ function updModalGo(f){ var b=document.getElementById('updModalBtn'); if(b){b.di
 (function(){ try{ if(!sessionStorage.getItem('upd_dismiss_<?=h($_mLatest)?>')){ document.getElementById('updModal').style.display='flex'; } }catch(e){ document.getElementById('updModal').style.display='flex'; } })();
 </script>
 <?php endif; } ?>
+<script src="admin-i18n.js?v=<?= @filemtime(__DIR__ . '/admin-i18n.js') ?: time() ?>"></script>
 </body>
 </html>
