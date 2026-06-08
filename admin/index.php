@@ -2108,7 +2108,7 @@ $typeOpts=''; foreach($typesAll as $t){ $typeOpts.='<option value="'.$t['id'].'"
   <td><span class="badge <?=$availCount>0?'green':'red'?>"><?=$availCount?> acc</span></td>
   <td><?php if($t['is_active']): ?><span class="badge green">● Bật</span><?php else: ?><span class="badge gray">○ Tắt</span><?php endif ?></td>
   <td style="text-align:right"><div class="row-act" style="justify-content:flex-end">
-    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mAccTypeEdit",<?=json_encode(["id"=>$t["id"],"game_id"=>$t["game_id"],"name"=>$t["name"],"price"=>$t["price"],"is_active"=>$t["is_active"],"_title"=>$t["game_name"]." · ".$t["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
+    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mAccTypeEdit",<?=json_encode(["id"=>$t["id"],"game_id"=>$t["game_id"],"name"=>$t["name"],"price"=>$t["price"],"description"=>$t["description"]??"","sort"=>$t["sort_order"]??0,"is_active"=>$t["is_active"],"_title"=>$t["game_name"]." · ".$t["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
     <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-gray btn-icon" type="submit" title="<?=$t['is_active']?'Tắt':'Bật'?>"><?=$t['is_active']?'⏸':'▶'?></button></form>
     <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá loại acc này? Các acc thuộc loại sẽ mất.')">🗑</button></form>
   </div></td>
@@ -2189,6 +2189,8 @@ if($accs):
         <div class="amodal-field full"><label>Game</label><select name="game_id"><?=$allGameOpts?></select></div>
         <div class="amodal-field"><label>Tên loại</label><input name="name" required></div>
         <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required></div>
+        <div class="amodal-field full"><label>Mô tả (tuỳ chọn)</label><input name="description"></div>
+        <div class="amodal-field"><label>Thứ tự</label><input name="sort" type="number"></div>
         <div class="amodal-field"><label>Trạng thái</label><select name="is_active"><option value="1">Bật</option><option value="0">Tắt</option></select></div>
       </div></div>
       <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mAccTypeEdit')">Huỷ</button><button class="btn btn-blue" type="submit">💾 Lưu thay đổi</button></div>
