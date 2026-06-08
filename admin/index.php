@@ -642,32 +642,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 3. Verify zip
             $za = new ZipArchive();
             if ($za->open($zipPath) !== true) { @unlink($zipPath); throw new Exception('File tải về không phải zip hợp lệ'); }
+            if ($za->numFiles === 0) { $za->close(); @unlink($zipPath); throw new Exception('Zip rỗng (0 file)'); }
 
-            // 4. Giải nén từng entry, BỎ QUA file/thư mục nhạy cảm
-            $protect = ['config.local.php', '.install_lock', 'data/', 'uploads/', 'license.php'];
-            $extracted = 0;
+            // 4a. Auto-detect prefix: nếu MỌI entry đều bắt đầu bằng cùng 1 thư mục gốc
+            //     (vd "CODE-WEB-B-N/...") → strip prefix đó. Hỗ trợ zip "bọc 1 lớp".
+            $prefix = null;
+            for ($i = 0; $i < $za->numFiles; $i++) {
+                $n = $za->getNameIndex($i);
+                if ($n === false || $n === '' || $n[0] === '.') continue;
+                $slash = strpos($n, '/');
+                if ($slash === false) { $prefix = ''; break; } // có file ở root → no prefix
+                $top = substr($n, 0, $slash + 1);
+                if ($prefix === null) $prefix = $top;
+                elseif ($prefix !== $top) { $prefix = ''; break; }
+            }
+            if ($prefix === null) $prefix = '';
+
+            // 4b. Giải nén từng entry, BỎ QUA file/thư mục nhạy cảm
+            //     File-level: match basename HOẶC path tuyệt đối
+            //     Dir-level (kết thúc /): match prefix CHÍNH XÁC, không strpos
+            $protectFiles = ['config.local.php', '.install_lock', 'license.php', 'version.json'];
+            $protectDirs  = ['data/', 'uploads/', '.git/'];
+            $extracted = 0; $skipped = 0; $errors = 0;
+            $prefixLen = strlen($prefix);
             for ($i = 0; $i < $za->numFiles; $i++) {
                 $name = $za->getNameIndex($i);
                 if ($name === false || $name === '') continue;
-                // Strip thư mục gốc nếu zip bọc 1 lớp (vd CODE-WEB-B-N/...)
-                $rel = $name;
+                if (substr($name, -1) === '/') continue; // bỏ qua entry là thư mục
+                // Strip prefix gốc nếu có
+                $rel = ($prefixLen && strncmp($name, $prefix, $prefixLen) === 0) ? substr($name, $prefixLen) : $name;
+                $rel = ltrim($rel, '/');
+                if ($rel === '') { $skipped++; continue; }
+                // Chặn path traversal
+                if (strpos($rel, '..') !== false) { $skipped++; continue; }
+                // File whitelist
+                $base = basename($rel);
                 $skip = false;
-                foreach ($protect as $p) {
-                    if (substr($p, -1) === '/') { if (strpos($rel, $p) !== false) { $skip = true; break; } }
-                    else { if (basename($rel) === $p || $rel === $p) { $skip = true; break; } }
+                foreach ($protectFiles as $pf) { if ($base === $pf || $rel === $pf) { $skip = true; break; } }
+                if (!$skip) {
+                    foreach ($protectDirs as $pd) { if (strncmp($rel, $pd, strlen($pd)) === 0) { $skip = true; break; } }
                 }
-                if ($skip) continue;
-                if (substr($name, -1) === '/') continue; // thư mục
-                $dest = APP_ROOT . '/' . ltrim($rel, '/');
+                if ($skip) { $skipped++; continue; }
+                // Ghi file
+                $dest = APP_ROOT . '/' . $rel;
                 $destDir = dirname($dest);
                 if (!is_dir($destDir)) @mkdir($destDir, 0755, true);
                 $stream = $za->getStream($name);
                 if ($stream) {
                     $content = stream_get_contents($stream);
                     fclose($stream);
-                    if ($content !== false) { @file_put_contents($dest, $content); $extracted++; }
-                }
+                    if ($content !== false && @file_put_contents($dest, $content) !== false) {
+                        $extracted++;
+                    } else { $errors++; }
+                } else { $errors++; }
             }
+            $totalEntries = $za->numFiles;
             $za->close();
             @unlink($zipPath);
 
@@ -685,8 +714,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Xóa cache .lic để badge/banner cập nhật lại ngay (latest đã = current)
             @unlink(APP_ROOT.'/data/.lic');
 
-            logInfo('Admin auto-update', ['extracted' => $extracted, 'version' => $newVer]);
-            header("Location: ?tab=update&ok=updated&n=" . $extracted . "&v=" . urlencode($newVer)); exit;
+            logInfo('Admin auto-update', ['total'=>$totalEntries, 'extracted'=>$extracted, 'skipped'=>$skipped, 'errors'=>$errors, 'prefix'=>$prefix, 'version'=>$newVer]);
+            header("Location: ?tab=update&ok=updated&n=" . $extracted . "&t=" . $totalEntries . "&s=" . $skipped . "&e=" . $errors . "&v=" . urlencode($newVer)); exit;
         } catch (Throwable $e) {
             header("Location: ?tab=update&err=" . urlencode('Update lỗi: ' . $e->getMessage())); exit;
         }
@@ -2066,7 +2095,12 @@ if (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL'
 }
 ?>
 <?php if(isset($_GET['ok']) && $_GET['ok']==='updated'): ?>
-<div class="okbox">✅ Cập nhật thành công lên <b>v<?=h($_GET['v'] ?? '')?></b>! Đã ghi <?=(int)($_GET['n']??0)?> file. <b>Tải lại trang</b> để dùng bản mới.</div>
+<div class="okbox">✅ Cập nhật thành công lên <b>v<?=h($_GET['v'] ?? '')?></b>!<br>
+📦 Zip có <b><?=(int)($_GET['t']??0)?></b> entry · ✍️ Ghi <b><?=(int)($_GET['n']??0)?></b> file · ⏭️ Skip <b><?=(int)($_GET['s']??0)?></b> (file bảo vệ: config/data/uploads/license) · ❌ Lỗi <b><?=(int)($_GET['e']??0)?></b><br>
+<b>Tải lại trang</b> để dùng bản mới.</div>
+<?php endif; ?>
+<?php if(isset($_GET['err'])): ?>
+<div class="errbox" style="background:#7f1d1d;border:1px solid #ef4444;color:#fecaca;padding:12px;border-radius:10px;margin-bottom:14px">❌ <?=h($_GET['err'])?></div>
 <?php endif; ?>
 <div class="form-card">
   <h3>Phiên bản</h3>
