@@ -2143,29 +2143,53 @@ function closeNav(){
   document.getElementById('navOverlay').classList.remove('show');
   document.getElementById('menuBtn').classList.remove('open');
 }
-function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; try{sessionStorage.setItem('upd_dismiss','1')}catch(e){} } }
+function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; var v=m.getAttribute('data-v')||'1'; try{sessionStorage.setItem('upd_dismiss_'+v,'1')}catch(e){} } }
 </script>
 
 <?php
-// Modal thông báo cập nhật (hiện 1 lần/phiên, mọi tab trừ tab update)
+// Modal thông báo cập nhật — gọi thẳng check_update lên server (cache 60s/session) để hiện ngay khi có bản mới
 if ($tab !== 'update') {
-    $_mLic = @json_decode((string)@file_get_contents(APP_ROOT.'/data/.lic'), true);
     $_mCur = @json_decode((string)@file_get_contents(APP_ROOT.'/version.json'), true)['version'] ?? '1.0.0';
-    if (is_array($_mLic) && !empty($_mLic['latest']) && version_compare($_mLic['latest'], $_mCur, '>')):
+    $_mLatest = ''; $_mChangelog = '';
+    $_cacheKey = 'upd_chk';
+    $_now = time();
+    if (isset($_SESSION[$_cacheKey]) && ($_now - (int)($_SESSION[$_cacheKey]['t'] ?? 0)) < 60) {
+        $_mLatest    = (string)($_SESSION[$_cacheKey]['v'] ?? '');
+        $_mChangelog = (string)($_SESSION[$_cacheKey]['c'] ?? '');
+    } elseif (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL')) {
+        $_u = rtrim(LICENSE_SERVER_URL,'/').'/api.php?action=check_update&license_key='.urlencode(LICENSE_KEY).'&current_version='.urlencode($_mCur);
+        $_ch = curl_init($_u);
+        curl_setopt_array($_ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>3, CURLOPT_CONNECTTIMEOUT=>2, CURLOPT_SSL_VERIFYPEER=>false, CURLOPT_SSL_VERIFYHOST=>0]);
+        $_r = @json_decode((string)curl_exec($_ch), true); curl_close($_ch);
+        if (is_array($_r)) {
+            $_mLatest    = (string)($_r['latest_version'] ?? '');
+            $_mChangelog = (string)($_r['changelog'] ?? '');
+        }
+        $_SESSION[$_cacheKey] = ['t'=>$_now, 'v'=>$_mLatest, 'c'=>$_mChangelog];
+    }
+    if ($_mLatest !== '' && version_compare($_mLatest, $_mCur, '>')):
 ?>
-<div id="updModal" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px">
-  <div style="max-width:400px;width:100%;background:#161b22;border:1px solid #30363d;border-radius:18px;padding:28px;text-align:center">
+<div id="updModal" data-v="<?=h($_mLatest)?>" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="max-width:440px;width:100%;background:#161b22;border:1px solid #30363d;border-radius:18px;padding:28px;text-align:center">
     <div style="font-size:46px;margin-bottom:10px">🎉</div>
     <h2 style="font-size:19px;margin-bottom:8px;color:#fde68a">Có bản cập nhật mới!</h2>
-    <p style="color:#9fb2cf;font-size:14px;line-height:1.6;margin-bottom:20px">Phiên bản <b style="color:#4ade80">v<?=h($_mLic['latest'])?></b> đã sẵn sàng.<br>Bạn đang dùng v<?=h($_mCur)?>.</p>
+    <p style="color:#9fb2cf;font-size:14px;line-height:1.6;margin-bottom:14px">Phiên bản <b style="color:#4ade80">v<?=h($_mLatest)?></b> đã sẵn sàng.<br>Bạn đang dùng v<?=h($_mCur)?>.</p>
+    <?php if($_mChangelog !== ''): ?>
+    <div style="background:#0d1117;border:1px solid #1f2937;border-radius:10px;padding:10px 12px;margin-bottom:16px;text-align:left;color:#cbd5e1;font-size:12.5px;line-height:1.55;max-height:140px;overflow:auto;white-space:pre-wrap"><?=h($_mChangelog)?></div>
+    <?php endif; ?>
     <div style="display:flex;gap:10px">
-      <button onclick="closeUpdModal()" style="flex:1;padding:12px;border:1px solid #30363d;border-radius:11px;background:transparent;color:#9fb2cf;font-weight:700;cursor:pointer;font-size:14px">Để sau</button>
-      <a href="?tab=update" style="flex:1;padding:12px;border-radius:11px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;font-weight:800;text-decoration:none;font-size:14px;display:flex;align-items:center;justify-content:center">🔄 Cập nhật ngay</a>
+      <button type="button" onclick="closeUpdModal()" style="flex:1;padding:12px;border:1px solid #30363d;border-radius:11px;background:transparent;color:#9fb2cf;font-weight:700;cursor:pointer;font-size:14px">Để sau</button>
+      <form method="POST" style="flex:1;margin:0" onsubmit="return updModalGo(this)">
+        <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
+        <input type="hidden" name="act" value="do_update">
+        <button type="submit" id="updModalBtn" style="width:100%;padding:12px;border:none;border-radius:11px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;font-weight:800;cursor:pointer;font-size:14px">🔄 Cập nhật ngay</button>
+      </form>
     </div>
   </div>
 </div>
 <script>
-(function(){ try{ if(!sessionStorage.getItem('upd_dismiss')){ document.getElementById('updModal').style.display='flex'; } }catch(e){ document.getElementById('updModal').style.display='flex'; } })();
+function updModalGo(f){ var b=document.getElementById('updModalBtn'); if(b){b.disabled=true;b.innerHTML='⏳ Đang cập nhật...';} return true; }
+(function(){ try{ if(!sessionStorage.getItem('upd_dismiss_<?=h($_mLatest)?>')){ document.getElementById('updModal').style.display='flex'; } }catch(e){ document.getElementById('updModal').style.display='flex'; } })();
 </script>
 <?php endif; } ?>
 </body>
