@@ -54,7 +54,7 @@ var I18N={
     profileOverview:'Tổng quan',profileAccount:'Thông tin tài khoản',profileLinks:'Liên kết nhanh',profileTotalOrders:'Tổng đơn',profileApproved:'Đã duyệt',profilePending:'Chờ xử lý',profileKeysOwned:'Key đang có',profileTgId:'Telegram ID',profileUsername:'Username',profileFullName:'Họ tên',profileJoined:'Ngày tham gia',profileBtnBuy:'🔑 Mua Key',profileBtnHistory:'📜 Lịch sử đơn hàng',profileBtnReload:'🔄 Tải lại',
     navBuy:'Mua Key',navFree:'Key Free',navHistory:'Lịch sử',navProfile:'Cá nhân',
     footerSupport:'Liên hệ hỗ trợ',footerPayment:'Phương thức thanh toán',footerCert:'Chứng nhận',footerCopyright:'Copyright © 2026 HCLOU Server. All Rights Reserved.',footerAddress:'Địa chỉ',footerTaxId:'Mã số thuế',footerBizLic:'Số GPKD',footerUpdating:'Đang cập nhật',footerHotline:'Hotline',footerComplaint:'Phản ánh chất lượng',footerEmail:'Email liên hệ',footerRespContent:'Chịu trách nhiệm nội dung',footerFollowTg:'Theo dõi trên Telegram',footerSocial:'Kết nối mạng xã hội',footerCertSite:'Chứng chỉ trang web',footerPaymentSupport:'Hỗ trợ thanh toán',
-    freeChecking2:'Đang kiểm tra...',freeClaimedToday:'Bạn đã nhận key free hôm nay!',freeReceivedAt:'Nhận lúc',freeBackTomorrow:'🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp',freeKeyToday:'Key miễn phí hôm nay',freeSub:'Nhận ngay 1 key free mỗi ngày!<br>Admin đã thêm key sẵn, mỗi người nhận 1 link riêng',freeBtnGetLink:'🔗 Lấy Link Claim Key',freeResetDaily:'⏰ Reset lúc 0h00 hàng ngày',freePeopleSuffix:'người đã nhận hôm nay',freeNoneToday:'Chưa có key free hôm nay',freeAdminNotYet:'Admin chưa thêm key. Vui lòng quay lại sau!',freeNewMorning:'🔄 Key mới sẽ có vào buổi sáng hàng ngày',freeCannotLoad:'Không thể tải thông tin key free',freeCreatingLink:'⏳ Đang tạo link...',freeAlready:'Bạn đã nhận key free hôm nay rồi!',freeYourLink:'Link claim riêng của bạn:',freeOpenLink:'🔓 Mở Link Claim Key',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Đã copy link!',freeLinkCreated:'✅ Đã tạo link — Mở link để nhận key',freeErrorGeneric:'Có lỗi xảy ra!',toastLoadErr:'Lỗi kết nối, thử lại sau!',loadingHistory:'Đang tải lịch sử...',histLoadFail:'⚠️ Không thể tải lịch sử đơn hàng',histGame:'Game',histPkg:'Gói',histCreated:'Ngày tạo',histPkgDays:'ngày',statusApproved:'Đã duyệt',statusRejected:'Đã từ chối',statusCancelled:'Đã huỷ',statusPending:'Chờ xử lý',accTitle:'Mua Acc',accSubtitle:'Chọn loại acc (Google, Facebook...)',accChooseLabel:'Chọn game & loại acc',accPickGameFirst:'Chọn game trước',accQtyLabel:'Số lượng acc',accQtyHint:'Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận',accBuyBtn:'Mua Acc',accNoTypeSelected:'Chưa chọn loại acc',accNote:'⚠️ Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.',accMyTitle:'Acc của tôi',accNoneYet:'Chưa có acc nào',navAcc:'Mua Acc',soLuongKey:'Số lượng key',gio:' giờ',totalLbl:'Tổng',pickerBalT:'Số dư ví',pickerBalSubOk:'Trừ thẳng từ ví · Nhận key ngay',pickerBalSubNo:'Số dư không đủ, nạp thêm',pickerCardT:'Thẻ cào',pickerCardSub:'Viettel/Mobifone/Vinaphone (qua ví)',
+    freeChecking2:'Đang kiểm tra...',freeClaimedToday:'Bạn đã nhận key free hôm nay!',freeReceivedAt:'Nhận lúc',freeBackTomorrow:'🔄 Quay lại vào 0h00 ngày mai để nhận key tiếp',freeKeyToday:'Key miễn phí hôm nay',freeSub:'Nhận ngay 1 key free mỗi ngày!<br>Admin đã thêm key sẵn, mỗi người nhận 1 link riêng',freeBtnGetLink:'🔗 Lấy Link Claim Key',freeResetDaily:'⏰ Reset lúc 0h00 hàng ngày',freePeopleSuffix:'người đã nhận hôm nay',freeNoneToday:'Chưa có key free hôm nay',freeAdminNotYet:'Admin chưa thêm key. Vui lòng quay lại sau!',freeNewMorning:'🔄 Key mới sẽ có vào buổi sáng hàng ngày',freeCannotLoad:'Không thể tải thông tin key free',freeCreatingLink:'⏳ Đang tạo link...',freeAlready:'Bạn đã nhận key free hôm nay rồi!',freeYourLink:'Link claim riêng của bạn:',freeOpenLink:'🔓 Mở Link Claim Key',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Đã copy link!',freeLinkCreated:'✅ Đã tạo link — Mở link để nhận key',freeErrorGeneric:'Có lỗi xảy ra!',toastLoadErr:'Lỗi kết nối, thử lại sau!',loadingHistory:'Đang tải lịch sử...',histLoadFail:'⚠️ Không thể tải lịch sử đơn hàng',histGame:'Game',histPkg:'Gói',histCreated:'Ngày tạo',histPkgDays:'ngày',statusApproved:'Đã duyệt',statusRejected:'Đã từ chối',statusCancelled:'Đã huỷ',statusPending:'Chờ xử lý',accTitle:'Mua Acc',accSubtitle:'Chọn loại acc (Google, Facebook...)',accChooseLabel:'Chọn game & loại acc',accPickGameFirst:'Chọn game trước',accQtyLabel:'Số lượng acc',accQtyHint:'Mỗi đơn 1 acc · đổi mật khẩu ngay sau nhận',accBuyBtn:'Mua Acc',accNoTypeSelected:'Chưa chọn loại acc',accNote:'⚠️ Mỗi acc chỉ bán 1 lần. Đổi mật khẩu ngay sau khi nhận acc.',accMyTitle:'Acc của tôi',accNoneYet:'Chưa có acc nào',navAcc:'Mua Acc',soLuongKey:'Số lượng key',gio:' giờ',totalLbl:'Tổng',pickerBalT:'Số dư ví',pickerBalSubOk:'Trừ thẳng từ ví · Nhận key ngay',pickerBalSubNo:'Số dư không đủ, nạp thêm',pickerCardT:'Thẻ cào',pickerCardSub:'Viettel/Mobifone/Vinaphone (qua ví)',errNoAccGame:'Chưa có game bán acc. Liên hệ admin.',errNoDownload:'Game này chưa có link tải',errSendCard:'Lỗi gửi thẻ',errWallet:'Lỗi trừ ví',buyKeyWalletOk:'🎉 Đã mua key thành công bằng ví!',errMaxTopup:'Tối đa 50 triệu/lần',errCreateTopup:'Lỗi tạo yêu cầu nạp',errGeneric:'Có lỗi xảy ra!',errCreateAccOrder:'Lỗi tạo đơn acc',errEnterCard:'Nhập đủ Serial + Mã thẻ',errMinTopup:'Tối thiểu 10.000đ',errOutAcc:'Hết acc loại này',buyAccWalletOk:'🎉 Đã mua acc thành công bằng ví!',
     balanceLabel:'Số dư',currentBalance:'SỐ DƯ HIỆN TẠI',topupNav:'💰 Nạp tiền',walletBalance:'Số dư ví',balanceHistoryTitle:'📜 Lịch sử ví',topupTitle:'💳 Nạp tiền vào ví',
 },
   en:{webTitle:'Open HCLOU in Telegram',webSub:'This web app only works inside Telegram Mini App to verify your account and protect your keys.',openTelegram:'🚀 Open in Telegram',tapChooseGame:'Tap to choose game',noGameSelected:'No game selected',noPackageSelected:'No package selected',promo:'🔥 HOT PROMO!',totalKey:'Total keys',activeLabel:'Active',expiredLabel:'Expired',buyNew:'Buy new key',buySub:'Choose app and duration package',chooseApp:'Choose app',choosePackage:'Choose package',buyNow:'Buy now',yourKeys:'Your keys',all:'All',lockedLabel:'Locked',chooseGameTitle:'🎮 Choose game',paymentTitle:'💳 Payment',search:'Search GKey...',
@@ -63,7 +63,7 @@ var I18N={
     profileOverview:'Overview',profileAccount:'Account info',profileLinks:'Quick links',profileTotalOrders:'Total orders',profileApproved:'Approved',profilePending:'Pending',profileKeysOwned:'Keys owned',profileTgId:'Telegram ID',profileUsername:'Username',profileFullName:'Full name',profileJoined:'Joined',profileBtnBuy:'🔑 Buy Key',profileBtnHistory:'📜 Order history',profileBtnReload:'🔄 Reload',
     navBuy:'Buy Key',navFree:'Free Key',navHistory:'History',navProfile:'Profile',
     footerSupport:'Contact support',footerPayment:'Payment methods',footerCert:'Certifications',footerCopyright:'Copyright © 2026 HCLOU Server. All Rights Reserved.',footerAddress:'Address',footerTaxId:'Tax ID',footerBizLic:'Business license',footerUpdating:'Updating',footerHotline:'Hotline',footerComplaint:'Quality complaints',footerEmail:'Contact email',footerRespContent:'Content responsibility',footerFollowTg:'Follow on Telegram',footerSocial:'Social networks',footerCertSite:'Website certifications',footerPaymentSupport:'Payment support',
-    freeChecking2:'Checking...',freeClaimedToday:'You already claimed today\'s free key!',freeReceivedAt:'Received at',freeBackTomorrow:'🔄 Come back at 00:00 tomorrow for a new key',freeKeyToday:'Today\'s free key',freeSub:'Get 1 free key per day!<br>Admin pre-added keys, each user gets a unique link',freeBtnGetLink:'🔗 Get Claim Link',freeResetDaily:'⏰ Resets at 00:00 daily',freePeopleSuffix:'people claimed today',freeNoneToday:'No free key today',freeAdminNotYet:'Admin has not added a key yet. Please check back later!',freeNewMorning:'🔄 A new key will be available each morning',freeCannotLoad:'Cannot load free key info',freeCreatingLink:'⏳ Creating link...',freeAlready:'You already claimed today\'s free key!',freeYourLink:'Your personal claim link:',freeOpenLink:'🔓 Open Claim Link',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Link copied!',freeLinkCreated:'✅ Link created — open it to claim key',freeErrorGeneric:'Something went wrong!',toastLoadErr:'Connection error, please retry!',loadingHistory:'Loading history...',histLoadFail:'⚠️ Cannot load order history',histGame:'Game',histPkg:'Package',histCreated:'Created',histPkgDays:'days',statusApproved:'Approved',statusRejected:'Rejected',statusCancelled:'Cancelled',statusPending:'Pending',accTitle:'Buy Account',accSubtitle:'Choose account type (Google, Facebook...)',accChooseLabel:'Choose game & account type',accPickGameFirst:'Pick a game first',accQtyLabel:'Account quantity',accQtyHint:'1 account per order · change password right after receiving',accBuyBtn:'Buy Account',accNoTypeSelected:'No account type selected',accNote:'⚠️ Each account is sold once. Change password immediately after receiving.',accMyTitle:'My accounts',accNoneYet:'No account yet',navAcc:'Buy Acc',soLuongKey:'Key quantity',gio:' hour(s)',totalLbl:'Total',pickerBalT:'Wallet balance',pickerBalSubOk:'Pay from wallet · Get key instantly',pickerBalSubNo:'Balance not enough, top up',pickerCardT:'Mobile card',pickerCardSub:'Viettel/Mobifone/Vinaphone (via wallet)',
+    freeChecking2:'Checking...',freeClaimedToday:'You already claimed today\'s free key!',freeReceivedAt:'Received at',freeBackTomorrow:'🔄 Come back at 00:00 tomorrow for a new key',freeKeyToday:'Today\'s free key',freeSub:'Get 1 free key per day!<br>Admin pre-added keys, each user gets a unique link',freeBtnGetLink:'🔗 Get Claim Link',freeResetDaily:'⏰ Resets at 00:00 daily',freePeopleSuffix:'people claimed today',freeNoneToday:'No free key today',freeAdminNotYet:'Admin has not added a key yet. Please check back later!',freeNewMorning:'🔄 A new key will be available each morning',freeCannotLoad:'Cannot load free key info',freeCreatingLink:'⏳ Creating link...',freeAlready:'You already claimed today\'s free key!',freeYourLink:'Your personal claim link:',freeOpenLink:'🔓 Open Claim Link',freeCopyLink:'📋 Copy Link',freeCopiedLink:'Link copied!',freeLinkCreated:'✅ Link created — open it to claim key',freeErrorGeneric:'Something went wrong!',toastLoadErr:'Connection error, please retry!',loadingHistory:'Loading history...',histLoadFail:'⚠️ Cannot load order history',histGame:'Game',histPkg:'Package',histCreated:'Created',histPkgDays:'days',statusApproved:'Approved',statusRejected:'Rejected',statusCancelled:'Cancelled',statusPending:'Pending',accTitle:'Buy Account',accSubtitle:'Choose account type (Google, Facebook...)',accChooseLabel:'Choose game & account type',accPickGameFirst:'Pick a game first',accQtyLabel:'Account quantity',accQtyHint:'1 account per order · change password right after receiving',accBuyBtn:'Buy Account',accNoTypeSelected:'No account type selected',accNote:'⚠️ Each account is sold once. Change password immediately after receiving.',accMyTitle:'My accounts',accNoneYet:'No account yet',navAcc:'Buy Acc',soLuongKey:'Key quantity',gio:' hour(s)',totalLbl:'Total',pickerBalT:'Wallet balance',pickerBalSubOk:'Pay from wallet · Get key instantly',pickerBalSubNo:'Balance not enough, top up',pickerCardT:'Mobile card',pickerCardSub:'Viettel/Mobifone/Vinaphone (via wallet)',errNoAccGame:'No account game yet. Contact admin.',errNoDownload:'This game has no download link',errSendCard:'Card submit error',errWallet:'Wallet deduction error',buyKeyWalletOk:'🎉 Key purchased with wallet!',errMaxTopup:'Max 50M per time',errCreateTopup:'Top-up request error',errGeneric:'Something went wrong!',errCreateAccOrder:'Account order error',errEnterCard:'Enter both Serial + Card code',errMinTopup:'Minimum 10,000đ',errOutAcc:'Out of this account type',buyAccWalletOk:'🎉 Account purchased with wallet!',
     accChooseLabel:'Choose game & account type',
     accMyTitle:'My Accounts',
     accNoTypeSelected:'No account type selected',
@@ -112,7 +112,7 @@ var I18N={
     profileOverview:'Resumen',profileAccount:'Datos de cuenta',profileLinks:'Enlaces rápidos',profileTotalOrders:'Total órdenes',profileApproved:'Aprobadas',profilePending:'Pendientes',profileKeysOwned:'Claves activas',profileTgId:'Telegram ID',profileUsername:'Usuario',profileFullName:'Nombre completo',profileJoined:'Se unió',profileBtnBuy:'🔑 Comprar Clave',profileBtnHistory:'📜 Historial',profileBtnReload:'🔄 Recargar',
     navBuy:'Comprar',navFree:'Gratis',navHistory:'Historial',navProfile:'Perfil',
     footerSupport:'Soporte',footerPayment:'Métodos de pago',footerCert:'Certificaciones',footerCopyright:'Copyright © 2026 HCLOU Server. Todos los derechos reservados.',footerAddress:'Dirección',footerTaxId:'NIF',footerBizLic:'Licencia comercial',footerUpdating:'Actualizando',footerHotline:'Línea directa',footerComplaint:'Reclamos de calidad',footerEmail:'Email de contacto',footerRespContent:'Responsable del contenido',footerFollowTg:'Síguenos en Telegram',footerSocial:'Redes sociales',footerCertSite:'Certificaciones del sitio',footerPaymentSupport:'Soporte de pago',
-    freeChecking2:'Verificando...',freeClaimedToday:'¡Ya reclamaste la clave gratis de hoy!',freeReceivedAt:'Recibida a las',freeBackTomorrow:'🔄 Vuelve a las 00:00 mañana para otra clave',freeKeyToday:'Clave gratis de hoy',freeSub:'¡Obtén 1 clave gratis por día!<br>El admin ya añadió claves, cada usuario tiene un enlace único',freeBtnGetLink:'🔗 Obtener Enlace',freeResetDaily:'⏰ Se reinicia a las 00:00 diariamente',freePeopleSuffix:'personas reclamaron hoy',freeNoneToday:'Sin clave gratis hoy',freeAdminNotYet:'El admin aún no añadió clave. ¡Vuelve más tarde!',freeNewMorning:'🔄 Una clave nueva estará disponible cada mañana',freeCannotLoad:'No se puede cargar la información',freeCreatingLink:'⏳ Creando enlace...',freeAlready:'¡Ya reclamaste la clave gratis de hoy!',freeYourLink:'Tu enlace personal de reclamo:',freeOpenLink:'🔓 Abrir Enlace',freeCopyLink:'📋 Copiar Enlace',freeCopiedLink:'¡Enlace copiado!',freeLinkCreated:'✅ Enlace creado — ábrelo para reclamar la clave',freeErrorGeneric:'¡Algo salió mal!',toastLoadErr:'Error de conexión, ¡reintenta!',loadingHistory:'Cargando historial...',histLoadFail:'⚠️ No se puede cargar el historial',histGame:'Juego',histPkg:'Paquete',histCreated:'Creado',histPkgDays:'días',statusApproved:'Aprobado',statusRejected:'Rechazado',statusCancelled:'Cancelado',statusPending:'Pendiente',accTitle:'Comprar Cuenta',accSubtitle:'Elige tipo de cuenta (Google, Facebook...)',accChooseLabel:'Elige juego y tipo de cuenta',accPickGameFirst:'Elige un juego primero',accQtyLabel:'Cantidad de cuentas',accQtyHint:'1 cuenta por pedido · cambia la contraseña inmediatamente',accBuyBtn:'Comprar Cuenta',accNoTypeSelected:'Sin tipo seleccionado',accNote:'⚠️ Cada cuenta se vende una vez. Cambia la contraseña al recibirla.',accMyTitle:'Mis cuentas',accNoneYet:'Sin cuentas aún',navAcc:'Cuenta',soLuongKey:'Cantidad de claves',gio:' hora(s)',totalLbl:'Total',pickerBalT:'Saldo de billetera',pickerBalSubOk:'Pagar desde billetera · Clave al instante',pickerBalSubNo:'Saldo insuficiente, recarga',pickerCardT:'Tarjeta móvil',pickerCardSub:'Viettel/Mobifone/Vinaphone (vía billetera)',
+    freeChecking2:'Verificando...',freeClaimedToday:'¡Ya reclamaste la clave gratis de hoy!',freeReceivedAt:'Recibida a las',freeBackTomorrow:'🔄 Vuelve a las 00:00 mañana para otra clave',freeKeyToday:'Clave gratis de hoy',freeSub:'¡Obtén 1 clave gratis por día!<br>El admin ya añadió claves, cada usuario tiene un enlace único',freeBtnGetLink:'🔗 Obtener Enlace',freeResetDaily:'⏰ Se reinicia a las 00:00 diariamente',freePeopleSuffix:'personas reclamaron hoy',freeNoneToday:'Sin clave gratis hoy',freeAdminNotYet:'El admin aún no añadió clave. ¡Vuelve más tarde!',freeNewMorning:'🔄 Una clave nueva estará disponible cada mañana',freeCannotLoad:'No se puede cargar la información',freeCreatingLink:'⏳ Creando enlace...',freeAlready:'¡Ya reclamaste la clave gratis de hoy!',freeYourLink:'Tu enlace personal de reclamo:',freeOpenLink:'🔓 Abrir Enlace',freeCopyLink:'📋 Copiar Enlace',freeCopiedLink:'¡Enlace copiado!',freeLinkCreated:'✅ Enlace creado — ábrelo para reclamar la clave',freeErrorGeneric:'¡Algo salió mal!',toastLoadErr:'Error de conexión, ¡reintenta!',loadingHistory:'Cargando historial...',histLoadFail:'⚠️ No se puede cargar el historial',histGame:'Juego',histPkg:'Paquete',histCreated:'Creado',histPkgDays:'días',statusApproved:'Aprobado',statusRejected:'Rechazado',statusCancelled:'Cancelado',statusPending:'Pendiente',accTitle:'Comprar Cuenta',accSubtitle:'Elige tipo de cuenta (Google, Facebook...)',accChooseLabel:'Elige juego y tipo de cuenta',accPickGameFirst:'Elige un juego primero',accQtyLabel:'Cantidad de cuentas',accQtyHint:'1 cuenta por pedido · cambia la contraseña inmediatamente',accBuyBtn:'Comprar Cuenta',accNoTypeSelected:'Sin tipo seleccionado',accNote:'⚠️ Cada cuenta se vende una vez. Cambia la contraseña al recibirla.',accMyTitle:'Mis cuentas',accNoneYet:'Sin cuentas aún',navAcc:'Cuenta',soLuongKey:'Cantidad de claves',gio:' hora(s)',totalLbl:'Total',pickerBalT:'Saldo de billetera',pickerBalSubOk:'Pagar desde billetera · Clave al instante',pickerBalSubNo:'Saldo insuficiente, recarga',pickerCardT:'Tarjeta móvil',pickerCardSub:'Viettel/Mobifone/Vinaphone (vía billetera)',errNoAccGame:'Sin juego de cuentas aún. Contacta al admin.',errNoDownload:'Este juego no tiene enlace de descarga',errSendCard:'Error al enviar tarjeta',errWallet:'Error al descontar billetera',buyKeyWalletOk:'🎉 ¡Clave comprada con billetera!',errMaxTopup:'Máx 50M por vez',errCreateTopup:'Error al crear recarga',errGeneric:'¡Algo salió mal!',errCreateAccOrder:'Error al crear pedido de cuenta',errEnterCard:'Ingresa Serial + Código',errMinTopup:'Mínimo 10.000đ',errOutAcc:'Sin cuentas de este tipo',buyAccWalletOk:'🎉 ¡Cuenta comprada con billetera!',
     accChooseLabel:'Choose game & account type',
     accMyTitle:'My Accounts',
     accNoTypeSelected:'Sin tipo de cuenta seleccionado',
@@ -428,7 +428,7 @@ async function openAccGameModal(){
     if(!res.success)return;
     gCache=res.games;
   }
-  if(!gCache.length){ toast('Chưa có game bán acc. Liên hệ admin.','error'); return; }
+  if(!gCache.length){ toast(T.errNoAccGame,'error'); return; }
   document.getElementById('gameModal').classList.add('show');
   buildAccGameList();
 }
@@ -583,7 +583,7 @@ function updDlBtn(){
 }
 function openDownloadLink(){
   if(!selGame){ toast(T.chonGameTruoc,'error'); return; }
-  if(!selGame.download_url){ toast('Game này chưa có link tải','error'); return; }
+  if(!selGame.download_url){ toast(T.errNoDownload,'error'); return; }
   var url=selGame.download_url;
   try{
     if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){
@@ -789,13 +789,13 @@ async function submitCardForOrder(){
   var face=parseInt(document.getElementById('cardFace').value,10);
   var serial=document.getElementById('cardSerial').value.trim();
   var code=document.getElementById('cardCode').value.trim();
-  if(!serial||!code){ toast('Nhập đủ Serial + Mã thẻ','error'); return; }
+  if(!serial||!code){ toast(T.errEnterCard,'error'); return; }
   var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
   btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
   btn.disabled=true;
   var res=await api('topup_create','POST',{method:'card', card_telco:telco, card_face_value:face, card_serial:serial, card_code:code});
   btn.disabled=false; btn.innerHTML=old;
-  if(!res||!res.success){ toast((res&&res.error)||'Lỗi gửi thẻ','error'); return; }
+  if(!res||!res.success){ toast((res&&res.error)||T.errSendCard,'error'); return; }
   document.getElementById('topupContent').innerHTML=
     '<div style="text-align:center;padding:24px 10px">'
     +'<div style="font-size:48px">⏳</div>'
@@ -842,8 +842,8 @@ async function buyWithBalance(){
     btn.classList.add('go');
   }
   try{ closeModal('topupModal'); }catch(e){}
-  if(!res||!res.success){ toast((res&&res.error)||'Lỗi trừ ví','error'); return; }
-  toast('🎉 Đã mua key thành công bằng ví!','success');
+  if(!res||!res.success){ toast((res&&res.error)||T.errWallet,'error'); return; }
+  toast(T.buyKeyWalletOk,'success');
   loadKeys('all');
   loadBalance();
 }
@@ -1030,14 +1030,14 @@ function renderCardTopupUI(telco){
 }
 async function submitTopupAmount(m){
   var amount=parseInt(document.getElementById('topupAmount').value,10)||0;
-  if(amount<10000){ toast('Tối thiểu 10.000đ','error'); return; }
-  if(amount>50000000){ toast('Tối đa 50 triệu/lần','error'); return; }
+  if(amount<10000){ toast(T.errMinTopup,'error'); return; }
+  if(amount>50000000){ toast(T.errMaxTopup,'error'); return; }
   var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
   btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
   btn.disabled=true;
   var res=await api('topup_create','POST',{method:m, amount:amount});
   btn.disabled=false; btn.innerHTML=old;
-  if(!res||!res.success){ toast((res&&res.error)||'Lỗi tạo yêu cầu nạp','error'); return; }
+  if(!res||!res.success){ toast((res&&res.error)||T.errCreateTopup,'error'); return; }
   showTopupPayInfo(res);
 }
 async function submitCardTopup(){
@@ -1045,13 +1045,13 @@ async function submitCardTopup(){
   var face=parseInt(document.getElementById('cardFace').value,10);
   var serial=document.getElementById('cardSerial').value.trim();
   var code=document.getElementById('cardCode').value.trim();
-  if(!serial||!code){ toast('Nhập đủ Serial + Mã thẻ','error'); return; }
+  if(!serial||!code){ toast(T.errEnterCard,'error'); return; }
   var btn=document.querySelector('.topup-submit-btn'); var old=btn.innerHTML;
   btn.innerHTML='<div class="spin" style="width:18px;height:18px;border-width:2px;margin:0 auto"></div>';
   btn.disabled=true;
   var res=await api('topup_create','POST',{method:'card', card_telco:telco, card_face_value:face, card_serial:serial, card_code:code});
   btn.disabled=false; btn.innerHTML=old;
-  if(!res||!res.success){ toast((res&&res.error)||'Lỗi gửi thẻ','error'); return; }
+  if(!res||!res.success){ toast((res&&res.error)||T.errSendCard,'error'); return; }
   document.getElementById('topupContent').innerHTML=
     '<div style="text-align:center;padding:24px 10px">'
     +'<div style="font-size:48px">⏳</div>'
@@ -1369,13 +1369,13 @@ async function doReset(id){
   if(!confirm(T.confirmReset))return;
   var res=await api('reset_key','POST',{key_id:id});
   if(res.success){toast(T.resetOk,'success');loadKeys(curFilter);}
-  else toast(res.error||'L\u1ED7i!','error');
+  else toast(res.error||T.errGeneric,'error');
 }
 async function doDelete(id){
   if(!confirm(T.confirmXoa))return;
   var res=await api('delete_key','POST',{key_id:id});
   if(res.success){toast(T.xoaOk,'success');loadKeys(curFilter);}
-  else toast(res.error||'L\u1ED7i!','error');
+  else toast(res.error||T.errGeneric,'error');
 }
 
 function fmtMoney(n){return Number(n).toLocaleString('vi-VN');}
@@ -1767,7 +1767,7 @@ function updAccBuyBtn(){
 async function doAccOrder(){
   if(!selAccGame||!selAccType||accOrdering) return;
   var avail=parseInt(selAccType.stock)||0;
-  if(avail<1){ toast('Hết acc loại này','error'); return; }
+  if(avail<1){ toast(T.errOutAcc,'error'); return; }
   await fetchPaymentOptions();
   await loadBalance();
   showAccPaymentPicker();
@@ -1813,8 +1813,8 @@ async function buyAccWithBalance(){
     btn.innerHTML='<span>Mua Acc</span><span class="buy-sub" id="accBuySub">'+selAccType.name+' | '+fmtMoney(discountedPrice(_ap))+'đ</span>';
     btn.classList.add('go');
   }
-  if(!res||!res.success){ toast((res&&res.error)||'Lỗi trừ ví','error'); return; }
-  toast('🎉 Đã mua acc thành công bằng ví!','success');
+  if(!res||!res.success){ toast((res&&res.error)||T.errWallet,'error'); return; }
+  toast(T.buyAccWalletOk,'success');
   loadAccTypes();
   loadMyAccs();
   loadBalance();
@@ -1856,7 +1856,7 @@ async function confirmAccOrder(){
     showPay(res);
     loadAccTypes();
   } else {
-    toast(res.error||'Lỗi tạo đơn acc','error');
+    toast(res.error||T.errCreateAccOrder,'error');
   }
 }
 // Load purchased accounts for "Mua Acc" tab
