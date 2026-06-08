@@ -2075,139 +2075,141 @@ foreach($games as $g){ $gameOpts .= '<option value="'.$g['id'].'">'.h($g['name']
 
 
 <?php elseif($tab==='accounts'): ?>
-<h1>🏪 Quản lý Accounts</h1>
-
-<?php $gamesAll=$db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll(); ?>
-<?php $accGames=$db->query("SELECT * FROM games WHERE category IN ('account','both') ORDER BY sort_order")->fetchAll(); ?>
-<?php $typesAll=$db->query("SELECT at.*,g.name game_name FROM account_types at JOIN games g ON at.game_id=g.id ORDER BY g.sort_order, at.sort_order")->fetchAll(); ?>
-
-<div class="form-card">
-<h3>🎮 Thêm game bán Acc</h3>
-<form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-<input type="hidden" name="act" value="add_acc_game">
-<div class="form-row">
-  <div><label>Tên game</label><input name="name" required placeholder="Liên Quân Mobile"></div>
-  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
-  <div><label>Icon (PNG/JPG, max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
-  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm game Acc</button></div>
-</div>
-</form>
-</div>
-
-<?php if($accGames): ?>
-<div class="form-card">
-<h3>🎯 Danh sách game Acc</h3>
-<table>
-<tr><th>Game</th><th>Loại acc</th><th>Giá</th><th>Stock</th><th>Active</th><th>Hành động</th></tr>
-<?php foreach($accGames as $ag):
-  $atS=$db->prepare("SELECT id,name,price,is_active FROM account_types WHERE game_id=? ORDER BY sort_order");
-  $atS->execute([$ag['id']]);
-  $accTypesForGame=$atS->fetchAll();
-  if(!$accTypesForGame): ?>
-  <tr><td><?=h($ag['name'])?></td><td colspan="5" style="color:#8b949e">Chưa có loại acc nào — thêm bên dưới
-  <form method="POST" style="display:inline;float:right"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$ag['id']?>"><button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="return confirm('Xoá game acc này? Toàn bộ acc và loại acc sẽ bị xoá.')">🗑 Xoá game</button></form>
-  </td></tr>
-  <?php else: foreach($accTypesForGame as $atg):
-    $stk=$db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
-    $stk->execute([$atg['id']]); $stkCount=(int)$stk->fetchColumn();
-  ?>
-  <tr><td><?=h($ag['name'])?></td><td><?=h($atg['name'])?></td><td><?=number_format($atg['price'])?>đ</td><td><b style="color:<?=$stkCount>0?'#4ade80':'#f85149'?>"><?=$stkCount?></b></td><td><span class="badge <?=$atg['is_active']?'green':'gray'?>"><?=$atg['is_active']?'Bật':'Tắt'?></span></td>
-  <td><form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-gray">Toggle</button></form>
-  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$atg['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá?')">🗑</button></form>
-  <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_game"><input type="hidden" name="id" value="<?=$ag['id']?>"><button class="btn btn-red" style="padding:4px 8px;font-size:11px;opacity:.75" onclick="return confirm('Xoá cả game <?=h($ag["name"])?>? Toàn bộ acc và loại acc sẽ bị xoá.')">🗑 Game</button></form></td></tr>
-  <?php endforeach; endif; ?>
-<?php endforeach; ?>
-</table>
-</div>
-<?php endif; ?>
-
-<div class="form-card">
-<h3>➕ Thêm loại acc mới</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-<input type="hidden" name="act" value="add_acc_type">
-<div class="form-row">
-  <div><label>Game Acc</label><select name="game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label>Tên loại acc</label><input name="name" required placeholder="Google, Facebook, Apple..." style="width:150px"></div>
-  <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="50000" style="width:120px"></div>
-  <div><label>Mô tả</label><input name="description" placeholder="Mô tả thêm (tùy chọn)" style="width:200px"></div>
-  <div><label>Thứ tự</label><input name="sort" type="number" value="0" style="width:70px"></div>
-  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
-</div>
-</form>
-</div>
-
-<div class="form-card">
-<h3>📥 Import acc (tk:mk)</h3>
-<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-<input type="hidden" name="act" value="import_accounts">
-<div class="form-row">
-  <div><label>Game Acc</label><select name="acc_game_id"><?php foreach($accGames as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label>Loại acc</label><select name="acc_type_id"><?php foreach($typesAll as $t):?><option value="<?=$t['id']?>"><?=h($t["name"])?> (<?=h($t["game_name"])?>)</option><?php endforeach?></select></div>
-  <div style="flex:1"><label>Danh sách acc (mỗi dòng: tk:mk hoặc tk|mk)</label>
-    <textarea name="accounts" rows="6" placeholder="user1@gmail.com:pass123&#10;user2@gmail.com:pass456&#10;user3|pass789" style="width:100%;max-width:100%;background:#0d1117;color:#e6edf3;border:1px solid var(--line);border-radius:11px;padding:10px;font-family:monospace;font-size:13px"></textarea>
+<?php $gamesAll=$db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll();
+$accGames=$db->query("SELECT * FROM games WHERE category IN ('account','both') ORDER BY sort_order")->fetchAll();
+$typesAll=$db->query("SELECT at.*,g.name game_name FROM account_types at JOIN games g ON at.game_id=g.id ORDER BY g.sort_order, at.sort_order")->fetchAll();
+$accGameOpts=''; foreach($accGames as $g){ $accGameOpts.='<option value="'.$g['id'].'">'.h($g['name']).'</option>'; }
+$allGameOpts=''; foreach($gamesAll as $g){ $allGameOpts.='<option value="'.$g['id'].'">'.h($g['name']).'</option>'; }
+$typeOpts=''; foreach($typesAll as $t){ $typeOpts.='<option value="'.$t['id'].'">'.h($t['name']).' ('.h($t['game_name']).')</option>'; }
+?>
+<div class="dash-section-head">
+  <h1 style="margin:0">🏪 Quản lý Accounts</h1>
+  <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-gray" onclick="amOpen('mAccGame')">🎮 Thêm game</button>
+    <button class="btn btn-gray" onclick="amOpen('mAccType')">➕ Loại acc</button>
+    <button class="btn btn-blue" onclick="amOpen('mAccImport')">📥 Import acc</button>
   </div>
-  <div style="padding-top:20px"><button class="btn btn-blue" type="submit">📥 Import</button></div>
-</div>
-</form>
 </div>
 
 <?php if($typesAll): ?>
-<h2>📋 Loại acc</h2>
+<h2>📋 Loại acc (<?=count($typesAll)?>)</h2>
+<div class="tbl-scroll">
 <table>
-<tr><th>#</th><th>Game</th><th>Tên loại</th><th>Giá</th><th>Stock</th><th>Active</th><th>Thao tác</th></tr>
+<tr><th>#</th><th>Game</th><th>Tên loại</th><th>Giá</th><th>Stock</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
 <?php foreach($typesAll as $t):
   $stock = $db->prepare("SELECT COUNT(*) FROM accounts WHERE account_type_id=? AND status='available'");
-  $stock->execute([$t['id']]);
-  $availCount = (int)$stock->fetchColumn();
+  $stock->execute([$t['id']]); $availCount=(int)$stock->fetchColumn();
 ?>
 <tr>
-<form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
-  <input type="hidden" name="act" value="edit_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>">
-  <td><?=$t['id']?></td>
-  <td><select name="game_id"><?php foreach($gamesAll as $g):?><option value="<?=$g['id']?>" <?=$t['game_id']==$g['id']?'selected':''?>><?=h($g["name"])?></option><?php endforeach?></select></td>
-  <td><input name="name" value="<?=htmlspecialchars($t['name'])?>" required style="width:130px"></td>
-  <td><input name="price" type="number" value="<?=$t['price']?>" required style="width:100px"></td>
-  <td><b style="color:<?=$availCount>0?'#4ade80':'#f85149'?>"><?=$availCount?></b></td>
-  <td><select name="is_active"><option value="1" <?=$t['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$t['is_active']?'selected':''?>>Tắt</option></select></td>
-  <td><button class="btn btn-blue" type="submit">💾 Lưu</button>
-</form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-gray"><?=$t['is_active']?'Tắt':'Bật'?></button></form>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá loại acc này? Các acc thuộc loại sẽ mất.')">🗑</button></form></td>
+  <td style="color:var(--lx-muted)"><?=$t['id']?></td>
+  <td><b style="color:#fff"><?=h($t['game_name'])?></b></td>
+  <td><?=h($t['name'])?></td>
+  <td><b style="color:#6ee7b7"><?=number_format($t['price'],0,',','.')?>đ</b></td>
+  <td><span class="badge <?=$availCount>0?'green':'red'?>"><?=$availCount?> acc</span></td>
+  <td><?php if($t['is_active']): ?><span class="badge green">● Bật</span><?php else: ?><span class="badge gray">○ Tắt</span><?php endif ?></td>
+  <td style="text-align:right"><div class="row-act" style="justify-content:flex-end">
+    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mAccTypeEdit",<?=json_encode(["id"=>$t["id"],"game_id"=>$t["game_id"],"name"=>$t["name"],"price"=>$t["price"],"is_active"=>$t["is_active"],"_title"=>$t["game_name"]." · ".$t["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-gray btn-icon" type="submit" title="<?=$t['is_active']?'Tắt':'Bật'?>"><?=$t['is_active']?'⏸':'▶'?></button></form>
+    <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_acc_type"><input type="hidden" name="id" value="<?=$t['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá loại acc này? Các acc thuộc loại sẽ mất.')">🗑</button></form>
+  </div></td>
 </tr>
 <?php endforeach ?>
 </table>
+</div>
+<?php else: ?>
+<div class="dash-empty"><div class="de-ico">📭</div><div class="de-txt">Chưa có loại acc nào</div><div class="de-sub">Bấm "🎮 Thêm game" rồi "➕ Loại acc" để bắt đầu</div></div>
 <?php endif ?>
 
 <?php
 $accs = $db->query("SELECT a.*, g.name game_name, at.name type_name FROM accounts a JOIN games g ON a.game_id=g.id JOIN account_types at ON a.account_type_id=at.id ORDER BY a.id DESC LIMIT 200")->fetchAll();
 if($accs):
 ?>
-<h2 style="margin-top:24px">📦 Danh sách Acc (200 gần nhất)</h2>
+<h2 style="margin-top:24px">📦 Danh sách Acc (<?=count($accs)?> gần nhất)</h2>
+<div class="tbl-scroll">
 <table>
-<tr><th>#</th><th>Game</th><th>Loại</th><th>Tài khoản</th><th>Mật khẩu</th><th>Trạng thái</th><th>Ngày</th><th>Thao tác</th></tr>
+<tr><th>#</th><th>Game</th><th>Loại</th><th>Tài khoản</th><th>Mật khẩu</th><th>Trạng thái</th><th>Ngày</th><th style="text-align:right">Thao tác</th></tr>
 <?php foreach($accs as $a): ?>
 <tr>
-<td><?=$a['id']?></td>
-<td><?=h($a['game_name'])?></td>
-<td><span class="badge blue"><?=h($a['type_name'])?></span></td>
-<td style="font-family:monospace"><?=h($a['username'])?></td>
-<td style="font-family:monospace"><?=h($a['password'])?></td>
-<td>
-<?php if($a['status']=='available'): ?><span class="badge green">Có sẵn</span>
-<?php elseif($a['status']=='pending'): ?><span class="badge orange">Đang chờ</span>
-<?php else: ?><span class="badge gray">Đã bán</span>
-<?php endif; ?>
-</td>
-<td><?=h($a['created_at'])?></td>
-<td>
-<?php if($a['status']=='available'): ?>
-<form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_account"><input type="hidden" name="acc_id" value="<?=$a['id']?>"><button class="btn btn-red" onclick="return confirm('Xoá acc này?')" style="padding:5px 8px">🗑</button></form>
-<?php endif; ?>
-</td>
+  <td style="color:var(--lx-muted)"><?=$a['id']?></td>
+  <td><b style="color:#fff"><?=h($a['game_name'])?></b></td>
+  <td><span class="badge blue"><?=h($a['type_name'])?></span></td>
+  <td class="mono" style="font-size:12px"><?=h($a['username'])?></td>
+  <td class="mono" style="font-size:12px"><?=h($a['password'])?></td>
+  <td><?php if($a['status']=='available'): ?><span class="badge green">● Có sẵn</span><?php elseif($a['status']=='pending'): ?><span class="badge orange">○ Đang chờ</span><?php else: ?><span class="badge gray">✓ Đã bán</span><?php endif; ?></td>
+  <td style="font-size:12px;color:var(--lx-muted)"><?=date('d/m/y H:i',strtotime($a['created_at']))?></td>
+  <td style="text-align:right">
+  <?php if($a['status']=='available'): ?>
+    <form method="POST" style="margin:0;display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_account"><input type="hidden" name="acc_id" value="<?=$a['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá acc này?')">🗑</button></form>
+  <?php else: ?><span style="color:var(--lx-muted);font-size:11px">—</span><?php endif; ?>
+  </td>
 </tr>
 <?php endforeach ?>
 </table>
+</div>
 <?php endif; ?>
+
+<!-- Modal: Thêm game bán Acc -->
+<div class="amodal-ov" id="mAccGame">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">🎮</div><div><h3>Thêm game bán Acc</h3><div class="am-sub">Game mới cho mảng bán account</div></div><button class="amodal-x" onclick="amClose('mAccGame')">✕</button></div>
+    <form method="POST" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_acc_game">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Tên game</label><input name="name" required placeholder="Liên Quân Mobile"></div>
+        <div class="amodal-field"><label>Thứ tự</label><input name="sort" type="number" value="0"></div>
+        <div class="amodal-field"><label>Icon (max 2MB)</label><input name="icon" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mAccGame')">Huỷ</button><button class="btn btn-blue" type="submit">➕ Thêm game</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Thêm loại acc -->
+<div class="amodal-ov" id="mAccType">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">📋</div><div><h3>Thêm loại acc</h3><div class="am-sub">VD: Google, Facebook, Apple...</div></div><button class="amodal-x" onclick="amClose('mAccType')">✕</button></div>
+    <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="add_acc_type">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Game Acc</label><select name="game_id"><?=$accGameOpts?></select></div>
+        <div class="amodal-field"><label>Tên loại acc</label><input name="name" required placeholder="Google"></div>
+        <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required placeholder="50000"></div>
+        <div class="amodal-field full"><label>Mô tả (tuỳ chọn)</label><input name="description" placeholder="Mô tả thêm"></div>
+        <div class="amodal-field"><label>Thứ tự</label><input name="sort" type="number" value="0"></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mAccType')">Huỷ</button><button class="btn btn-blue" type="submit">➕ Thêm loại</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Sửa loại acc -->
+<div class="amodal-ov" id="mAccTypeEdit">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">✏️</div><div><h3>Sửa loại acc</h3><div class="am-sub" data-am-sub>—</div></div><button class="amodal-x" onclick="amClose('mAccTypeEdit')">✕</button></div>
+    <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="edit_acc_type"><input type="hidden" name="id" value="">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field full"><label>Game</label><select name="game_id"><?=$allGameOpts?></select></div>
+        <div class="amodal-field"><label>Tên loại</label><input name="name" required></div>
+        <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required></div>
+        <div class="amodal-field"><label>Trạng thái</label><select name="is_active"><option value="1">Bật</option><option value="0">Tắt</option></select></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mAccTypeEdit')">Huỷ</button><button class="btn btn-blue" type="submit">💾 Lưu thay đổi</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Import acc -->
+<div class="amodal-ov" id="mAccImport">
+  <div class="amodal">
+    <div class="amodal-head"><div class="am-ico">📥</div><div><h3>Import acc</h3><div class="am-sub">Dán danh sách tài khoản</div></div><button class="amodal-x" onclick="amClose('mAccImport')">✕</button></div>
+    <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="import_accounts">
+      <div class="amodal-body"><div class="amodal-grid">
+        <div class="amodal-field"><label>Game Acc</label><select name="acc_game_id"><?=$accGameOpts?></select></div>
+        <div class="amodal-field"><label>Loại acc</label><select name="acc_type_id"><?=$typeOpts?></select></div>
+        <div class="amodal-field full"><label>Danh sách acc (mỗi dòng: tk:mk hoặc tk|mk)</label><textarea name="accounts" rows="7" placeholder="user1@gmail.com:pass123&#10;user2@gmail.com:pass456&#10;user3|pass789"></textarea></div>
+      </div></div>
+      <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mAccImport')">Huỷ</button><button class="btn btn-blue" type="submit">📥 Import</button></div>
+    </form>
+  </div>
+</div>
 
 
 <?php elseif($tab==='freekeys'): ?>
