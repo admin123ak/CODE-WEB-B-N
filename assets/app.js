@@ -229,7 +229,11 @@ function showTelegramOnly(){
   var b=document.getElementById('openTelegramBtn');
   if(b)b.href=TG_OPEN_URL;
   w.classList.add('show');
-  setTimeout(function(){ try{ window.location.href=TG_OPEN_URL; }catch(e){} },1200);
+  // Chỉ tự chuyển sang Telegram khi đã cấu hình BOT_USERNAME (tránh redirect tới link hỏng).
+  // Cho user 2.5s để đọc màn hình "Mở trong Telegram" trước khi tự chuyển.
+  if(BOT_USERNAME){
+    setTimeout(function(){ try{ window.location.href=TG_OPEN_URL; }catch(e){} },2500);
+  }
 }
 function tryInit(n){
   n=n||0;
@@ -237,9 +241,13 @@ function tryInit(n){
   var uid=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id;
   if(uid){
     startApp(tg);
-  } else if(n<20){
-    // Exponential backoff: 100ms → 200ms → 400ms... tối đa 800ms giữa mỗi lần
-    var delay=Math.min(800, 100*Math.pow(1.4,n));
+    return;
+  }
+  // Có initData (đang ở trong Telegram, user load chậm) -> chờ kỹ 20 lần.
+  // Không có initData (trình duyệt thường) -> chỉ thử ~6 lần rồi hiện cổng "Mở trong Telegram" (~1.5s).
+  var maxTries = (tg && tg.initData && tg.initData.length > 0) ? 20 : 6;
+  if(n < maxTries){
+    var delay=Math.min(700, 100*Math.pow(1.4,n));
     setTimeout(function(){ tryInit(n+1); }, delay);
   } else {
     showTelegramOnly();
