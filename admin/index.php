@@ -658,32 +658,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($prefix === null) $prefix = '';
 
-            // 4b. Giải nén từng entry, BỎ QUA file/thư mục nhạy cảm
-            //     File-level: match basename HOẶC path tuyệt đối
-            //     Dir-level (kết thúc /): match prefix CHÍNH XÁC, không strpos
-            $protectFiles = ['config.local.php', '.install_lock', 'license.php', 'version.json'];
-            $protectDirs  = ['data/', 'uploads/', '.git/'];
+            // 4b. Giải nén TẤT CẢ file trong zip — không bỏ qua bất cứ gì.
+            //     File nào trong zip = dán đè vô đúng vị trí.
+            //     CẢNH BÁO: nếu zip có config.local.php / data/.lic / license.php → chúng cũng bị đè.
+            //     → Khi đóng zip bản update, ĐỪNG bỏ những file đó vào zip thì tự nhiên không bị đè.
+            //     Chỉ chặn path traversal ('..' ngoài root) vì lý do bảo mật.
             $extracted = 0; $skipped = 0; $errors = 0;
             $prefixLen = strlen($prefix);
             for ($i = 0; $i < $za->numFiles; $i++) {
                 $name = $za->getNameIndex($i);
                 if ($name === false || $name === '') continue;
-                if (substr($name, -1) === '/') continue; // bỏ qua entry là thư mục
+                if (substr($name, -1) === '/') continue; // bỏ qua entry là thư mục (sẽ auto mkdir)
                 // Strip prefix gốc nếu có
                 $rel = ($prefixLen && strncmp($name, $prefix, $prefixLen) === 0) ? substr($name, $prefixLen) : $name;
                 $rel = ltrim($rel, '/');
                 if ($rel === '') { $skipped++; continue; }
-                // Chặn path traversal
-                if (strpos($rel, '..') !== false) { $skipped++; continue; }
-                // File whitelist
-                $base = basename($rel);
-                $skip = false;
-                foreach ($protectFiles as $pf) { if ($base === $pf || $rel === $pf) { $skip = true; break; } }
-                if (!$skip) {
-                    foreach ($protectDirs as $pd) { if (strncmp($rel, $pd, strlen($pd)) === 0) { $skip = true; break; } }
-                }
-                if ($skip) { $skipped++; continue; }
-                // Ghi file
+                // Chặn path traversal — bảo mật, không cho thoát APP_ROOT
+                if (strpos($rel, '..') !== false || strpos($rel, "\0") !== false) { $skipped++; continue; }
+                // Ghi đè
                 $dest = APP_ROOT . '/' . $rel;
                 $destDir = dirname($dest);
                 if (!is_dir($destDir)) @mkdir($destDir, 0755, true);
@@ -2100,7 +2092,7 @@ if (defined('LICENSE_KEY') && LICENSE_KEY !== '' && defined('LICENSE_SERVER_URL'
 ?>
 <?php if(isset($_GET['ok']) && $_GET['ok']==='updated'): ?>
 <div class="okbox">✅ Cập nhật thành công lên <b>v<?=h($_GET['v'] ?? '')?></b>!<br>
-📦 Zip có <b><?=(int)($_GET['t']??0)?></b> entry · ✍️ Ghi <b><?=(int)($_GET['n']??0)?></b> file · ⏭️ Skip <b><?=(int)($_GET['s']??0)?></b> (file bảo vệ: config/data/uploads/license) · ❌ Lỗi <b><?=(int)($_GET['e']??0)?></b><br>
+📦 Zip có <b><?=(int)($_GET['t']??0)?></b> entry · ✍️ Ghi <b><?=(int)($_GET['n']??0)?></b> file · ❌ Lỗi <b><?=(int)($_GET['e']??0)?></b><?php $sk=(int)($_GET['s']??0); if($sk>0): ?> · ⏭️ Skip <b><?=$sk?></b> (path traversal)<?php endif; ?><br>
 <b>Tải lại trang</b> để dùng bản mới.</div>
 <?php endif; ?>
 <?php if(isset($_GET['err'])): ?>
