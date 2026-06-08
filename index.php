@@ -199,60 +199,19 @@
     <footer class="hclou-footer" aria-label="HCLOU footer">
       <div class="hclou-footer-main">
         <section>
-          <h3>HCLOU SERVER</h3>
+          <h3><?= h(SITE_NAME) ?></h3>
           <div class="hf-list">
-            <div class="hf-item"><span class="hf-icon">📍</span><span><span data-i18n="footerAddress">Địa chỉ</span>: Thành phố Quảng Ngãi</span></div>
-            <div class="hf-item"><span class="hf-icon">🧾</span><span><span data-i18n="footerTaxId">Mã số thuế</span>: <span class="hf-muted" data-i18n="footerUpdating">Đang cập nhật</span></span></div>
-            <div class="hf-item"><span class="hf-icon">📄</span><span><span data-i18n="footerBizLic">Số GPKD</span>: <span class="hf-muted" data-i18n="footerUpdating">Đang cập nhật</span></span></div>
-            <div class="hf-item"><span class="hf-icon">☎️</span><span><span data-i18n="footerHotline">Hotline</span>: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
-            <div class="hf-item"><span class="hf-icon">⚠️</span><span><span data-i18n="footerComplaint">Phản ánh chất lượng</span>: <a class="hf-hot" href="tel:0382176752">0382176752</a></span></div>
-            <div class="hf-item"><span class="hf-icon">✉️</span><span><span data-i18n="footerEmail">Email liên hệ</span>: <a class="hf-hot" href="mailto:suphuhoangsp@gmail.com">suphuhoangsp@gmail.com</a></span></div>
-            <div class="hf-item"><span class="hf-icon">👤</span><span><span data-i18n="footerRespContent">Chịu trách nhiệm nội dung</span>: <span class="hf-hot">HCLOU Server</span></span></div>
+            <div class="hf-item"><span class="hf-icon">☎️</span><span><span data-i18n="footerHotline">Hotline</span>: <a class="hf-hot" href="tel:<?= h(FOOTER_HOTLINE) ?>"><?= h(FOOTER_HOTLINE) ?></a></span></div>
+            <div class="hf-item"><span class="hf-icon">⚠️</span><span><span data-i18n="footerComplaint">Phản ánh chất lượng</span>: <a class="hf-hot" href="tel:<?= h(FOOTER_HOTLINE) ?>"><?= h(FOOTER_HOTLINE) ?></a></span></div>
+            <div class="hf-item"><span class="hf-icon">✉️</span><span><span data-i18n="footerEmail">Email liên hệ</span>: <a class="hf-hot" href="mailto:<?= h(FOOTER_EMAIL) ?>"><?= h(FOOTER_EMAIL) ?></a></span></div>
+            <div class="hf-item"><span class="hf-icon">👤</span><span><span data-i18n="footerRespContent">Chịu trách nhiệm nội dung</span>: <span class="hf-hot"><?= h(FOOTER_RESP_CONTENT) ?></span></span></div>
           </div>
-          <a class="hf-btn" href="https://t.me/hcloucom" target="_blank" rel="noopener" data-i18n="footerFollowTg">Follow on Telegram</a>
-        </section>
-
-        <section>
-          <h4 data-i18n="footerSocial">Kết nối mạng xã hội</h4>
-          <div class="hf-social-grid">
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">📘 Facebook</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">💼 LinkedIn</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">💬 Zalo</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">𝕏 X</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">▶️ Youtube</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">📷 Instagram</a>
-            <a class="hf-social" href="https://t.me/hcloucom" target="_blank" rel="noopener">💻 Github</a>
-          </div>
-        </section>
-
-        <section>
-          <h4 data-i18n="footerCertSite">Chứng chỉ trang web</h4>
-          <div class="hf-badge-grid" aria-label="Chứng chỉ website">
-            <span class="hf-logo gold cert-text" title="Đã thông báo Bộ Công Thương">Bộ CT</span>
-            <span class="hf-logo red cert-text" title="DMCA Protected">DMCA</span>
-            <span class="hf-logo green" title="Trustpilot 5 sao">★★★★★</span>
-            <span class="hf-logo blue cert-text" title="HostAdvice">HostAdvice</span>
-            <span class="hf-logo purple cert-iso" title="ISOCERT 9001:2015">ISO 9001</span>
-            <span class="hf-logo blue cert-iso" title="ISO 27001:2022">ISO 27001</span>
-          </div>
-        </section>
-
-        <section>
-          <h4 data-i18n="footerPaymentSupport">Hỗ trợ thanh toán</h4>
-          <div class="hf-pay-grid" aria-label="Phương thức thanh toán">
-            <span class="hf-logo pay-master" title="MasterCard">●●</span>
-            <span class="hf-logo blue" title="PayPal">PayPal</span>
-            <span class="hf-logo green" title="Tiền mặt">VND</span>
-            <span class="hf-logo pay-momo" title="MoMo">MoMo</span>
-            <span class="hf-logo gold" title="ATM nội địa">ATM</span>
-            <span class="hf-logo blue pay-bank" title="Internet Banking">🏦</span>
-            <span class="hf-logo pay-visa" title="Visa">VISA</span>
-          </div>
+          <a class="hf-btn" href="<?= h(FOOTER_TELEGRAM) ?>" target="_blank" rel="noopener" data-i18n="footerFollowTg">Follow on Telegram</a>
         </section>
       </div>
       <div class="hclou-footer-bottom">
-        <div class="hf-brand">HCLOU SERVER</div>
-        <div>Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
+        <div class="hf-brand"><?= h(SITE_NAME) ?></div>
+        <div>Copyright © 2026 <?= h(SITE_NAME) ?>. All Rights Reserved.</div>
       </div>
     </footer>
     </div> <!-- end tab-buykey -->
@@ -387,23 +346,15 @@
       <footer class="hclou-footer" aria-label="HCLOU footer">
         <div class="hclou-footer-main">
           <h3 data-i18n="footerSupport">Liên hệ hỗ trợ</h3>
-          <div class="hf-list"><div class="hf-item"><span class="hf-icon">📱</span><a class="hf-hot" href="tel:+84865770720">0865770720</a></div></div>
-          <h4 data-i18n="footerPayment">Phương thức thanh toán</h4>
-          <div class="hf-pay-grid">
-            <span class="hf-logo blue pay-visa">VISA</span>
-            <span class="hf-logo gold pay-master">MasterCard</span>
-            <span class="hf-logo red pay-momo">MoMo</span>
-            <span class="hf-logo green pay-bank">VietQR</span>
-          </div>
-          <h4 data-i18n="footerCert">Chứng nhận</h4>
-          <div class="hf-badge-grid">
-            <span class="hf-logo cert-text cert-iso">ISO 27001</span>
-            <span class="hf-logo cert-text">🔒 SSL</span>
+          <div class="hf-list">
+            <div class="hf-item"><span class="hf-icon">📱</span><a class="hf-hot" href="tel:<?= h(FOOTER_HOTLINE) ?>"><?= h(FOOTER_HOTLINE) ?></a></div>
+            <div class="hf-item"><span class="hf-icon">✉️</span><a class="hf-hot" href="mailto:<?= h(FOOTER_EMAIL) ?>"><?= h(FOOTER_EMAIL) ?></a></div>
+            <div class="hf-item"><span class="hf-icon">👤</span><span class="hf-hot"><?= h(FOOTER_RESP_CONTENT) ?></span></div>
           </div>
         </div>
         <div class="hclou-footer-bottom">
-          <div class="hf-brand">HCLOU SERVER</div>
-          <div data-i18n="footerCopyright">Copyright © 2026 HCLOU Server. All Rights Reserved.</div>
+          <div class="hf-brand"><?= h(SITE_NAME) ?></div>
+          <div data-i18n="footerCopyright">Copyright © 2026 <?= h(SITE_NAME) ?>. All Rights Reserved.</div>
         </div>
       </footer>
     </div>

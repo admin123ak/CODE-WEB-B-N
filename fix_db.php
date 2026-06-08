@@ -102,4 +102,18 @@ if (!$idx->fetchColumn()) {
     } catch (Exception $e) { echo "⚠️ Index claim_token: " . $e->getMessage() . "\n"; }
 } else { echo "⏭️ Index claim_token có\n"; }
 
+// packages.hours
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='hours'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `packages` ADD `hours` INT(11) NOT NULL DEFAULT 0 AFTER `days`");
+    echo "✅ ADD packages.hours\n";
+} else { echo "⏭️ packages.hours có\n"; }
+
+// keys.hours
+$col = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='keys' AND COLUMN_NAME='hours'");
+if (!$col->fetchColumn()) {
+    $db->exec("ALTER TABLE `keys` ADD `hours` INT(11) NOT NULL DEFAULT 0 AFTER `days`");
+    echo "✅ ADD keys.hours\n";
+} else { echo "⏭️ keys.hours có\n"; }
+
 echo "\n✅ Xong! Xoá file fix_db.php sau khi dùng.\n";

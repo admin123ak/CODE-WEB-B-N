@@ -407,8 +407,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=games"); exit;
     }
     if ($act === 'add_pkg') {
-        $db->prepare("INSERT INTO packages (game_id,name,days,price,key_type) VALUES (?,?,?,?,?)")
-           ->execute([$_POST['game_id'],'Gói '.$_POST['days'].' ngày',$_POST['days'],$_POST['price'],$_POST['key_type']]);
+        $days  = max(0, (int)($_POST['days'] ?? 0));
+        $hours = max(0, (int)($_POST['hours'] ?? 0));
+        if ($days === 0 && $hours === 0) { header("Location: ?tab=packages&err=" . urlencode('Phải nhập ngày hoặc giờ > 0')); exit; }
+        $name = $days > 0 ? ('Gói ' . $days . ' ngày' . ($hours ? ' ' . $hours . 'h' : '')) : ('Gói ' . $hours . ' giờ');
+        $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type) VALUES (?,?,?,?,?,?)")
+           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type']]);
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'toggle_pkg') {
@@ -416,9 +420,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'edit_pkg') {
-        $name = trim($_POST['name'] ?? '') ?: ('Gói '.($_POST['days'] ?? '').' ngày');
-        $db->prepare("UPDATE packages SET game_id=?, name=?, days=?, price=?, key_type=?, is_active=? WHERE id=?")
-           ->execute([$_POST['game_id'],$name,$_POST['days'],$_POST['price'],$_POST['key_type'],$_POST['is_active']??1,$_POST['id']]);
+        $days  = max(0, (int)($_POST['days'] ?? 0));
+        $hours = max(0, (int)($_POST['hours'] ?? 0));
+        if ($days === 0 && $hours === 0) { header("Location: ?tab=packages&err=" . urlencode('Phải nhập ngày hoặc giờ > 0')); exit; }
+        $auto = $days > 0 ? ('Gói ' . $days . ' ngày' . ($hours ? ' ' . $hours . 'h' : '')) : ('Gói ' . $hours . ' giờ');
+        $name = trim($_POST['name'] ?? '') ?: $auto;
+        $db->prepare("UPDATE packages SET game_id=?, name=?, days=?, hours=?, price=?, key_type=?, is_active=? WHERE id=?")
+           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type'], $_POST['is_active']??1, $_POST['id']]);
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'del_pkg') {
@@ -470,14 +478,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Đơn key (logic cũ)
-            $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
+            $stmt = $db->prepare("SELECT o.id, o.user_id, u.telegram_id, p.days, p.hours, p.key_type, p.price, g.name as game_name, g.package_name FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id JOIN packages p ON o.package_id=p.id WHERE o.order_code=? AND o.status='pending'");
             $stmt->execute([$order_code]);
             $order = $stmt->fetch();
             if (!$order) { header("Location: ?tab=orders&err=".urlencode('Đơn không tồn tại hoặc đã xử lý')); exit; }
             $db->beginTransaction();
             try {
                 $now = date('Y-m-d H:i:s');
-                $expire = date('Y-m-d H:i:s', strtotime('+'.((int)$order['days']).' days'));
+                $tothours = ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0);
+                $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $tothours) . ' hours'));
                 $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by='web_admin' WHERE order_code=? AND status='pending'");
                 $upOrder->execute([$order_code]);
                 if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
@@ -542,22 +551,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $keyLines = explode("\n", trim($_POST['key_codes']));
         $gameId = (int)($_POST['key_game_id'] ?? 0);
         $pkgId = (int)($_POST['key_package_id'] ?? 0);
-        $count = 0; $pkgDays = 0;
+        $count = 0; $pkgDays = -1; $pkgHours = 0;
         foreach ($keyLines as $line) {
             $code = trim($line);
             if (!$code) continue;
             $check = $db->prepare("SELECT id FROM `keys` WHERE key_code=?");
             $check->execute([$code]);
             if ($check->fetch()) continue;
-            if ($pkgDays === 0) {
-                $pkgStmt = $db->prepare("SELECT days FROM packages WHERE id=? AND game_id=?");
+            if ($pkgDays < 0) {
+                $pkgStmt = $db->prepare("SELECT days, hours FROM packages WHERE id=? AND game_id=?");
                 $pkgStmt->execute([$pkgId, $gameId]);
                 $pkgRow = $pkgStmt->fetch();
-                if (!$pkgRow || $pkgRow['days'] <= 0) { header("Location: ?tab=keys&err=Gói không hợp lệ"); exit; }
-                $pkgDays = (int)$pkgRow['days'];
+                if (!$pkgRow || (((int)$pkgRow['days']) + ((int)$pkgRow['hours'])) <= 0) { header("Location: ?tab=keys&err=Gói không hợp lệ"); exit; }
+                $pkgDays  = (int)$pkgRow['days'];
+                $pkgHours = (int)$pkgRow['hours'];
             }
-            $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, days, status) VALUES (?,?,?,?,'available')")
-               ->execute([$code, $gameId, $pkgId, $pkgDays]);
+            $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, days, hours, status) VALUES (?,?,?,?,?,'available')")
+               ->execute([$code, $gameId, $pkgId, $pkgDays, $pkgHours]);
             $count++;
         }
         header("Location: ?tab=keys&ok=1&added=" . $count); exit;
@@ -1294,23 +1304,26 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 <input type="hidden" name="act" value="add_pkg">
 <div class="form-row">
   <div><label>Game</label><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>"><?=h($g["name"])?></option><?php endforeach?></select></div>
-  <div><label>Số ngày</label><input name="days" type="number" required placeholder="7" style="width:80px"></div>
+  <div><label>Số ngày</label><input name="days" type="number" value="0" min="0" style="width:80px"></div>
+  <div><label>Số giờ</label><input name="hours" type="number" value="0" min="0" style="width:80px"></div>
   <div><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
   <div><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
   <div style="padding-top:20px"><button class="btn btn-blue" type="submit">➕ Thêm</button></div>
 </div>
+<small style="color:#9fb2cf;font-size:11px">Có thể nhập kết hợp ngày + giờ (vd 0 ngày 6 giờ = gói 6h dùng thử). Tổng phải > 0.</small>
 </form>
 </div>
 <?php $pkgs = $db->query("SELECT p.*,g.name as game_name FROM packages p JOIN games g ON p.game_id=g.id ORDER BY g.sort_order,p.days")->fetchAll(); ?>
 <table>
-<tr><th>Game</th><th>Tên gói</th><th>Số ngày</th><th>Giá</th><th>Loại</th><th>Active</th><th>Thao tác</th></tr>
+<tr><th>Game</th><th>Tên gói</th><th>Ngày</th><th>Giờ</th><th>Giá</th><th>Loại</th><th>Active</th><th>Thao tác</th></tr>
 <?php foreach($pkgs as $p): ?>
 <tr>
 <form method="POST"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>">
   <input type="hidden" name="act" value="edit_pkg"><input type="hidden" name="id" value="<?=$p['id']?>">
   <td><select name="game_id"><?php foreach($games as $g):?><option value="<?=$g['id']?>" <?=$p['game_id']==$g['id']?'selected':''?>><?=h($g["name"])?></option><?php endforeach?></select></td>
   <td><input name="name" value="<?=htmlspecialchars($p['name'])?>" required style="width:120px"></td>
-  <td><input name="days" type="number" value="<?=$p['days']?>" required style="width:80px"></td>
+  <td><input name="days" type="number" value="<?=$p['days']?>" min="0" style="width:65px"></td>
+  <td><input name="hours" type="number" value="<?=$p['hours']??0?>" min="0" style="width:65px"></td>
   <td><input name="price" type="number" value="<?=$p['price']?>" required style="width:110px"></td>
   <td><select name="key_type"><option <?=$p['key_type']==='Normal'?'selected':''?>>Normal</option><option <?=$p['key_type']==='VIP'?'selected':''?>>VIP</option></select></td>
   <td><select name="is_active"><option value="1" <?=$p['is_active']?'selected':''?>>Bật</option><option value="0" <?=!$p['is_active']?'selected':''?>>Tắt</option></select></td>
@@ -1840,6 +1853,10 @@ function _hclouFormatBytes($b) {
 <h3>Thông tin site/bot</h3><div class="form-row">
 <?php foreach(['SITE_URL'=>'Site URL','SITE_NAME'=>'Site name','ADMIN_CHAT_ID'=>'Admin chat ID','BOT_USERNAME'=>'Bot username'] as $k=>$label): ?>
 <div><label><?=$label?></label><input name="cfg[<?=$k?>]" value="<?=htmlspecialchars((string)hclouConfigValue($k))?>"></div>
+<?php endforeach; ?></div>
+<h3 style="margin-top:20px">📞 Footer trang web (khách thấy)</h3><div class="form-row">
+<?php foreach(['FOOTER_HOTLINE'=>'Hotline / SĐT','FOOTER_EMAIL'=>'Email liên hệ','FOOTER_RESP_CONTENT'=>'Chịu trách nhiệm nội dung','FOOTER_TELEGRAM'=>'Link Telegram'] as $k=>$label): ?>
+<div style="flex:1;min-width:240px"><label><?=$label?></label><input style="width:100%" name="cfg[<?=$k?>]" value="<?=htmlspecialchars((string)hclouConfigValue($k))?>"></div>
 <?php endforeach; ?></div>
 <h3 style="margin-top:20px">Bank / VietQR</h3><div class="form-row">
 <?php foreach(['BANK_NAME'=>'Ngân hàng','BANK_ACCOUNT'=>'Số tài khoản','BANK_OWNER'=>'Chủ tài khoản','VIETQR_BANK_ID'=>'VietQR bank BIN'] as $k=>$label): ?>

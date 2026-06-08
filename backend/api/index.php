@@ -450,7 +450,8 @@ switch ($action) {
                ->execute([$order_code, $user['id'], $game_id, $package_id, $total_price, 'balance']);
             $order_id = (int)$db->lastInsertId();
 
-            $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$package['days'] . ' days'));
+            $totalHours = ((int)($package['days'] ?? 0)) * 24 + (int)($package['hours'] ?? 0);
+            $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $totalHours) . ' hours'));
             $upKey = $db->prepare("UPDATE `keys` SET status='active', user_id=?, order_id=?, days=?, start_at=NOW(), expire_at=? WHERE id=?");
             $key_codes = [];
             foreach ($poolKeys as $pk) {

@@ -65,7 +65,7 @@ function approvePaidOrder(
 
     // Đơn key: JOIN packages
     if (!$order) {
-        $stmt = $db->prepare("SELECT o.*, p.days, p.key_type, p.price, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
+        $stmt = $db->prepare("SELECT o.*, p.days, p.hours, p.key_type, p.price, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
             FROM orders o
             LEFT JOIN packages p ON o.package_id = p.id
             JOIN games g    ON o.game_id    = g.id
@@ -137,7 +137,8 @@ function approvePaidOrder(
             if (empty($allKeys)) throw new Exception('Không tìm thấy key pending');
 
             $start  = date('Y-m-d H:i:s');
-            $expire = date('Y-m-d H:i:s', strtotime('+' . ((int)$order['days']) . ' days'));
+            $tothours = ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0);
+            $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $tothours) . ' hours'));
             $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
 
             $activatedCount = 0;

@@ -86,6 +86,11 @@ if (!defined('BALANCE_ENABLED'))           define('BALANCE_ENABLED', true);
 if (!defined('CARD_RATE_VIETTEL'))   define('CARD_RATE_VIETTEL', '28');
 if (!defined('CARD_RATE_MOBIFONE'))  define('CARD_RATE_MOBIFONE', '30');
 if (!defined('CARD_RATE_VINAPHONE')) define('CARD_RATE_VINAPHONE', '30');
+// Footer trang web khách (chỉnh trong Admin → Config)
+if (!defined('FOOTER_HOTLINE'))      define('FOOTER_HOTLINE', '0868641019');
+if (!defined('FOOTER_EMAIL'))        define('FOOTER_EMAIL', 'admin@example.com');
+if (!defined('FOOTER_RESP_CONTENT')) define('FOOTER_RESP_CONTENT', 'TRAN VAN HOANG');
+if (!defined('FOOTER_TELEGRAM'))     define('FOOTER_TELEGRAM', 'https://t.me/');
 if (!defined('DOITHE_API_URL'))            define('DOITHE_API_URL', 'https://doithe.vn/chargingws/v2'); // hardcode default — admin không cần sửa
 if (!defined('DOITHE_PARTNER_ID'))         define('DOITHE_PARTNER_ID', '');
 if (!defined('DOITHE_PARTNER_KEY'))        define('DOITHE_PARTNER_KEY', '');
@@ -406,6 +411,11 @@ function hclouConfigEditableKeys() {
         'CARD_RATE_VIETTEL'           => 'string',
         'CARD_RATE_MOBIFONE'          => 'string',
         'CARD_RATE_VINAPHONE'         => 'string',
+        // --- Thông tin footer trang web khách ---
+        'FOOTER_HOTLINE'              => 'string',
+        'FOOTER_EMAIL'                => 'string',
+        'FOOTER_RESP_CONTENT'         => 'string',
+        'FOOTER_TELEGRAM'             => 'string',
         'DOITHE_PARTNER_ID'           => 'string',
         'DOITHE_PARTNER_KEY'          => 'string',
     ];
