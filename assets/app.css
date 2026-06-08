@@ -299,3 +299,24 @@ html,body{height:100%;background:#06080f!important;color:#e6edf3;font-family:'In
 @media(max-width:768px){
   .app-header,.bottom-nav,.moverlay,.kcard,.card,.stats-card,.hist-order,.profile-card,.free-card,.help-panel,.mbox{backdrop-filter:none;-webkit-backdrop-filter:none}
 }
+
+/* === Chống tràn UI cho Spanish (chữ dài hơn vi/en) === */
+.nav-lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:inline-block}
+.buy-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+.sec-sub,.pkg-mode,.hist-detail span{word-break:break-word;overflow-wrap:break-word}
+.stat-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pkg-cost,.pkg-usdt{white-space:nowrap}
+.profile-info,.profile-btn{min-width:0;word-break:break-word}
+.role-badge{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* Spanish: thu font các nhãn cố định để vừa khung */
+html[lang="es"] .nav-lbl{font-size:8.8px;letter-spacing:0}
+html[lang="es"] .stat-label{font-size:10px;letter-spacing:.2px}
+html[lang="es"] .sec-title{font-size:16px}
+html[lang="es"] .sec-sub{font-size:11.5px}
+html[lang="es"] .pkg-days{font-size:13.5px}
+html[lang="es"] .buy-sub{font-size:9.5px}
+html[lang="es"] .web-title{font-size:18px}
+html[lang="es"] .web-sub{font-size:13px;line-height:1.5}
+html[lang="es"] .free-badge,html[lang="es"] .free-claimed-meta{font-size:11px}
+html[lang="es"] .pkg-mode{font-size:10.5px;line-height:1.35}
+html[lang="es"] button.confirm-btn,html[lang="es"] .buy-btn{font-size:14px;letter-spacing:0}
