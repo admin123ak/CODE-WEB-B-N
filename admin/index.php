@@ -883,19 +883,18 @@ if ($tab !== 'update') {
   <a href="?tab=update" class="btn btn-blue" style="text-decoration:none">🔄 Cập nhật ngay</a>
 </div>
 <?php endif; } ?>
-<?php if(isset($_GET['ok'])): ?><div class="alert alert-green">✅ Thao tác thành công!</div><?php endif ?>
-<?php if(isset($_GET['err'])): ?><div class="alert" style="background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#fca5a5">⚠️ <?=htmlspecialchars($_GET['err'])?></div><?php endif ?>
+<?php /* Thông báo ok/err đã chuyển sang toast nổi (aToast từ URL) — không render alert inline nữa */ ?>
 
 <?php if($tab==='dashboard'): ?>
 <h1>📊 Dashboard</h1>
 <div class="stats-grid">
-  <div class="stat-card"><div class="stat-val blue"><?=$stats['users']?></div><div class="stat-label">👥 Người dùng</div></div>
-  <div class="stat-card"><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">🛒 Chờ thanh toán</div></div>
-  <div class="stat-card"><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">✅ Đơn thành công</div></div>
-  <div class="stat-card"><div class="stat-val green"><?=number_format($stats['revenue'],0,',','.')?> đ</div><div class="stat-label">💰 Doanh thu</div></div>
-  <div class="stat-card"><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">📦 Key trong pool</div></div>
-  <div class="stat-card"><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">🔑 Key đang active</div></div>
-  <div class="stat-card"><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">🔑 Tổng keys</div></div>
+  <div class="stat-card"><span class="stat-icon">👥</span><div class="stat-val blue"><?=$stats['users']?></div><div class="stat-label">Người dùng</div></div>
+  <div class="stat-card"><span class="stat-icon">🛒</span><div class="stat-val orange"><?=$stats['orders_pending']?></div><div class="stat-label">Chờ thanh toán</div></div>
+  <div class="stat-card"><span class="stat-icon">✅</span><div class="stat-val green"><?=$stats['orders_approved']?></div><div class="stat-label">Đơn thành công</div></div>
+  <div class="stat-card"><span class="stat-icon">💰</span><div class="stat-val green" style="font-size:24px"><?=number_format($stats['revenue'],0,',','.')?><small style="font-size:14px;opacity:.7"> đ</small></div><div class="stat-label">Doanh thu</div></div>
+  <div class="stat-card"><span class="stat-icon">📦</span><div class="stat-val green"><?=$stats['keys_available']?></div><div class="stat-label">Key trong pool</div></div>
+  <div class="stat-card"><span class="stat-icon">🔑</span><div class="stat-val blue"><?=$stats['keys_active']?></div><div class="stat-label">Key đang active</div></div>
+  <div class="stat-card"><span class="stat-icon">🗝️</span><div class="stat-val"><?=$stats['keys_total']?></div><div class="stat-label">Tổng keys</div></div>
 </div>
 
 <h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
