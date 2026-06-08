@@ -205,6 +205,7 @@ define('SITE_URL',  %SITE_URL%);
 define('SITE_NAME', %SITE_NAME%);
 
 // --- Admin panel ---
+define('ADMIN_USERNAME',      %ADMIN_USERNAME%);
 define('ADMIN_PASSWORD_HASH', %ADMIN_PASSWORD_HASH%);
 define('ADMIN_SESSION_TTL',   3600);
 
@@ -324,6 +325,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'save_admin':
                 $pwd = (string)$_POST['admin_password'];
                 if (strlen($pwd) < 8) throw new Exception('Mật khẩu admin phải >= 8 ký tự');
+                $auser = trim($_POST['admin_username'] ?? 'admin');
+                if (!preg_match('/^[a-zA-Z0-9_.\-]{3,32}$/', $auser)) throw new Exception('Tài khoản admin 3-32 ký tự (chữ/số/._-)');
+                $_SESSION['installer']['admin_username']       = $auser;
                 $_SESSION['installer']['admin_password_hash'] = password_hash($pwd, PASSWORD_DEFAULT);
 
                 // Auto-generate tokens
@@ -348,6 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'BOT_USERNAME'             => $i['bot_username'],
                     'SITE_URL'                 => $i['site_url'],
                     'SITE_NAME'                => $i['site_name'],
+                    'ADMIN_USERNAME'           => $i['admin_username'] ?? 'admin',
                     'ADMIN_PASSWORD_HASH'      => $i['admin_password_hash'],
                     'BANK_NAME'                => $i['bank_name'],
                     'BANK_ACCOUNT'             => $i['bank_account'],
@@ -558,10 +563,13 @@ foreach ($checks as $name => $ok) {
 <button class="btn primary" type="submit">Tiếp tục →</button>
 </form>
 
-<?php elseif ($step === 6): // ADMIN PASSWORD ?>
-<h2>Bước 6: Mật khẩu Admin</h2>
+<?php elseif ($step === 6): // ADMIN ACCOUNT ?>
+<h2>Bước 6: Tài khoản Admin</h2>
 <form method="post">
 <input type="hidden" name="action" value="save_admin">
+<div class="form-group"><label>Tài khoản admin (3-32 ký tự)</label>
+<input type="text" name="admin_username" value="<?= htmlspecialchars($_POST['admin_username'] ?? 'admin') ?>" required pattern="[a-zA-Z0-9_.\-]{3,32}" autocapitalize="none">
+<div class="hint">Tên đăng nhập vào <code>/admin/</code>.</div></div>
 <div class="form-group"><label>Mật khẩu admin (>= 8 ký tự)</label>
 <input type="password" name="admin_password" required minlength="8">
 <div class="hint">Dùng để đăng nhập <code>/admin/</code>. Lưu ý: viết ra giấy, không có nơi recover.</div></div>

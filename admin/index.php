@@ -44,7 +44,7 @@ function admin_login_page($error = '') {
         .hint{margin-top:18px;text-align:center;color:#6b7d9c;font-size:11.5px;line-height:1.5}
         .err{background:linear-gradient(135deg,rgba(248,113,113,.14),rgba(248,113,113,.05));border:1px solid rgba(248,113,113,.34);color:#fca5a5;padding:11px 14px;border-radius:13px;margin-bottom:15px;font-size:13px;font-weight:600}
         .admin-footer{margin:26px 0 4px;text-align:center;color:rgba(139,160,196,.42);font-size:11px;font-weight:600;letter-spacing:.05em}.admin-footer:before{content:"";display:block;width:130px;height:1px;background:linear-gradient(90deg,transparent,rgba(232,200,121,.3),transparent);margin:0 auto 12px}</style></head>
-        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label>Mật khẩu quản trị</label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password" autofocus></div><button>🔐 Đăng nhập an toàn</button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
+        <body><form class="card" method="POST"><div class="logo">⚡</div><h1>HCLOU SERVER</h1><div class="sub">Admin Control Center · Secure Login</div>'.$err.'<input type="hidden" name="csrf" value="'.$csrf.'"><div class="field"><label>Tài khoản</label><input type="text" name="username" placeholder="Nhập tài khoản admin" autocomplete="username" autocapitalize="none" autofocus></div><div class="field"><label>Mật khẩu</label><input type="password" name="pw" placeholder="Nhập mật khẩu admin" autocomplete="current-password"></div><button>🔐 Đăng nhập an toàn</button><div class="hint">Session tự hết hạn sau '.(int)(ADMIN_SESSION_TTL/60).' phút không hoạt động</div></form></body></html>';
 }
 
 if (isset($_GET['logout'])) {
@@ -70,18 +70,22 @@ if (!$loggedIn) {
         }
         $csrfOk = hash_equals($_SESSION['admin_csrf'] ?? '', $_POST['csrf'] ?? '');
         if (!$csrfOk) { admin_login_page('Phiên đăng nhập không hợp lệ, thử lại.'); exit; }
-        if (password_verify($_POST['pw'] ?? '', ADMIN_PASSWORD_HASH)) {
+        // Xác thực: tài khoản (username) + mật khẩu. Username so khớp không phân biệt hoa thường.
+        $adminUser = defined('ADMIN_USERNAME') ? ADMIN_USERNAME : 'admin';
+        $userOk    = hash_equals(strtolower($adminUser), strtolower(trim($_POST['username'] ?? '')));
+        $passOk    = password_verify($_POST['pw'] ?? '', ADMIN_PASSWORD_HASH);
+        if ($userOk && $passOk) {
             loginAttemptReset('admin_login');
             session_regenerate_id(true);
             $_SESSION['admin_auth'] = true;
             $_SESSION['admin_last_seen'] = time();
             $_SESSION['admin_csrf'] = bin2hex(random_bytes(16));
-            logInfo('Admin login OK', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+            logInfo('Admin login OK', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '', 'user' => $adminUser]);
             header('Location: ?tab=dashboard'); exit;
         }
         loginAttemptIncrement('admin_login', 900);
         logWarn('Admin login failed', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '', 'remaining' => $attempt['remaining'] - 1]);
-        admin_login_page('Sai mật khẩu admin. Còn ' . max(0, $attempt['remaining'] - 1) . ' lượt thử.'); exit;
+        admin_login_page('Sai tài khoản hoặc mật khẩu. Còn ' . max(0, $attempt['remaining'] - 1) . ' lượt thử.'); exit;
     }
     admin_login_page(); exit;
 }
@@ -154,6 +158,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } catch (Exception $ce) { /* bảng có thể chưa có cột, bỏ qua */ }
             }
             header("Location: ?tab=sysconfig&ok=1&changed=" . count($changes)); exit;
+        } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
+    }
+    if ($act === 'change_admin_cred') {
+        try {
+            $curPw   = $_POST['cur_pw'] ?? '';
+            $newUser = trim($_POST['new_username'] ?? '');
+            $newPw   = $_POST['new_pw'] ?? '';
+            $newPw2  = $_POST['new_pw2'] ?? '';
+            // Bắt buộc nhập đúng mật khẩu hiện tại để đổi
+            if (!password_verify($curPw, ADMIN_PASSWORD_HASH)) {
+                header("Location: ?tab=sysconfig&err=" . urlencode('Mật khẩu hiện tại không đúng')); exit;
+            }
+            if ($newUser === '' || !preg_match('/^[a-zA-Z0-9_.\-]{3,32}$/', $newUser)) {
+                header("Location: ?tab=sysconfig&err=" . urlencode('Tài khoản 3-32 ký tự (chữ/số/._-)')); exit;
+            }
+            hclouWriteRawDefine('ADMIN_USERNAME', $newUser);
+            // Chỉ đổi mật khẩu nếu có nhập mới
+            if ($newPw !== '') {
+                if (strlen($newPw) < 6) { header("Location: ?tab=sysconfig&err=" . urlencode('Mật khẩu mới tối thiểu 6 ký tự')); exit; }
+                if ($newPw !== $newPw2) { header("Location: ?tab=sysconfig&err=" . urlencode('Mật khẩu nhập lại không khớp')); exit; }
+                hclouWriteRawDefine('ADMIN_PASSWORD_HASH', password_hash($newPw, PASSWORD_DEFAULT));
+            }
+            logInfo('Admin credentials changed', ['new_user' => $newUser, 'pw_changed' => $newPw !== '']);
+            header("Location: ?tab=sysconfig&msg=" . urlencode('Đã đổi đăng nhập admin. Lần sau dùng tài khoản: ' . $newUser)); exit;
         } catch (Exception $e) { header("Location: ?tab=sysconfig&err=" . urlencode($e->getMessage())); exit; }
     }
     if ($act === 'run_maintenance') {
@@ -2631,6 +2659,23 @@ function _hclouFormatBytes($b) {
   <?php endif; ?>
   <p style="margin-top:10px;color:#8b949e;font-size:12px">⚠️ File backup chứa dữ liệu nhạy cảm (users, orders, key). Tải về xong nên lưu offline, không share.</p>
 </div>
+
+<!-- Đổi tài khoản/mật khẩu admin -->
+<form method="POST" class="form-card">
+<input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="change_admin_cred">
+<h3>🔐 Đổi đăng nhập admin</h3>
+<p style="color:#8b949e;font-size:12.5px;margin-bottom:14px">Tài khoản hiện tại: <b style="color:#7db3ff"><?=h(defined('ADMIN_USERNAME')?ADMIN_USERNAME:'admin')?></b>. Phải nhập đúng mật khẩu hiện tại để xác nhận.</p>
+<div class="form-row">
+  <div style="flex:1;min-width:200px"><label>Mật khẩu hiện tại *</label><input type="password" name="cur_pw" required placeholder="Nhập mật khẩu đang dùng" autocomplete="current-password"></div>
+  <div style="flex:1;min-width:200px"><label>Tài khoản mới *</label><input type="text" name="new_username" required value="<?=h(defined('ADMIN_USERNAME')?ADMIN_USERNAME:'admin')?>" placeholder="vd: admin" autocapitalize="none"></div>
+</div>
+<div class="form-row" style="margin-top:12px">
+  <div style="flex:1;min-width:200px"><label>Mật khẩu mới <small style="color:#8b949e">(để trống nếu không đổi)</small></label><input type="password" name="new_pw" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"></div>
+  <div style="flex:1;min-width:200px"><label>Nhập lại mật khẩu mới</label><input type="password" name="new_pw2" placeholder="Nhập lại" autocomplete="new-password"></div>
+</div>
+<div style="margin-top:16px"><button class="btn btn-green" type="submit" data-confirm="Đổi tài khoản/mật khẩu đăng nhập admin?">💾 Lưu đăng nhập</button></div>
+</form>
+
 <form method="POST" class="form-card">
 <input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="save_config">
 <h3>Thông tin site/bot</h3><div class="form-row">

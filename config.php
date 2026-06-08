@@ -53,6 +53,7 @@ if (!defined('GETKEY_REQUIRE_LINK'))        define('GETKEY_REQUIRE_LINK', true);
 if (!defined('LAYMA_API_TOKEN'))            define('LAYMA_API_TOKEN', '7fc1aa570262544a7b80d1bc0ab3c4e6');
 if (!defined('YEUMONEY_API_TOKEN'))         define('YEUMONEY_API_TOKEN', '');
 if (!defined('ADMIN_SESSION_TTL'))          define('ADMIN_SESSION_TTL', 3600);
+if (!defined('ADMIN_USERNAME'))             define('ADMIN_USERNAME', 'admin'); // tài khoản đăng nhập admin (đổi trong config.local.php)
 if (!defined('VIETQR_BANK_ID'))             define('VIETQR_BANK_ID', '970422');
 
 // --- Crypto (Binance USDT TRC20) defaults ---
@@ -469,6 +470,25 @@ function hclouConfigEditableKeys() {
 }
 
 function hclouConfigValue($key) { return defined($key) ? constant($key) : null; }
+
+// Ghi/đặt 1 define vào config.local.php (dùng cho ADMIN_USERNAME / ADMIN_PASSWORD_HASH —
+// không nằm trong whitelist editable vì lý do bảo mật). Trả về true nếu ghi thành công.
+function hclouWriteRawDefine($key, $value) {
+    if (!preg_match('/^[A-Z_][A-Z0-9_]*$/', $key)) throw new Exception('Tên define không hợp lệ');
+    $configFile = APP_ROOT . '/config.local.php';
+    if (!file_exists($configFile) || !is_writable($configFile)) throw new Exception('config.local.php không ghi được');
+    $src = file_get_contents($configFile);
+    $replacement = "define('{$key}', " . var_export((string)$value, true) . ");";
+    $pattern = "/define\\(\\s*'" . preg_quote($key, '/') . "'\\s*,\\s*.*?\\);/s";
+    $count = 0;
+    $src = preg_replace($pattern, $replacement, $src, 1, $count);
+    if ($count !== 1) {
+        if (preg_match('/\?>\s*$/', $src)) $src = preg_replace('/\?>\s*$/', $replacement . "\n?>\n", $src, 1);
+        else $src = rtrim($src) . "\n" . $replacement . "\n";
+    }
+    @copy($configFile, $configFile . '.bk_admincred_' . date('Ymd_His'));
+    return file_put_contents($configFile, $src, LOCK_EX) !== false;
+}
 
 function hclouWriteConfigValues(array $updates, $admin = 'web_admin') {
     $allowed    = hclouConfigEditableKeys();

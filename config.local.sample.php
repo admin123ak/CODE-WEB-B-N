@@ -37,7 +37,9 @@ define('SITE_URL', 'https://your-domain.com');
 define('SITE_NAME', 'YOUR SITE NAME');
 
 // --- Admin panel ---
-// Tạo hash bằng: php -r "echo password_hash('your_password', PASSWORD_DEFAULT);"
+// Đăng nhập bằng TÀI KHOẢN + MẬT KHẨU.
+define('ADMIN_USERNAME', 'admin'); // tài khoản đăng nhập (đổi tuỳ ý)
+// Tạo hash mật khẩu bằng: php -r "echo password_hash('your_password', PASSWORD_DEFAULT);"
 define('ADMIN_PASSWORD_HASH', '$2y$10$REPLACE_THIS_WITH_REAL_HASH');
 define('ADMIN_SESSION_TTL', 3600);
 
