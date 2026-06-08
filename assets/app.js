@@ -344,8 +344,72 @@ async function api(action,method,body){
     else if(tgInitData) extra.push('init_data=' + encodeURIComponent(tgInitData));
     if(extra.length) url += '&' + extra.join('&');
   }
-  try{ var r=await fetch(url,opts); return r.json(); }
+  try{ var r=await fetch(url,opts); var j=await r.json(); if(j&&j.error) j.error=translateErr(j.error); return j; }
   catch(e){ return {error:T.loiKetNoi}; }
+}
+
+// Dịch message lỗi server (tiếng Việt) sang ngôn ngữ UI. Khớp full hoặc theo prefix.
+var ERR_MAP={
+  'Action không hợp lệ':{en:'Invalid action',es:'Acción inválida'},
+  'Bạn đã có đơn gói này đang chờ thanh toán':{en:'You already have a pending order for this package',es:'Ya tienes un pedido pendiente para este paquete'},
+  'Bạn đang có quá nhiều đơn chờ thanh toán':{en:'You have too many pending orders',es:'Tienes demasiados pedidos pendientes'},
+  'Bạn đang có quá nhiều đơn chờ thanh toán, vui lòng hoàn tất hoặc chờ đơn cũ hết hiệu lực':{en:'Too many pending orders, please complete or wait for old ones to expire',es:'Demasiados pedidos pendientes, completa o espera a que expiren'},
+  'Bạn đang có quá nhiều yêu cầu nạp đang chờ, hoàn tất hoặc chờ hết hạn':{en:'Too many pending top-up requests, complete or wait for expiry',es:'Demasiadas recargas pendientes, completa o espera la expiración'},
+  'Bạn đã nhận key free này rồi':{en:'You already claimed this free key',es:'Ya reclamaste esta clave gratis'},
+  'Bạn thao tác quá nhanh, vui lòng chờ 30 giây rồi thử lại':{en:'Too fast, please wait 30 seconds and try again',es:'Demasiado rápido, espera 30 segundos e inténtalo de nuevo'},
+  'Binance USDT đang tạm khoá':{en:'Binance USDT is temporarily locked',es:'Binance USDT está bloqueado temporalmente'},
+  'Cần mở qua Telegram Mini App (init_data không hợp lệ)':{en:'Please open via Telegram Mini App (invalid init_data)',es:'Abre vía Telegram Mini App (init_data inválido)'},
+  'Chưa có key free hôm nay! Admin sẽ thêm vào buổi sáng.':{en:'No free key today! Admin will add in the morning.',es:'¡Sin clave gratis hoy! El admin la añadirá por la mañana.'},
+  'Chưa có key free khả dụng':{en:'No free key available',es:'Sin clave gratis disponible'},
+  'Chưa đăng nhập':{en:'Not logged in',es:'No has iniciado sesión'},
+  'Đã hết lượt reset!':{en:'No reset attempts left!',es:'¡Sin intentos de reinicio!'},
+  'GetKey Free đang tắt':{en:'Free key is disabled',es:'Clave gratis desactivada'},
+  'Gói không tồn tại':{en:'Package not found',es:'Paquete no encontrado'},
+  'Hết acc cho loại này':{en:'Out of accounts for this type',es:'Sin cuentas de este tipo'},
+  'Hết acc cho loại này. Vui lòng liên hệ admin để được hỗ trợ.':{en:'Out of accounts for this type. Please contact admin.',es:'Sin cuentas de este tipo. Contacta al admin.'},
+  'Hết key cho gói này':{en:'Out of keys for this package',es:'Sin claves para este paquete'},
+  'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.':{en:'Out of keys for this package. Please contact admin.',es:'Sin claves para este paquete. Contacta al admin.'},
+  'Key free đã hết hạn':{en:'Free key expired',es:'Clave gratis expirada'},
+  'key_id không hợp lệ':{en:'Invalid key_id',es:'key_id inválido'},
+  'Key không active!':{en:'Key is not active!',es:'¡La clave no está activa!'},
+  'Key không tồn tại':{en:'Key not found',es:'Clave no encontrada'},
+  'Không lấy được tỉ giá USDT, vui lòng thử lại sau ít phút.':{en:'Cannot fetch USDT rate, please try again in a few minutes.',es:'No se pudo obtener la tasa USDT, inténtalo en unos minutos.'},
+  'Không nhận được key':{en:'Could not get key',es:'No se pudo obtener la clave'},
+  'Không nhận được key. Vui lòng thử lại.':{en:'Could not get key. Please try again.',es:'No se pudo obtener la clave. Inténtalo de nuevo.'},
+  'Link claim không hợp lệ':{en:'Invalid claim link',es:'Enlace de reclamo inválido'},
+  'Link claim không thuộc về bạn':{en:'This claim link is not yours',es:'Este enlace de reclamo no es tuyo'},
+  'Loại acc không tồn tại':{en:'Account type not found',es:'Tipo de cuenta no encontrado'},
+  'Mệnh giá không hợp lệ':{en:'Invalid card value',es:'Valor de tarjeta inválido'},
+  'Method chưa hỗ trợ':{en:'Method not supported',es:'Método no soportado'},
+  'Method không hợp lệ':{en:'Invalid method',es:'Método inválido'},
+  'Nạp thẻ chưa cấu hình':{en:'Card top-up not configured',es:'Recarga con tarjeta no configurada'},
+  'Nhà mạng không hợp lệ':{en:'Invalid carrier',es:'Operador inválido'},
+  'Nhập đủ Serial + Mã thẻ':{en:'Enter both Serial + Card code',es:'Ingresa Serial + Código de tarjeta'},
+  'Phương thức thanh toán không hợp lệ':{en:'Invalid payment method',es:'Método de pago inválido'},
+  'Serial/mã thẻ quá dài':{en:'Serial/card code too long',es:'Serial/código demasiado largo'},
+  'Thanh toán Binance USDT đang tạm khoá. Vui lòng chọn MBBank.':{en:'Binance USDT payment temporarily locked. Please choose MBBank.',es:'Pago Binance USDT bloqueado. Elige MBBank.'},
+  'Thiếu token claim':{en:'Missing claim token',es:'Falta el token de reclamo'},
+  'Tối đa 50.000.000đ':{en:'Maximum 50,000,000đ',es:'Máximo 50.000.000đ'},
+  'Tối thiểu 10.000đ':{en:'Minimum 10,000đ',es:'Mínimo 10.000đ'}
+};
+// Prefix (message có phần động phía sau): khớp đầu chuỗi
+var ERR_PREFIX=[
+  ['Không tạo được link:',{en:'Could not create link:',es:'No se pudo crear el enlace:'}],
+  ['Lỗi tạo đơn hàng:',{en:'Order creation error:',es:'Error al crear pedido:'}],
+  ['Lỗi tạo đơn:',{en:'Order creation error:',es:'Error al crear pedido:'}],
+  ['Số dư không đủ: cần',{en:'Insufficient balance: need',es:'Saldo insuficiente: necesitas'}],
+  ['Trừ ví thất bại:',{en:'Wallet deduction failed:',es:'Error al descontar de la billetera:'}],
+  ['Lỗi:',{en:'Error:',es:'Error:'}]
+];
+function translateErr(msg){
+  if(!msg||LANG==='vi')return msg;
+  var t=ERR_MAP[msg];
+  if(t&&t[LANG])return t[LANG];
+  for(var i=0;i<ERR_PREFIX.length;i++){
+    var p=ERR_PREFIX[i][0];
+    if(msg.indexOf(p)===0){ var tr=ERR_PREFIX[i][1][LANG]||p; return tr+msg.slice(p.length); }
+  }
+  return msg; // không có bản dịch → giữ nguyên
 }
 
 async function openGameModal(){
