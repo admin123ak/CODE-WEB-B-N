@@ -731,6 +731,9 @@ $stats = [
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin Panel - <?= h(SITE_NAME) ?></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0b1020;--side:#0f172a;--side2:#111c33;--panel:#111827;--card:#182235;--card2:#151f31;--line:#26354f;--line2:#334765;--text:#edf4ff;--muted:#91a4c3;--blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--red:#ef4444;--orange:#f59e0b;--purple:#8b5cf6;--shadow:0 18px 46px rgba(0,0,0,.28)}
@@ -805,6 +808,219 @@ td form{margin:0}
 
 /* === Hamburger Nav === */
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 18px;height:56px;background:var(--side);border-bottom:1px solid var(--line);position:fixed;top:0;left:0;right:0;z-index:100}.hamburger{background:none;border:none;cursor:pointer;padding:8px;display:flex;flex-direction:column;gap:5px;border-radius:6px;transition:background .2s}.hamburger:hover{background:var(--card)}.hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1)}.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}.hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0)}.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}.topbar-logo{font-size:15px;font-weight:800;color:var(--text)}.topbar-logo .blue{color:var(--cyan)}.topbar-right{width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .3s}.nav-overlay.show{opacity:1;pointer-events:all}.sidebar-nav{position:fixed;top:0;left:0;bottom:0;width:270px;background:linear-gradient(180deg,var(--side),#0a1222);z-index:200;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}.sidebar-nav.open{transform:translateX(0);box-shadow:4px 0 32px rgba(0,0,0,.5)}.sidebar-nav::-webkit-scrollbar{width:4px}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}.sn-logo{padding:18px;border-bottom:1px solid var(--line)}.sn-logo .big{font-size:18px;font-weight:950;background:linear-gradient(135deg,var(--cyan),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent}.sn-logo .sub{color:var(--muted);font-size:10px;font-weight:700;margin-top:2px}.nav-group{padding:14px 0 4px}.nav-group-label{font-size:10px;font-weight:800;color:var(--muted);padding:0 18px 8px;text-transform:uppercase;letter-spacing:.12em}.main-content{padding:56px 22px 22px;min-height:100vh}.main-content h1{font-size:26px;font-weight:950;letter-spacing:-.035em;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px}.main-content h1:after{content:"Control Center";font-size:11px;letter-spacing:0;color:#bfdbfe;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);padding:6px 12px;border-radius:999px;font-weight:700}@media(max-width:768px){.main-content h1:after{display:none}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}table{display:block;overflow-x:auto;white-space:nowrap}.form-row{display:grid;grid-template-columns:1fr}.btn,input,select{width:100%}}@media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
+
+/* ============================================================
+   ✦ LUXURY v3 — giao diện admin sang trọng / chuyên nghiệp
+   (đè lên các rule phía trên — đặt cuối nên thắng)
+   ============================================================ */
+:root{
+  --lx-bg0:#070a12; --lx-bg1:#0a0f1c; --lx-bg2:#0c1322;
+  --lx-panel:rgba(20,28,46,.72); --lx-panel-solid:#141c2e;
+  --lx-card:rgba(24,33,54,.66);
+  --lx-line:rgba(120,150,200,.14); --lx-line2:rgba(130,165,220,.26);
+  --lx-text:#eef3fb; --lx-muted:#8ba0c4; --lx-muted2:#5f7390;
+  --lx-gold:#e8c879; --lx-gold2:#caa24a;
+  --lx-blue:#5b9dff; --lx-cyan:#3ed6e0; --lx-violet:#a78bfa;
+  --lx-green:#34d399; --lx-red:#f87171; --lx-orange:#fbbf24;
+  --lx-accent:linear-gradient(135deg,#6366f1,#22d3ee);
+  --lx-accent-gold:linear-gradient(135deg,#e8c879,#caa24a);
+  --lx-glow:0 0 0 1px rgba(255,255,255,.04),0 22px 60px -18px rgba(0,0,0,.7);
+  --lx-radius:18px; --lx-radius-lg:24px;
+}
+body{
+  font-family:'Inter','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  background:
+    radial-gradient(1100px 620px at 78% -8%,rgba(99,102,241,.16),transparent 60%),
+    radial-gradient(900px 540px at 8% 8%,rgba(34,211,238,.10),transparent 55%),
+    radial-gradient(700px 700px at 95% 100%,rgba(167,139,250,.10),transparent 60%),
+    linear-gradient(180deg,var(--lx-bg0),var(--lx-bg1) 45%,var(--lx-bg0))!important;
+  background-attachment:fixed!important;
+  color:var(--lx-text)!important;
+  -webkit-font-smoothing:antialiased;letter-spacing:.01em;
+}
+
+/* ---------- Topbar: glass + viền sáng ---------- */
+.topbar{
+  height:60px!important;
+  background:linear-gradient(180deg,rgba(13,19,33,.92),rgba(10,15,28,.82))!important;
+  backdrop-filter:blur(22px) saturate(1.4)!important;-webkit-backdrop-filter:blur(22px) saturate(1.4)!important;
+  border-bottom:1px solid var(--lx-line)!important;
+  box-shadow:0 8px 30px -12px rgba(0,0,0,.6);
+  padding:0 22px!important;
+}
+.topbar-logo{font-family:'Plus Jakarta Sans',sans-serif!important;font-size:16px!important;font-weight:800!important;letter-spacing:.02em!important;color:#fff!important}
+.topbar-logo .blue{background:var(--lx-accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar-right{width:38px!important;height:38px!important;background:rgba(255,255,255,.05)!important;border:1px solid var(--lx-line)!important;transition:.2s}
+.topbar-right:hover{background:rgba(248,113,113,.14)!important;border-color:rgba(248,113,113,.4)!important;transform:translateY(-1px)}
+.hamburger:hover{background:rgba(255,255,255,.06)!important}
+.hamburger span{background:#cdd9ee!important;width:21px!important}
+
+/* ---------- Sidebar: nền sâu, mục bo mềm, active gradient ---------- */
+.sidebar-nav{
+  width:262px!important;
+  background:linear-gradient(180deg,rgba(12,18,32,.98),rgba(8,12,22,.99))!important;
+  border-right:1px solid var(--lx-line)!important;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.sn-logo{padding:20px 20px 16px!important;border-bottom:1px solid var(--lx-line)!important}
+.sn-logo .big{font-family:'Plus Jakarta Sans',sans-serif!important;font-size:19px!important;background:var(--lx-accent)!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;letter-spacing:-.01em}
+.sn-logo .sub{color:var(--lx-muted)!important;font-size:10px!important;letter-spacing:.16em!important;text-transform:uppercase;margin-top:3px!important}
+.nav-group-label{color:#566685!important;font-size:9.5px!important;letter-spacing:.16em!important;padding:10px 20px 7px!important;font-weight:800!important}
+.nav-item{
+  margin:1px 12px 1px 0!important;padding:10px 18px!important;
+  border-radius:0 14px 14px 0!important;font-size:13px!important;font-weight:600!important;
+  color:#a7b6d2!important;gap:12px!important;transition:.2s cubic-bezier(.4,0,.2,1)!important;
+}
+.nav-item:hover{background:rgba(255,255,255,.045)!important;color:#fff!important;transform:translateX(2px)}
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(99,102,241,.22),rgba(34,211,238,.05))!important;
+  color:#fff!important;font-weight:800!important;
+}
+.nav-item.active:before{width:3px!important;background:var(--lx-accent)!important;border-radius:0 4px 4px 0!important;box-shadow:0 0 14px rgba(99,102,241,.7)}
+.nav-icon{font-size:15px!important;width:20px!important;filter:saturate(1.2)}
+.nav-item .count{background:linear-gradient(135deg,#f43f5e,#fb7185)!important;box-shadow:0 2px 8px rgba(244,63,94,.5)!important;font-size:9.5px!important;padding:2px 7px!important;font-weight:900!important}
+
+/* ---------- Tiêu đề trang ---------- */
+.main-content{padding:64px 26px 28px!important}
+.main-content h1{
+  font-family:'Plus Jakarta Sans',sans-serif!important;font-size:23px!important;font-weight:800!important;
+  letter-spacing:-.02em!important;margin-bottom:20px!important;color:#fff!important;
+}
+.main-content h1:after{
+  content:"Control Center"!important;
+  background:linear-gradient(135deg,rgba(232,200,121,.14),rgba(202,162,74,.06))!important;
+  border:1px solid rgba(232,200,121,.28)!important;color:var(--lx-gold)!important;
+  font-size:10px!important;font-weight:800!important;letter-spacing:.1em!important;text-transform:uppercase;
+  padding:5px 13px!important;border-radius:999px!important;
+}
+h2{
+  font-family:'Plus Jakarta Sans',sans-serif!important;font-size:15px!important;font-weight:800!important;
+  color:#e8eff9!important;border-left:3px solid transparent!important;
+  border-image:var(--lx-accent) 1!important;padding-left:12px!important;margin:22px 0 13px!important;
+}
+
+/* ---------- Stat cards: glass + viền gradient + glow ---------- */
+.stats-grid{gap:16px!important;margin-bottom:28px!important;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))!important}
+.stat-card{
+  background:linear-gradient(160deg,rgba(26,36,58,.85),rgba(16,23,39,.7))!important;
+  border:1px solid var(--lx-line)!important;border-radius:var(--lx-radius-lg)!important;
+  padding:20px 20px 18px!important;box-shadow:var(--lx-glow)!important;
+  position:relative;overflow:hidden;transition:.25s cubic-bezier(.4,0,.2,1)!important;
+}
+.stat-card:before{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:linear-gradient(140deg,rgba(255,255,255,.14),transparent 40%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7;
+}
+.stat-card:after{
+  content:"";position:absolute;right:-30px;top:-30px;width:96px;height:96px;border-radius:50%;
+  background:radial-gradient(circle,rgba(99,102,241,.22),transparent 70%)!important;
+}
+.stat-card:hover{transform:translateY(-3px)!important;border-color:var(--lx-line2)!important;box-shadow:0 28px 70px -20px rgba(0,0,0,.8),0 0 0 1px rgba(120,160,255,.1)!important}
+.stat-icon{font-size:19px!important;opacity:.32!important;top:16px!important;right:16px!important}
+.stat-val{font-family:'Plus Jakarta Sans',sans-serif!important;font-size:30px!important;font-weight:800!important;letter-spacing:-.04em!important;line-height:1.05}
+.stat-val.blue{color:#7db3ff!important}.stat-val.green{color:#4ade80!important}.stat-val.orange{color:#fcd34d!important}.stat-val.red{color:#fb7185!important}
+.stat-label{color:var(--lx-muted)!important;font-size:11px!important;letter-spacing:.08em!important;text-transform:uppercase;font-weight:700!important;margin-top:6px!important}
+
+/* ---------- Bảng: glass, header gradient, hover row ---------- */
+table{
+  background:linear-gradient(180deg,rgba(18,26,44,.82),rgba(13,19,33,.78))!important;
+  border:1px solid var(--lx-line)!important;border-radius:var(--lx-radius)!important;
+  box-shadow:var(--lx-glow)!important;overflow:hidden;font-size:12.5px!important;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+th{
+  background:linear-gradient(180deg,rgba(16,23,40,.96),rgba(13,19,33,.92))!important;
+  color:#9fb4d6!important;font-size:10.5px!important;letter-spacing:.08em!important;font-weight:800!important;
+  padding:13px 15px!important;border-bottom:1px solid var(--lx-line2)!important;
+}
+td{padding:12px 15px!important;border-bottom:1px solid rgba(120,150,200,.08)!important;color:#dde6f4!important}
+tr:hover td{background:rgba(99,102,241,.06)!important}
+
+/* ---------- Badge: pill mềm có viền sáng ---------- */
+.badge{padding:4px 11px!important;font-size:10.5px!important;font-weight:800!important;letter-spacing:.02em;border-radius:999px!important;backdrop-filter:blur(4px)}
+.badge.green{background:rgba(52,211,153,.14)!important;color:#6ee7b7!important;border:1px solid rgba(52,211,153,.32)!important}
+.badge.orange{background:rgba(251,191,36,.14)!important;color:#fcd34d!important;border:1px solid rgba(251,191,36,.32)!important}
+.badge.red{background:rgba(248,113,113,.14)!important;color:#fca5a5!important;border:1px solid rgba(248,113,113,.32)!important}
+.badge.blue{background:rgba(91,157,255,.14)!important;color:#93c5fd!important;border:1px solid rgba(91,157,255,.32)!important}
+.badge.gray{background:rgba(148,163,184,.12)!important;color:#cbd5e1!important;border:1px solid rgba(148,163,184,.24)!important}
+
+/* ---------- Buttons: gradient sâu + glow khi hover ---------- */
+.btn{
+  padding:8px 14px!important;font-size:12px!important;font-weight:700!important;border-radius:11px!important;
+  letter-spacing:.01em;transition:.18s cubic-bezier(.4,0,.2,1)!important;
+  box-shadow:0 4px 14px -4px rgba(0,0,0,.5);
+}
+.btn-blue{background:linear-gradient(135deg,#4f46e5,#06b6d4)!important;color:#fff!important}
+.btn-green{background:linear-gradient(135deg,#059669,#10b981)!important;color:#fff!important}
+.btn-red{background:linear-gradient(135deg,#dc2626,#f43f5e)!important;color:#fff!important}
+.btn-gray{background:rgba(255,255,255,.06)!important;color:#e6edf3!important;border:1px solid var(--lx-line2)!important}
+.btn:hover{transform:translateY(-1.5px)!important;filter:brightness(1.1)!important;box-shadow:0 10px 26px -8px rgba(79,70,229,.6)}
+.btn:active{transform:scale(.96)!important}
+
+/* ---------- Form cards & inputs ---------- */
+.form-card{
+  background:linear-gradient(180deg,rgba(20,28,46,.8),rgba(14,20,34,.72))!important;
+  border:1px solid var(--lx-line)!important;border-radius:var(--lx-radius)!important;
+  padding:22px!important;box-shadow:var(--lx-glow)!important;backdrop-filter:blur(12px);
+  position:relative;overflow:hidden;
+}
+.form-card:before{content:"";position:absolute;left:0;top:0;right:0;height:2px;background:var(--lx-accent);opacity:.5}
+.form-card h3{font-family:'Plus Jakarta Sans',sans-serif!important;font-size:15px!important;font-weight:800!important;color:#eaf1fc!important;padding-bottom:11px!important;margin-bottom:15px!important;border-bottom:1px solid var(--lx-line)!important}
+input,select,textarea{
+  background:rgba(8,13,24,.7)!important;border:1px solid var(--lx-line2)!important;
+  border-radius:11px!important;color:#eef3fb!important;padding:10px 13px!important;font-size:13px!important;
+  font-family:inherit!important;transition:.18s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--lx-cyan)!important;box-shadow:0 0 0 3px rgba(62,214,224,.14)!important;background:rgba(8,13,24,.92)!important}
+input::placeholder,textarea::placeholder{color:#5d6f8e!important}
+label{color:#9fb4d6!important;font-size:11.5px!important;font-weight:700!important;letter-spacing:.02em!important;margin-bottom:6px!important}
+select option{background:#0c1322!important}
+
+/* ---------- Boxes ---------- */
+.okbox{background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.05))!important;border:1px solid rgba(52,211,153,.3)!important;color:#a7f3d0!important;border-radius:14px!important}
+.warnbox{background:linear-gradient(135deg,rgba(251,191,36,.13),rgba(251,191,36,.04))!important;border:1px solid rgba(251,191,36,.3)!important;color:#fde68a!important;border-radius:14px!important}
+.alert-green{background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(16,185,129,.05))!important;border:1px solid rgba(52,211,153,.3)!important;color:#a7f3d0!important}
+.codebox{background:rgba(5,9,18,.85)!important;border:1px solid var(--lx-line2)!important;border-radius:12px!important;color:#bfdbfe!important}
+
+/* ---------- Footer ---------- */
+.admin-footer{color:rgba(139,160,196,.4)!important;letter-spacing:.06em!important}
+.admin-footer:before{background:linear-gradient(90deg,transparent,rgba(232,200,121,.3),transparent)!important;width:140px!important}
+
+/* ---------- Language switcher: chuốt lại ---------- */
+.adm-lang-box{background:rgba(255,255,255,.04)!important;border:1px solid var(--lx-line2)!important}
+.adm-lang-pill.active{background:var(--lx-accent)!important;box-shadow:0 3px 12px rgba(79,70,229,.5)!important}
+
+/* ---------- Scrollbar toàn cục ---------- */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(120,150,200,.2);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(120,150,200,.35);background-clip:padding-box}
+
+/* ---------- Entrance animation tinh tế ---------- */
+@keyframes lxFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stat-card,.form-card,table,.guide-card{animation:lxFade .4s cubic-bezier(.4,0,.2,1) both}
+.stats-grid .stat-card:nth-child(2){animation-delay:.04s}
+.stats-grid .stat-card:nth-child(3){animation-delay:.08s}
+.stats-grid .stat-card:nth-child(4){animation-delay:.12s}
+.stats-grid .stat-card:nth-child(5){animation-delay:.16s}
+.stats-grid .stat-card:nth-child(6){animation-delay:.2s}
+.stats-grid .stat-card:nth-child(7){animation-delay:.24s}
+
+/* ---------- Mobile tinh chỉnh ---------- */
+@media(max-width:768px){
+  .main-content{padding:64px 15px 24px!important}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:11px!important}
+  .stat-card{padding:15px!important;border-radius:18px!important}
+  .stat-val{font-size:23px!important}
+  .main-content h1{font-size:19px!important}
+  .form-card{padding:16px!important}
+}
+@media(max-width:480px){.stats-grid{grid-template-columns:1fr!important}}
+
+/* Giảm tải hiệu ứng cho máy yếu */
+@media(prefers-reduced-motion:reduce){.stat-card,.form-card,table,.guide-card{animation:none!important}}
 </style>
 </head>
 <body>
