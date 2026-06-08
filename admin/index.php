@@ -976,9 +976,16 @@ h2{
 table{
   background:linear-gradient(180deg,rgba(18,26,44,.82),rgba(13,19,33,.78))!important;
   border:1px solid var(--lx-line)!important;border-radius:var(--lx-radius)!important;
-  box-shadow:var(--lx-glow)!important;overflow:hidden;font-size:12.5px!important;
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:var(--lx-glow)!important;font-size:12.5px!important;
+  /* Mọi bảng tự cuộn ngang khi tràn (fix 'lướt qua không được').
+     display:block -> trình duyệt tự dựng anonymous table box, cột vẫn thẳng */
+  display:block!important;overflow-x:auto!important;overflow-y:visible!important;
+  -webkit-overflow-scrolling:touch;width:100%;
 }
+table::-webkit-scrollbar{height:8px}
+table::-webkit-scrollbar-thumb{background:rgba(120,150,200,.3);border-radius:99px}
+/* Bảng trong .tbl-scroll: wrapper lo cuộn, table giữ display table chuẩn */
+.tbl-scroll table{display:table!important;overflow:visible!important;min-width:920px}
 th{
   background:linear-gradient(180deg,rgba(16,23,40,.96),rgba(13,19,33,.92))!important;
   color:#9fb4d6!important;font-size:10.5px!important;letter-spacing:.08em!important;font-weight:800!important;
