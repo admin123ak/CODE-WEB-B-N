@@ -304,13 +304,15 @@ body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-famil
 // Render card khi chưa claim — dropdown unique game, server tự pick free_key mới nhất
 function renderForm($fk, $gameList, $L, $LANG) {
     $days = (int)$fk['days'];
+    $hours = (int)($fk['hours'] ?? 0);
+    $dur  = hclouFmtDur($days, $hours);
     ?>
     <div class="free-card">
       <div class="free-icon"><?= gkSvg('diamond') ?></div>
       <div class="free-title"><?= h($L['card_title']) ?></div>
       <div class="free-sub"><?= h($L['card_sub']) ?></div>
       <div class="free-badges" id="fkBadges">
-        <div class="free-badge"><?= gkSvg('clock') ?><span id="fkDays"><?= $days ?></span> <?= h($L['days']) ?></div>
+        <div class="free-badge"><?= gkSvg('clock') ?><span id="fkDur"><?= h($dur) ?></span></div>
         <div class="free-badge"><?= gkSvg('full') ?><?= h($L['feat_full']) ?></div>
         <div class="free-badge"><?= gkSvg('device') ?><?= h($L['feat_device']) ?></div>
         <div class="free-badge"><?= gkSvg('shield') ?><?= h($L['feat_secure']) ?></div>
@@ -322,7 +324,7 @@ function renderForm($fk, $gameList, $L, $LANG) {
           <div class="free-select-wrap">
             <select class="free-select" name="game_id" id="fkSelect">
               <?php foreach ($gameList as $g): ?>
-                <option value="<?= (int)$g['game_id'] ?>" data-days="<?= (int)$g['days'] ?>" <?= (int)$g['game_id'] === (int)$fk['game_id'] ? 'selected' : '' ?>>
+                <option value="<?= (int)$g['game_id'] ?>" data-dur="<?= h(hclouFmtDur($g['days'] ?? 0, $g['hours'] ?? 0)) ?>" <?= (int)$g['game_id'] === (int)$fk['game_id'] ? 'selected' : '' ?>>
                   <?= h($g['game_name']) ?>
                 </option>
               <?php endforeach; ?>
@@ -340,12 +342,12 @@ function renderForm($fk, $gameList, $L, $LANG) {
     <script>
     (function(){
       var sel = document.getElementById('fkSelect');
-      var daysEl = document.getElementById('fkDays');
-      if(sel && daysEl){
+      var durEl = document.getElementById('fkDur');
+      if(sel && durEl){
         sel.addEventListener('change', function(){
           var opt = sel.options[sel.selectedIndex];
-          var d = opt.getAttribute('data-days');
-          if(d) daysEl.textContent = d;
+          var d = opt.getAttribute('data-dur');
+          if(d) durEl.textContent = d;
         });
       }
     })();
@@ -354,7 +356,7 @@ function renderForm($fk, $gameList, $L, $LANG) {
 }
 
 // Render card khi đã/vừa claim (key + copy)
-function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_title', $msgKey = 'success_msg', $claimedAt = null, $downloadUrl = '') {
+function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_title', $msgKey = 'success_msg', $claimedAt = null, $downloadUrl = '', $hours = 0) {
     $safeKey  = h($keyCode);
     $safeGame = h($gameName);
     $jsKey    = json_encode($keyCode);
@@ -368,7 +370,7 @@ function renderClaimed($keyCode, $gameName, $days, $L, $titleKey = 'success_titl
       <div class="free-sub"><?= h($L[$msgKey]) ?></div>
       <div class="free-claimed">
         <div class="free-claimed-code"><?= $safeKey ?></div>
-        <div class="free-claimed-meta">🎮 <?= $safeGame ?> · <?= (int)$days ?> <?= h($L['days']) ?></div>
+        <div class="free-claimed-meta">🎮 <?= $safeGame ?> · <?= h(hclouFmtDur($days, $hours)) ?></div>
         <?= $meta ?>
       </div>
       <div style="display:flex;gap:8px;width:100%">
@@ -442,7 +444,7 @@ $t  = $_GET['t'] ?? '';
 $fk = null;
 
 // Pool tất cả free_keys active để pick + render dropdown unique game
-$pool = $db->query("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days
+$pool = $db->query("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days, p.hours
     FROM free_keys fk
     JOIN games g    ON fk.game_id    = g.id
     JOIN packages p ON fk.package_id = p.id
@@ -456,13 +458,13 @@ foreach ($pool as $row) {
     $gid = (int)$row['game_id'];
     if (!isset($latestByGame[$gid])) {
         $latestByGame[$gid] = $row;
-        $gameList[] = ['game_id' => $gid, 'game_name' => $row['game_name'], 'days' => (int)$row['days']];
+        $gameList[] = ['game_id' => $gid, 'game_name' => $row['game_name'], 'days' => (int)$row['days'], 'hours' => (int)($row['hours'] ?? 0)];
     }
 }
 
 if ($t) {
     // GET có ?t= → fetch chính xác theo token (kể cả expired để show 'expired')
-    $stmt = $db->prepare("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days
+    $stmt = $db->prepare("SELECT fk.*, g.name game_name, g.download_url, p.name pkg_name, p.days, p.hours
         FROM free_keys fk
         JOIN games g    ON fk.game_id    = g.id
         JOIN packages p ON fk.package_id = p.id
@@ -590,7 +592,7 @@ if ($claimedRow) {
         'race'    => ['already_title', 'race_msg'],
     ];
     [$tk, $mk] = $stateMap[$claimedRow['state']] ?? ['success_title', 'success_msg'];
-    renderClaimed($claimedRow['key_code'], $fk['game_name'], $fk['days'], $L, $tk, $mk, $claimedRow['claimed_at'], $fk['download_url'] ?? '');
+    renderClaimed($claimedRow['key_code'], $fk['game_name'], $fk['days'], $L, $tk, $mk, $claimedRow['claimed_at'], $fk['download_url'] ?? '', $fk['hours'] ?? 0);
     shellClose();
 }
 

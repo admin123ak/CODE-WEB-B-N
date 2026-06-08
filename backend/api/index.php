@@ -607,7 +607,8 @@ switch ($action) {
         }
         $qtyNote = $quantity > 1 ? "\n📦 Số lượng: <b>{$quantity} key</b>" : '';
         $keyDisplay = implode("\n", array_map(function($k) { return "   • <code>{$k}</code>"; }, $key_codes));
-        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$package['days']} ngày){$qtyNote}\n🔑 Key:\n{$keyDisplay}\n💰 Tổng: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
+        $pkgDur = hclouFmtDur($package['days'] ?? 0, $package['hours'] ?? 0);
+        $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$pkgDur}){$qtyNote}\n🔑 Key:\n{$keyDisplay}\n💰 Tổng: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
         $markup = ['inline_keyboard' => [
             [['text' => '✅ Duyệt đơn', 'callback_data' => 'approve_' . $order_code], ['text' => '❌ Từ chối', 'callback_data' => 'reject_' . $order_code]]
         ]];

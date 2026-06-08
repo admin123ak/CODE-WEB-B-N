@@ -494,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    ->execute([$now, $expire, $order['id']]);
                 $db->commit();
                 logInfo('Admin approved order', ['order' => $order_code]);
-                if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
+                if ($order['telegram_id']) sendTelegram($order['telegram_id'], "✅ <b>Đơn #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . hclouFmtDur($order['days'], $order['hours'] ?? 0) . ".");
             } catch (Exception $e) {
                 if ($db->inTransaction()) $db->rollBack();
                 logError('Admin approve fail', ['order' => $order_code, 'err' => $e->getMessage()]);
@@ -846,7 +846,7 @@ if ($tab !== 'update') {
 
 <h2 style="font-size:16px;margin-bottom:12px">🛒 Đơn chờ thanh toán</h2>
 <?php
-$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
+$pending = $db->query("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,COALESCE(p.hours,0) as hours,k.key_code FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id AND k.status='pending' WHERE o.status='pending' ORDER BY o.created_at DESC LIMIT 20")->fetchAll();
 if($pending): ?>
 <table>
 <tr><th>Mã đơn</th><th>User</th><th>Game / Gói</th><th>Key đã tạo</th><th>Tiền</th><th>Thời gian</th><th>Thao tác</th></tr>
@@ -854,7 +854,7 @@ if($pending): ?>
 <tr>
   <td><b><?=h($o['order_code'])?></b></td>
   <td>@<?=h($o['telegram_username'])?><br><small style="color:#8b949e"><?=h($o['full_name'])?></small></td>
-  <td><?=h($o['game_name'])?><br><small style="color:#8b949e"><?=h($o['pkg_name'])?> (<?=$o['days']?> ngày)</small></td>
+  <td><?=h($o['game_name'])?><br><small style="color:#8b949e"><?=h($o['pkg_name'])?> (<?=h(hclouFmtDur($o['days'], $o['hours'] ?? 0))?>)</small></td>
   <td style="font-family:monospace;font-size:12px"><?=htmlspecialchars($o['key_code'] ?? 'Chưa có')?></td>
   <td><b><?=number_format($o['amount'],0,',','.')?> đ</b></td>
   <td style="font-size:12px;color:#8b949e"><?=date('d/m H:i',strtotime($o['created_at']))?></td>
@@ -877,7 +877,7 @@ if ($filter_method !== '' && !in_array($filter_method, $pmAllowed, true)) $filte
 $sqlWhereParts = ['o.status=?']; $sqlParams = [$filter_status];
 if ($filter_method !== '') { $sqlWhereParts[] = 'o.payment_method=?'; $sqlParams[] = $filter_method; }
 $sqlWhere = implode(' AND ', $sqlWhereParts);
-$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
+$orders = $db->prepare("SELECT o.*,u.telegram_username,u.full_name,g.name as game_name,COALESCE(p.name,at.name,o.order_type) as pkg_name,COALESCE(p.days,0) as days,COALESCE(p.hours,0) as hours,k.key_code,k.status as key_status FROM orders o JOIN users u ON o.user_id=u.id JOIN games g ON o.game_id=g.id LEFT JOIN packages p ON o.package_id=p.id AND o.order_type='key' LEFT JOIN account_types at ON o.account_type_id=at.id AND o.order_type='account' LEFT JOIN `keys` k ON k.order_id=o.id WHERE $sqlWhere ORDER BY o.created_at DESC LIMIT 100");
 $orders->execute($sqlParams); $orders = $orders->fetchAll();
 $pmLabel = ['mbbank'=>'🏦 MBBank','binance'=>'🪙 Binance','card'=>'🎴 Card','balance'=>'💰 Ví'];
 $pmBadgeColor = ['mbbank'=>'blue','binance'=>'orange','card'=>'purple','balance'=>'green'];
@@ -1209,12 +1209,14 @@ function updatePkgOptions(gameId) {
   var sel = document.getElementById('keyPkgSelect');
   sel.innerHTML = '<option value="">-- Chọn gói --</option>';
   if (!gameId) return;
-  var pkgs = <?=json_encode($db->query("SELECT id, game_id, name, days, price FROM packages WHERE is_active=1 ORDER BY days ASC")->fetchAll(), JSON_UNESCAPED_UNICODE)?>;
+  var pkgs = <?=json_encode($db->query("SELECT id, game_id, name, days, hours, price FROM packages WHERE is_active=1 ORDER BY days ASC, hours ASC")->fetchAll(), JSON_UNESCAPED_UNICODE)?>;
   pkgs.forEach(function(p) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.name + ' (' + p.days + ' ngày - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)';
+      var d=parseInt(p.days,10)||0, h=parseInt(p.hours,10)||0;
+      var dur = (d>0&&h>0)?(d+' ngày '+h+'h'):(d>0?(d+' ngày'):(h>0?(h+' giờ'):'—'));
+      opt.textContent = p.name + ' (' + dur + ' - ' + Number(p.price).toLocaleString('vi-VN') + 'đ)';
       sel.appendChild(opt);
     }
   });
@@ -1230,13 +1232,13 @@ $poolCount = $db->query("SELECT COUNT(*) FROM `keys` WHERE status='available'")-
 <p style="color:var(--muted);margin-bottom:10px">Tổng: <b style="color:var(--green)"><?=$poolCount?> key</b> sẵn sàng trong pool</p>
 <?php if($poolKeys): ?>
 <table>
-<tr><th>Key</th><th>Game</th><th>Gói</th><th>Ngày</th><th>Thao tác</th></tr>
+<tr><th>Key</th><th>Game</th><th>Gói</th><th>Thời hạn</th><th>Thao tác</th></tr>
 <?php foreach($poolKeys as $k): ?>
 <tr>
   <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
   <td><?=h($k['game_name'])?></td>
   <td style="font-size:12px"><?=h($k['pkg_name'])?></td>
-  <td><?=h($k['days'])?> ngày</td>
+  <td><?=h(hclouFmtDur($k['days'] ?? 0, $k['hours'] ?? 0))?></td>
   <td>
     <form method="POST" style="display:inline"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="delete_key"><input type="hidden" name="key_id" value="<?=h($k['id'])?>"><button class="btn btn-red" onclick="return confirm('Xoá key này khỏi pool?')">🗑</button></form>
   </td>
@@ -1254,13 +1256,13 @@ $usedKeys = $db->query("SELECT k.*,IFNULL(u.telegram_username,'--') as telegram_
 ?>
 <?php if($usedKeys): ?>
 <table>
-<tr><th>Key</th><th>User</th><th>Game / Gói</th><th>Ngày</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr>
+<tr><th>Key</th><th>User</th><th>Game / Gói</th><th>Thời hạn</th><th>Trạng thái</th><th>Hết hạn</th><th>Thao tác</th></tr>
 <?php foreach($usedKeys as $k): $cls=['active'=>'green','expired'=>'orange','locked'=>'red','pending'=>'blue'][$k['status']]??'gray'; ?>
 <tr>
   <td style="font-family:monospace;font-size:12px"><?=h($k['key_code'])?></td>
   <td>@<?=h($k['telegram_username'])?></td>
   <td style="font-size:12px"><b><?=h($k['game_name'])?></b><br><small style="color:#8b949e"><?=h($k['pkg_name'])?> · <?=h($k['key_type'])?><?php if($k['order_code']!=='--'): ?> · <?=h($k['order_code'])?><?php endif ?></small></td>
-  <td><?=h($k['days'])?> ngày</td>
+  <td><?=h(hclouFmtDur($k['days'] ?? 0, $k['hours'] ?? 0))?></td>
   <td><span class="badge <?=$cls?>"><?=h($k['status'])?></span><?php if($k['status']==='expired' && !empty($k['expire_at'])):?><br><small style="color:#fbbf24">Tự xoá sau 3 ngày nếu không gia hạn</small><?php endif?></td>
   <td style="font-size:12px;color:#8b949e"><?=$k['expire_at']?date('d/m/Y H:i',strtotime($k['expire_at'])):'--'?></td>
   <td>
@@ -1538,7 +1540,9 @@ function updateFreeKeyPkgOptions(gameId) {
     if (p.game_id == gameId) {
       var opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.days + ' ngày (' + p.name + ')';
+      var d=parseInt(p.days,10)||0, h=parseInt(p.hours,10)||0;
+      var dur=(d>0&&h>0)?(d+' ngày '+h+'h'):(d>0?(d+' ngày'):(h>0?(h+' giờ'):'—'));
+      opt.textContent = dur + ' (' + p.name + ')';
       sel.appendChild(opt);
     }
   });

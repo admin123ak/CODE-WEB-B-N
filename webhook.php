@@ -142,7 +142,7 @@ if (isset($update['message'])) {
             sendTelegram($chat_id, $out, ['inline_keyboard' => [[['text' => '🛒 Mua / Quản lý Key', 'web_app' => ['url' => $miniAppUrl]]]]]);
         }
     } elseif ($text === '/orders' && $admin) {
-        $stmt = $db->query("SELECT o.*, u.telegram_username, g.name as game_name, p.name as pkg_name, p.days, k.key_code
+        $stmt = $db->query("SELECT o.*, u.telegram_username, g.name as game_name, p.name as pkg_name, p.days, p.hours, k.key_code
             FROM orders o
             JOIN users u    ON o.user_id    = u.id
             JOIN games g    ON o.game_id    = g.id
@@ -159,7 +159,7 @@ if (isset($update['message'])) {
                 $body = "🛒 <b>ĐƠN HÀNG #" . h($o['order_code']) . "</b>\n"
                       . "👤 User: @" . h($o['telegram_username']) . "\n"
                       . "🎮 Game: " . h($o['game_name']) . "\n"
-                      . "📦 Gói: " . h($o['pkg_name']) . " (" . (int)$o['days'] . " ngày)\n"
+                      . "📦 Gói: " . h($o['pkg_name']) . " (" . hclouFmtDur($o['days'], $o['hours'] ?? 0) . ")\n"
                       . "🔑 Key đã tạo: <code>" . h($o['key_code'] ?: 'Chưa có') . "</code>\n"
                       . "💰 Số tiền: " . $amt . "đ\n"
                       . "🕐 " . date('d/m/Y H:i', strtotime($o['created_at']));
@@ -194,7 +194,7 @@ if (isset($update['message'])) {
 // HANDLERS
 // =============================================
 function approveOrder(PDO $db, string $order_code, string $admin_name, string $callback_id, $chat_id, $message_id) {
-    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days
+    $stmt = $db->prepare("SELECT o.*, u.telegram_id, p.days, p.hours
         FROM orders o
         JOIN users u    ON o.user_id    = u.id
         JOIN packages p ON o.package_id = p.id
@@ -214,7 +214,8 @@ function approveOrder(PDO $db, string $order_code, string $admin_name, string $c
         if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
 
         $now    = date('Y-m-d H:i:s');
-        $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$order['days'] . ' days'));
+        $totHr  = max(1, ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0));
+        $expire = date('Y-m-d H:i:s', strtotime('+' . $totHr . ' hours'));
         $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
            ->execute([$now, $expire, $order['id']]);
         $db->commit();
@@ -229,7 +230,7 @@ function approveOrder(PDO $db, string $order_code, string $admin_name, string $c
     editMessage($chat_id, $message_id, "✅ <b>ĐÃ DUYỆT #" . h($order_code) . "</b>\nAdmin: @" . h($admin_name));
     if ($order['telegram_id']) {
         sendTelegram($order['telegram_id'],
-            "✅ <b>Đơn hàng #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . (int)$order['days'] . " ngày.");
+            "✅ <b>Đơn hàng #" . h($order_code) . " đã được admin duyệt!</b>\n🔑 Key đã hoạt động. Thời hạn: " . hclouFmtDur($order['days'], $order['hours'] ?? 0) . ".");
     }
 }
 

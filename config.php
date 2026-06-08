@@ -390,6 +390,16 @@ function h($str) {
     return htmlspecialchars((string)$str, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+// Format thời hạn gói: days/hours -> "X ngày Yh" | "X ngày" | "Y giờ" | "—"
+function hclouFmtDur($days, $hours = 0) {
+    $d = max(0, (int)$days);
+    $h = max(0, (int)$hours);
+    if ($d > 0 && $h > 0) return $d . ' ngày ' . $h . 'h';
+    if ($d > 0) return $d . ' ngày';
+    if ($h > 0) return $h . ' giờ';
+    return '—';
+}
+
 // LIKE escape (cho tìm kiếm SQL)
 function likeEscape($str) {
     return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], (string)$str);

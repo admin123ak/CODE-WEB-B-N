@@ -167,7 +167,7 @@ $t  = $_GET['t'] ?? '';
 $fk = null;
 
 if ($t) {
-    $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name, p.days
+    $stmt = $db->prepare("SELECT fk.*, g.name game_name, p.name pkg_name, p.days, p.hours
         FROM free_keys fk
         JOIN games g    ON fk.game_id    = g.id
         JOIN packages p ON fk.package_id = p.id
@@ -272,7 +272,7 @@ input[type=text]:focus{border-color:rgba(239,68,68,.5);box-shadow:0 0 0 3px rgba
 // Block 4 pill features chuẩn — dùng cho mọi state thấy fk hợp lệ.
 function buildFeatures(array $fk, array $L) {
     return claimPills([
-        ['icon' => claimIcon('clock'),  'text' => (int)$fk['days'] . ' ' . h($L['days'])],
+        ['icon' => claimIcon('clock'),  'text' => h(hclouFmtDur($fk['days'], $fk['hours'] ?? 0))],
         ['icon' => claimIcon('game'),   'text' => h(mb_strimwidth($fk['game_name'], 0, 12, '…', 'UTF-8'))],
         ['icon' => claimIcon('phone'),  'text' => h($L['feat_oneday'])],
         ['icon' => claimIcon('shield'), 'text' => h($L['feat_secure'])],
@@ -280,10 +280,10 @@ function buildFeatures(array $fk, array $L) {
 }
 
 // Helper: render key đã có (key-code box + copy/mở app).
-function renderKeyBox($keyCode, $gameName, $days, $siteUrl, array $L) {
+function renderKeyBox($keyCode, $gameName, $days, $siteUrl, array $L, $hours = 0) {
     return '<div class="label">' . h($L['lbl_yourkey']) . '</div>'
          . '<div class="info-box" style="flex-direction:column;gap:8px;text-align:center"><div class="key-code key-code--ok">' . h($keyCode) . '</div>'
-         . '<div class="meta">🎮 ' . h($gameName) . ' · ' . (int)$days . ' ' . h($L['days']) . '</div></div>'
+         . '<div class="meta">🎮 ' . h($gameName) . ' · ' . h(hclouFmtDur($days, $hours)) . '</div></div>'
          . '<button class="btn primary" onclick="copyKey(' . json_encode($keyCode) . ')">' . claimIcon('copy') . ' ' . h($L['copy_key']) . '</button>'
          . '<a class="btn ghost" href="' . h($siteUrl) . '">' . h($L['go_miniapp']) . '</a>'
          . '<script>function copyKey(t){navigator.clipboard.writeText(t).then(function(){alert(' . json_encode($L['copied']) . ')}).catch(function(){prompt(' . json_encode($L['prompt_copy']) . ',t)})}</script>';
@@ -331,7 +331,7 @@ if ($tg) {
             h($L['already_title']),
             h($L['already_msg']),
             true,
-            renderKeyBox($exist['key_code'] ?: $fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L),
+            renderKeyBox($exist['key_code'] ?: $fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L, $fk['hours'] ?? 0),
             $pills,
             $features
         );
@@ -350,7 +350,7 @@ if ($tg) {
             h($L['today_title']),
             h($L['today_msg']),
             true,
-            renderKeyBox($old['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L),
+            renderKeyBox($old['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L, $fk['hours'] ?? 0),
             $pills,
             $features
         );
@@ -372,7 +372,7 @@ if ($tg) {
                 h($L['already_title']),
                 h($L['race_msg']),
                 true,
-                renderKeyBox($oldRow['key_code'] ?: $fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L),
+                renderKeyBox($oldRow['key_code'] ?: $fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L, $fk['hours'] ?? 0),
                 $pills,
                 $features
             );
@@ -380,10 +380,11 @@ if ($tg) {
         $claimId = $db->lastInsertId();
 
         $now    = date('Y-m-d H:i:s');
-        $expire = date('Y-m-d H:i:s', strtotime('+' . (int)$fk['days'] . ' days'));
-        $db->prepare("INSERT INTO `keys` (key_code, user_id, game_id, package_id, status, days, start_at, expire_at)
-                      VALUES (?, ?, ?, ?, 'active', ?, ?, ?)")
-           ->execute([$fk['key_code'], $user['id'], $fk['game_id'], $fk['package_id'], $fk['days'], $now, $expire]);
+        $totHr  = max(1, ((int)($fk['days'] ?? 0)) * 24 + (int)($fk['hours'] ?? 0));
+        $expire = date('Y-m-d H:i:s', strtotime('+' . $totHr . ' hours'));
+        $db->prepare("INSERT INTO `keys` (key_code, user_id, game_id, package_id, status, days, hours, start_at, expire_at)
+                      VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)")
+           ->execute([$fk['key_code'], $user['id'], $fk['game_id'], $fk['package_id'], $fk['days'], (int)($fk['hours'] ?? 0), $now, $expire]);
         $kid = (int)$db->lastInsertId();
         $db->prepare("UPDATE free_key_claims SET key_id = ? WHERE id = ?")->execute([$kid, $claimId]);
         $db->commit();
@@ -392,7 +393,7 @@ if ($tg) {
             h($L['success_title']),
             h($L['success_msg']),
             true,
-            renderKeyBox($fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L),
+            renderKeyBox($fk['key_code'], $fk['game_name'], $fk['days'], SITE_URL, $L, $fk['hours'] ?? 0),
             $pills,
             $features
         );
@@ -422,7 +423,7 @@ if ($tg) {
         '<div class="label">' . h($L['lbl_game']) . '</div>'
         . '<div class="info-box">'
         . '<span>' . h($fk['game_name']) . '</span>'
-        . '<span class="info-right"><span class="meta">' . (int)$fk['days'] . ' ' . h($L['days']) . '</span><span class="chev">' . claimIcon('chev') . '</span></span>'
+        . '<span class="info-right"><span class="meta">' . h(hclouFmtDur($fk['days'], $fk['hours'] ?? 0)) . '</span><span class="chev">' . claimIcon('chev') . '</span></span>'
         . '</div>'
         . '<form method="POST">'
         . '<input type="hidden" name="lang" value="' . h($LANG) . '">'
