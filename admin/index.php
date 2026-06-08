@@ -811,7 +811,7 @@ td form{margin:0}
 
 <!-- Topbar -->
 <div class="topbar">
-  <button class="hamburger" id="menuBtn" onclick="toggleNav()">
+  <button class="hamburger" id="menuBtn" type="button" aria-label="Menu">
     <span></span><span></span><span></span>
   </button>
   <div class="topbar-logo">⚡ <span class="blue"><?= h(SITE_NAME) ?></span></div>
@@ -819,7 +819,7 @@ td form{margin:0}
 </div>
 
 <!-- Overlay -->
-<div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
+<div class="nav-overlay" id="navOverlay"></div>
 
 <!-- Sidebar Nav -->
 <div class="sidebar-nav" id="sidebarNav">
@@ -2225,15 +2225,43 @@ $users = $db->query("SELECT u.*, (SELECT COUNT(*) FROM `keys` WHERE user_id=u.id
 <footer class="admin-footer">Copyright by HCLOU Server · Telegram @hcloucom · Địa chỉ: Thành phố Quảng Ngãi</footer>
 
 <script>
-function toggleNav(){
-  var s=document.getElementById('sidebarNav'),o=document.getElementById('navOverlay'),b=document.getElementById('menuBtn');
-  s.classList.toggle('open'); o.classList.toggle('show'); b.classList.toggle('open');
-}
-function closeNav(){
-  document.getElementById('sidebarNav').classList.remove('open');
-  document.getElementById('navOverlay').classList.remove('show');
-  document.getElementById('menuBtn').classList.remove('open');
-}
+/* ===== Sidebar nav: state tường minh, bind chắc chắn (fix lúc mở lúc không) ===== */
+function _navEls(){ return {
+  s:document.getElementById('sidebarNav'),
+  o:document.getElementById('navOverlay'),
+  b:document.getElementById('menuBtn')
+};}
+function openNav(){ var e=_navEls(); if(!e.s)return; e.s.classList.add('open'); if(e.o)e.o.classList.add('show'); if(e.b)e.b.classList.add('open'); }
+function closeNav(){ var e=_navEls(); if(!e.s)return; e.s.classList.remove('open'); if(e.o)e.o.classList.remove('show'); if(e.b)e.b.classList.remove('open'); }
+function toggleNav(){ var s=document.getElementById('sidebarNav'); if(!s)return; if(s.classList.contains('open'))closeNav(); else openNav(); }
+(function(){
+  function bind(){
+    var b=document.getElementById('menuBtn'), o=document.getElementById('navOverlay');
+    if(b && !b._navBound){
+      b._navBound=1;
+      var _last=0;
+      function fire(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        var now=Date.now();
+        if(now-_last<350)return;  // chống double-fire (touchend + click cùng 1 chạm)
+        _last=now;
+        toggleNav();
+      }
+      b.addEventListener('touchend',fire,{passive:false});
+      b.addEventListener('click',fire);
+    }
+    if(o && !o._navBound){ o._navBound=1; o.addEventListener('click',closeNav); }
+    // Đóng nav khi bấm vào 1 mục (điều hướng) — tránh kẹt trạng thái open
+    document.querySelectorAll('#sidebarNav .nav-item').forEach(function(a){
+      if(a._navBound)return; a._navBound=1;
+      a.addEventListener('click',function(){ setTimeout(closeNav,50); });
+    });
+    // ESC để đóng
+    document.addEventListener('keydown',function(ev){ if(ev.key==='Escape')closeNav(); });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);
+  else bind();
+})();
 function closeUpdModal(){ var m=document.getElementById('updModal'); if(m){ m.style.display='none'; var v=m.getAttribute('data-v')||'1'; try{sessionStorage.setItem('upd_dismiss_'+v,'1')}catch(e){} } }
 
 /* ===== TOAST + CONFIRM MODAL (admin global) ===== */
