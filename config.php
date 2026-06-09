@@ -422,7 +422,11 @@ function hclouApiBuy($game, $duration, $maxDevices = 1) {
     if (!empty($r['status']) && !empty($r['key'])) {
         return ['__ok' => true, 'key' => $r['key'], 'balance' => $r['balance'] ?? null, 'price' => $r['price'] ?? null];
     }
-    return ['__ok' => false, 'reason' => $r['reason'] ?? 'UNKNOWN', 'raw' => $r];
+    // Gộp reason + detail để admin thấy rõ vì sao panel từ chối
+    $reason = $r['reason'] ?? 'UNKNOWN';
+    if (!empty($r['detail'])) $reason .= ': ' . $r['detail'];
+    if (!empty($r['need']))   $reason .= ' (cần ' . $r['need'] . ', dư ' . ($r['balance'] ?? '?') . ')';
+    return ['__ok' => false, 'reason' => $reason, 'raw' => $r];
 }
 
 // =============================================

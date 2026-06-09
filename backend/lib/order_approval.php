@@ -163,16 +163,21 @@ function approvePaidOrder(
 
                 $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
                 $realKeys = [];
+                $lastReason = '';
                 foreach ($allKeys as $k) {
                     $r = hclouApiBuy($apiGame, $apiDur, $apiMax);
                     if (!empty($r['__ok']) && !empty($r['key'])) {
                         $upReal->execute([$r['key'], $start, $expire, $k['id']]);
                         if ($upReal->rowCount() === 1) { $activatedCount++; $realKeys[] = ['key_code' => $r['key']]; }
                     } else {
+                        $lastReason = $r['reason'] ?? 'unknown';
                         error_log('[ORDER_APPROVE_API] ' . $orderCode . ' fail: ' . json_encode($r));
                     }
                 }
-                if ($activatedCount === 0) throw new Exception('Panel không cấp được key (API)');
+                if ($activatedCount === 0) {
+                    // Lưu lý do vào đơn để admin xem (ngoài transaction sẽ rollback nên ghi riêng sau)
+                    throw new Exception('Panel không cấp được key (API): ' . $lastReason);
+                }
                 $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")->execute([$order['id']]);
                 $allKeys = $realKeys;
             } else {
