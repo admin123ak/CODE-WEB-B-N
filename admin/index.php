@@ -2732,6 +2732,9 @@ function _hclouFormatBytes($b) {
 <div style="flex:1;min-width:220px"><label>Partner ID</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_ID]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_ID'))?>" placeholder="Mã đối tác doithe.vn"></div>
 <div style="flex:1;min-width:260px"><label>Partner Key</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_PARTNER_KEY]" value="<?=htmlspecialchars((string)hclouConfigValue('DOITHE_PARTNER_KEY'))?>" placeholder="Secret key để ký md5"></div>
 </div>
+<div class="form-row" style="margin-top:10px">
+<div style="flex:1;min-width:320px"><label>API URL (domain_post)</label><input style="width:100%;font-family:monospace" name="cfg[DOITHE_API_URL]" value="<?=htmlspecialchars((string)(hclouConfigValue('DOITHE_API_URL') ?: 'https://doithe.vn/chargingws/v2'))?>" placeholder="https://domain-cua-ban/chargingws/v2"><small style="color:#8b949e">Lấy <b>domain_post</b> trong trang merchant doithe.vn. Phải có đuôi <code>/chargingws/v2</code>. Sai domain = thẻ bị từ chối.</small></div>
+</div>
 <div class="form-row" style="margin-top:8px">
 <div style="flex:1;min-width:130px"><label>Chiết khấu Viettel (%)</label><input style="width:100%" name="cfg[CARD_RATE_VIETTEL]" value="<?=htmlspecialchars((string)hclouConfigValue('CARD_RATE_VIETTEL') ?: '28')?>" placeholder="28"></div>
 <div style="flex:1;min-width:130px"><label>Chiết khấu Mobifone (%)</label><input style="width:100%" name="cfg[CARD_RATE_MOBIFONE]" value="<?=htmlspecialchars((string)hclouConfigValue('CARD_RATE_MOBIFONE') ?: '30')?>" placeholder="30"></div>

@@ -466,6 +466,7 @@ function hclouConfigEditableKeys() {
         'FOOTER_TELEGRAM'             => 'string',
         'DOITHE_PARTNER_ID'           => 'string',
         'DOITHE_PARTNER_KEY'          => 'string',
+        'DOITHE_API_URL'              => 'string',
     ];
 }
 

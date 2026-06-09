@@ -303,13 +303,13 @@ switch ($action) {
                    ->execute([$api['raw'], $r['id']]);
 
                 $pStatus = (int)$api['status'];
-                // Hard-reject các status doithe trả về chắc chắn fail, callback sẽ KHÔNG về:
-                //   3   = card invalid / used
-                //   100-199 = lỗi merchant/auth/config (vd 102 MERCHANT_NOT_EXISTED_OR_OFF)
-                // Nếu giữ pending các case này → topup card stuck mãi vì không có callback.
-                $hardFailStatuses = [3];
-                $isMerchantErr = ($pStatus >= 100 && $pStatus <= 199);
-                if (in_array($pStatus, $hardFailStatuses, true) || $isMerchantErr) {
+                // Theo docs doithe.vn /chargingws/v2:
+                //   1=thành công đúng mệnh giá, 2=thành công sai mệnh giá, 3=thẻ lỗi,
+                //   4=hệ thống bảo trì, 99=chờ xử lý, 100=gửi thẻ thất bại (có lý do trong message)
+                //   101-199 = lỗi merchant/auth/config (vd MERCHANT_NOT_EXISTED_OR_OFF)
+                $cardFailStatuses = [3, 100];          // lỗi do THẺ → hiện lý do cho khách
+                $isMerchantErr = ($pStatus >= 101 && $pStatus <= 199); // lỗi cấu hình → báo admin
+                if (in_array($pStatus, $cardFailStatuses, true) || $isMerchantErr) {
                     topupReject($db, $r['id'], 'doithe.vn status=' . $pStatus . ': ' . $api['message'], $api['raw']);
                     // Dịch mã lỗi doithe.vn (kể cả key "lang.xxx" chưa resolve) sang tiếng Việt rõ ràng
                     $doitheMsg = (string)($api['message'] ?? '');
