@@ -521,14 +521,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $days > 0 ? ('Gói ' . $days . ' ngày' . ($hours ? ' ' . $hours . 'h' : '')) : ('Gói ' . $hours . ' giờ');
         $ksrc = ($_POST['key_source'] ?? 'pool') === 'api' ? 'api' : 'pool';
         if (pkgHasApiCols($db)) {
-            $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type,key_source,api_game,api_duration,api_max_devices) VALUES (?,?,?,?,?,?,?,?,?,?)")
+            $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type,is_active,key_source,api_game,api_duration,api_max_devices) VALUES (?,?,?,?,?,?,1,?,?,?,?)")
                ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type'], $ksrc,
                           $ksrc==='api' ? trim($_POST['api_game'] ?? '') : null,
                           $ksrc==='api' ? (int)($_POST['api_duration'] ?? 0) : null,
                           $ksrc==='api' ? max(1,(int)($_POST['api_max_devices'] ?? 1)) : 1]);
         } else {
             // DB chưa chạy fix_db.php -> insert kiểu cũ để không vỡ
-            $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type) VALUES (?,?,?,?,?,?)")
+            $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type,is_active) VALUES (?,?,?,?,?,?,1)")
                ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type']]);
         }
         header("Location: ?tab=packages&ok=1"); exit;
