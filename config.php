@@ -426,6 +426,7 @@ function hclouApiBuy($game, $duration, $maxDevices = 1) {
     $reason = $r['reason'] ?? 'UNKNOWN';
     if (!empty($r['detail'])) $reason .= ': ' . $r['detail'];
     if (!empty($r['need']))   $reason .= ' (cần ' . $r['need'] . ', dư ' . ($r['balance'] ?? '?') . ')';
+    if (isset($r['sent']))    $reason .= ' [gửi duration=' . $r['sent'] . ', panel chỉ có: ' . implode(',', $r['available'] ?? []) . ' giờ]';
     return ['__ok' => false, 'reason' => $reason, 'raw' => $r];
 }
 
