@@ -25,6 +25,31 @@
 require_once __DIR__ . '/balance_helpers.php';
 
 /**
+ * Dịch status + message lỗi doithe.vn sang tiếng Việt gọn, thân thiện cho khách.
+ * Không lộ mã kỹ thuật (status=102, INPUT_DATA_INCORRECT, lang.xxx...).
+ */
+function doitheFriendlyError($status, $msg): string {
+    $status = (int)$status;
+    $ml = strtolower(trim((string)$msg));
+    if ($ml !== '') {
+        if (strpos($ml,'invalid_card_code')!==false || strpos($ml,'invalid_code')!==false || strpos($ml,'sai mã')!==false) return 'Sai mã thẻ (PIN), kiểm tra lại dãy số cào';
+        if (strpos($ml,'invalid_card_serial')!==false || strpos($ml,'invalid_serial')!==false || strpos($ml,'sai serial')!==false) return 'Sai số serial thẻ';
+        if (strpos($ml,'used')!==false || strpos($ml,'đã sử dụng')!==false || strpos($ml,'da_su_dung')!==false) return 'Thẻ đã được sử dụng';
+        if (strpos($ml,'input_data_incorrect')!==false || strpos($ml,'incorrect')!==false || strpos($ml,'invalid')!==false) return 'Sai thông tin thẻ (mã / serial / nhà mạng / mệnh giá)';
+        if (strpos($ml,'telco')!==false || strpos($ml,'nhà mạng')!==false || strpos($ml,'nha_mang')!==false) return 'Sai nhà mạng';
+        if (strpos($ml,'amount')!==false || strpos($ml,'mệnh giá')!==false || strpos($ml,'menh_gia')!==false) return 'Sai mệnh giá thẻ';
+        if (strpos($ml,'maintenance')!==false || strpos($ml,'bảo trì')!==false) return 'Hệ thống nhà mạng đang bảo trì, thử lại sau';
+    }
+    switch ($status) {
+        case 3:   return 'Thẻ sai hoặc đã sử dụng';
+        case 4:   return 'Hệ thống đang bảo trì, thử lại sau';
+        case 100:
+        case 102: return 'Sai thông tin thẻ (mã / serial / nhà mạng / mệnh giá)';
+    }
+    return 'Thẻ không hợp lệ';
+}
+
+/**
  * Lấy % chiết khấu doithe.vn theo nhà mạng. Cast về float, clamp 0-90%.
  * Trả về [rate%, multiplier]. Multiplier = 1 / (1 - rate/100). VD 28% → ~1.39.
  */

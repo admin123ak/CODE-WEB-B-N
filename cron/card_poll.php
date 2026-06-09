@@ -140,7 +140,7 @@ try {
          FROM topup_requests
          WHERE method='card' AND status='pending'
            AND provider_request_id IS NOT NULL AND provider_request_id != ''
-           AND created_at < (NOW() - INTERVAL 60 SECOND)
+           AND created_at < (NOW() - INTERVAL 15 SECOND)
          ORDER BY id ASC
          LIMIT 20"
     );
@@ -205,11 +205,12 @@ try {
             continue;
         }
         if ($st === 3 || ($st >= 100 && $st <= 199)) {
+            $friendly = doitheFriendlyError($st, $msg);
             topupReject(
                 $db,
                 (int)$r['id'],
-                'doithe.vn (poll) status=' . $st . ($msg ? ': ' . $msg : ''),
-                json_encode(['poll' => true, 'check_response' => $api['raw']], JSON_UNESCAPED_UNICODE)
+                $friendly,  // ghi chú thân thiện (vd "Sai thông tin thẻ"), không lộ status=102
+                json_encode(['poll' => true, 'status' => $st, 'check_response' => $api['raw']], JSON_UNESCAPED_UNICODE)
             );
             $rejected++;
             // Notify user khi reject để khỏi đợi vô vọng
@@ -220,8 +221,7 @@ try {
                 if ($tgId) {
                     sendTelegram((string)$tgId,
                         "❌ <b>Nạp thẻ thất bại</b>\n" .
-                        ($msg ? "Lý do: " . htmlspecialchars($msg) . "\n" : "") .
-                        "Mã yêu cầu: " . substr($reqId, 0, 12) . "...");
+                        "Lý do: " . htmlspecialchars($friendly));
                 }
             } catch (Throwable $e) { /* ignore */ }
             continue;

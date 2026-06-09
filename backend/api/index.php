@@ -33,6 +33,7 @@ $rateRules = [
     'topup_history_card' => [60, 60],
     'topup_history_all' => [60, 60],
     'topup_pending' => [60, 60],
+    'card_check_now' => [40, 60],
 ];
 if (isset($rateRules[$action])) { [$lim,$win] = $rateRules[$action]; rateLimit('api_'.$action, $lim, $win, $ip); }
 
@@ -308,33 +309,12 @@ switch ($action) {
                 //   4=hệ thống bảo trì, 99=chờ xử lý, 100=gửi thẻ thất bại (có lý do trong message)
                 //   101-199 = lỗi merchant/auth/config (vd MERCHANT_NOT_EXISTED_OR_OFF)
                 $cardFailStatuses = [3, 100];          // lỗi do THẺ → hiện lý do cho khách
-                $isMerchantErr = ($pStatus >= 101 && $pStatus <= 199); // lỗi cấu hình → báo admin
-                if (in_array($pStatus, $cardFailStatuses, true) || $isMerchantErr) {
-                    topupReject($db, $r['id'], 'doithe.vn status=' . $pStatus . ': ' . $api['message'], $api['raw']);
-                    // Dịch mã lỗi doithe.vn (kể cả key "lang.xxx" chưa resolve) sang tiếng Việt rõ ràng
-                    $doitheMsg = (string)($api['message'] ?? '');
-                    $friendly = '';
-                    $ml = strtolower($doitheMsg);
-                    if ($ml === '' )                                         $friendly = 'Thẻ sai hoặc đã sử dụng';
-                    elseif (strpos($ml,'invalid_card_code')!==false
-                         || strpos($ml,'invalid_code')!==false
-                         || strpos($ml,'sai mã')!==false)                    $friendly = 'Sai mã thẻ (PIN). Kiểm tra lại dãy số cào.';
-                    elseif (strpos($ml,'invalid_card_serial')!==false
-                         || strpos($ml,'invalid_serial')!==false
-                         || strpos($ml,'sai serial')!==false)                $friendly = 'Sai số serial thẻ.';
-                    elseif (strpos($ml,'used')!==false
-                         || strpos($ml,'da_su_dung')!==false
-                         || strpos($ml,'đã sử dụng')!==false)                $friendly = 'Thẻ đã được sử dụng.';
-                    elseif (strpos($ml,'telco')!==false
-                         || strpos($ml,'nha_mang')!==false
-                         || strpos($ml,'nhà mạng')!==false)                  $friendly = 'Sai nhà mạng. Chọn đúng nhà mạng của thẻ.';
-                    elseif (strpos($ml,'amount')!==false
-                         || strpos($ml,'menh_gia')!==false
-                         || strpos($ml,'mệnh giá')!==false)                  $friendly = 'Sai mệnh giá thẻ.';
-                    else                                                     $friendly = 'Thẻ không hợp lệ (' . $doitheMsg . ')';
+                $isMerchantErr = ($pStatus >= 101 && $pStatus <= 199 && $pStatus !== 102); // 102=INPUT_DATA_INCORRECT là lỗi thẻ, không phải config
+                if (in_array($pStatus, $cardFailStatuses, true) || $pStatus === 102 || $isMerchantErr) {
+                    topupReject($db, $r['id'], 'doithe status=' . $pStatus . ': ' . $api['message'], $api['raw']);
                     $userMsg = $isMerchantErr
                         ? 'Hệ thống nạp thẻ tạm gặp sự cố cấu hình. Vui lòng báo admin.'
-                        : ('❌ Nạp thẻ thất bại: ' . $friendly . ' — Lưu ý chọn ĐÚNG nhà mạng + ĐÚNG mệnh giá in trên thẻ.');
+                        : ('❌ Nạp thẻ thất bại: ' . doitheFriendlyError($pStatus, (string)($api['message'] ?? '')) . ' — Chọn ĐÚNG nhà mạng + ĐÚNG mệnh giá in trên thẻ.');
                     jsonResponse(['error' => $userMsg], 400);
                 }
                 if (!$api['ok'] && $pStatus !== 99) {
@@ -378,6 +358,44 @@ switch ($action) {
         jsonResponse(['success' => true, 'items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 
     // Topup pending (để hiện banner khi user out modal)
+    // ===== KIỂM TRA NGAY trạng thái thẻ đang chờ (hỏi thẳng doithe.vn) =====
+    // Frontend gọi lặp lại sau khi gửi thẻ → cập nhật pending->approved/rejected tức thì,
+    // không phải đợi cron poll.
+    case 'card_check_now':
+        if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
+        if (!function_exists('callDoitheCheckStatus')) require_once __DIR__ . '/../lib/topup_helpers.php';
+        $cc = $db->prepare("SELECT id, provider_request_id, card_telco, card_face_value FROM topup_requests
+            WHERE user_id=? AND method='card' AND status='pending'
+              AND provider_request_id IS NOT NULL AND provider_request_id!=''
+              AND created_at >= (NOW() - INTERVAL 15 MINUTE)
+            ORDER BY id DESC LIMIT 3");
+        $cc->execute([(int)$user['id']]);
+        $pendCards = $cc->fetchAll(PDO::FETCH_ASSOC);
+        $result = ['success' => true, 'changed' => false, 'status' => 'pending'];
+        foreach ($pendCards as $pc) {
+            try {
+                $chk = callDoitheCheckStatus((string)$pc['provider_request_id']);
+                if (empty($chk['ok'])) continue;
+                $st = (int)$chk['status'];
+                if ($st === 1 || $st === 2) {
+                    $telco = strtoupper((string)$pc['card_telco']);
+                    [$rate, $mult] = cardRateForTelco($telco);
+                    if ($mult < 1.0) $mult = 1.0;
+                    $val = (int)$chk['value']; $val = $val > 0 ? $val : (int)$pc['card_face_value'];
+                    $credit = (int)round($val / $mult);
+                    try { topupApprove($db, (int)$pc['id'], (float)$credit, '', json_encode(['ondemand'=>true], JSON_UNESCAPED_UNICODE)); } catch (Throwable $e) {}
+                    $result = ['success'=>true, 'changed'=>true, 'status'=>'approved', 'credit'=>$credit];
+                    break;
+                } elseif ($st === 3 || ($st >= 100 && $st <= 199)) {
+                    $friendly = doitheFriendlyError($st, (string)$chk['message']);
+                    topupReject($db, (int)$pc['id'], $friendly, json_encode(['ondemand'=>true,'status'=>$st], JSON_UNESCAPED_UNICODE));
+                    $result = ['success'=>true, 'changed'=>true, 'status'=>'rejected', 'reason'=>$friendly];
+                    break;
+                }
+            } catch (Throwable $e) { /* giữ pending */ }
+        }
+        jsonResponse($result);
+
     case 'topup_pending':
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $stmt = $db->prepare("SELECT id, method, amount_requested, unique_code, crypto_amount, usdt_vnd_rate, created_at FROM topup_requests WHERE user_id=? AND status='pending' AND created_at >= (NOW() - INTERVAL 15 MINUTE) ORDER BY id DESC LIMIT 5");

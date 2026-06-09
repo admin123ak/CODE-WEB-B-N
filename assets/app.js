@@ -820,6 +820,17 @@ async function submitCardForOrder(){
   window._cardPollTimer=setInterval(async function(){
     tries++;
     try{
+      // Hỏi thẳng doithe.vn để cập nhật trạng thái thẻ NGAY (không đợi cron)
+      try{
+        var ck=await api('card_check_now','GET');
+        if(ck&&ck.changed){
+          clearInterval(window._cardPollTimer); window._cardPollTimer=null;
+          if(ck.status==='approved'){ toast('🎉 Nạp thẻ thành công!','success'); }
+          else if(ck.status==='rejected'){ toast('❌ '+(ck.reason||'Thẻ không hợp lệ'),'error'); }
+          openCardForOrder(); appendCardHistory();
+          return;
+        }
+      }catch(e){}
       var b=await api('me_balance','GET');
       if(b&&b.success){
         var cur=parseInt(b.balance,10)||0;
@@ -829,13 +840,13 @@ async function submitCardForOrder(){
           return;
         }
       }
-      if(tries%3===0) appendCardHistory(); // refresh history mỗi 15s để bắt callback reject
+      if(tries%3===0) appendCardHistory(); // refresh history mỗi 15s
     }catch(e){}
     if(tries>=60){
       clearInterval(window._cardPollTimer); window._cardPollTimer=null;
       appendCardHistory();
     }
-  }, 5000);
+  }, 4000);
 }
 async function buyWithBalance(){
   if(!selGame||!selPkg||buying) return;
