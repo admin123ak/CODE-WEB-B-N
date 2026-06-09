@@ -1223,14 +1223,38 @@ switch ($action) {
         $key_id = (int)($_POST['key_id'] ?? 0);
         if ($key_id <= 0) jsonResponse(['error' => 'key_id không hợp lệ'], 400);
 
+        // Lấy key + biết có phải nguồn API không (an toàn schema)
+        $hasKS = false;
+        try {
+            $c = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='key_source'");
+            $hasKS = ((int)$c->fetchColumn()) > 0;
+        } catch (Throwable $e) {}
+        $ksSel = $hasKS ? ", p.key_source" : "";
+        $kq = $db->prepare("SELECT k.*$ksSel FROM `keys` k JOIN packages p ON k.package_id=p.id WHERE k.id=? AND k.user_id=?");
+        $kq->execute([$key_id, $user['id']]);
+        $keyRow = $kq->fetch();
+        if (!$keyRow) jsonResponse(['error' => 'Key không tồn tại'], 404);
+        $isApi = $hasKS && (($keyRow['key_source'] ?? 'pool') === 'api');
+
+        if ($isApi) {
+            // ===== Key API: reset DUY NHẤT 1 LẦN, reset thật trên panel =====
+            if ($keyRow['status'] !== 'active') jsonResponse(['error' => 'Key không active!'], 400);
+            if ((int)$keyRow['reset_count'] >= 1) jsonResponse(['error' => 'Key API chỉ được reset 1 lần duy nhất, bạn đã dùng rồi.'], 400);
+            if (!function_exists('hclouApiConfigured') || !hclouApiConfigured()) jsonResponse(['error' => 'Hệ thống reset tạm lỗi, thử lại sau.'], 503);
+            if (!hclouApiResetKey($keyRow['key_code'])) jsonResponse(['error' => 'Reset trên panel thất bại, thử lại sau.'], 502);
+            // Đánh dấu đã reset (atomic, chống spam)
+            $upd = $db->prepare("UPDATE `keys` SET reset_count = reset_count + 1 WHERE id=? AND user_id=? AND reset_count < 1");
+            $upd->execute([$key_id, $user['id']]);
+            jsonResponse(['success' => true, 'remaining_resets' => 0, 'api' => true]);
+        }
+
+        // ===== Key pool: logic cũ (max_reset lần) =====
         // ATOMIC: UPDATE có điều kiện reset_count < max_reset + status='active' + owner check.
-        // Không đọc rồi update riêng -> tránh race khi user spam click.
         $upd = $db->prepare("UPDATE `keys`
             SET reset_count = reset_count + 1
             WHERE id = ? AND user_id = ? AND status = 'active' AND reset_count < max_reset");
         $upd->execute([$key_id, $user['id']]);
         if ($upd->rowCount() === 0) {
-            // Tìm key để báo lỗi cụ thể (không tồn tại / hết lượt / không active).
             $chk = $db->prepare("SELECT status, reset_count, max_reset FROM `keys` WHERE id=? AND user_id=?");
             $chk->execute([$key_id, $user['id']]);
             $row = $chk->fetch();
@@ -1238,7 +1262,6 @@ switch ($action) {
             if ($row['status'] !== 'active') jsonResponse(['error' => 'Key không active!'], 400);
             jsonResponse(['error' => 'Đã hết lượt reset!'], 400);
         }
-        // Lấy giá trị mới để báo về client.
         $sel = $db->prepare("SELECT reset_count, max_reset FROM `keys` WHERE id=?");
         $sel->execute([$key_id]);
         $now = $sel->fetch();

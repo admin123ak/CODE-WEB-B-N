@@ -417,6 +417,12 @@ function hclouApiKeyinfo(array $keys) {
     return [];
 }
 
+/** Reset thiết bị 1 key trên panel. Trả true nếu OK. */
+function hclouApiResetKey($key) {
+    $r = hclouApiCall('resetkey', 'POST', ['key' => $key]);
+    return !empty($r['status']);
+}
+
 /**
  * Mua 1 key từ panel.
  * @return array key thành công: ['__ok'=>true,'key'=>..,'balance'=>..] ; lỗi: ['__ok'=>false,'reason'=>..]

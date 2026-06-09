@@ -1341,7 +1341,11 @@ function renderKeys(keys){
       html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
     }
     html+='<div class="kactions">';
-    if(k.status==='active') html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">🔄 '+T.reset+' ('+((k.max_reset||3)-(k.reset_count||0))+')</button>';
+    if(k.status==='active'){
+      // Key API: chỉ reset 1 lần. Key pool: theo max_reset.
+      var remReset = k.is_api ? Math.max(0,1-(parseInt(k.reset_count,10)||0)) : ((k.max_reset||3)-(parseInt(k.reset_count,10)||0));
+      html+='<button class="ksm blue" onclick="doReset('+(parseInt(k.id,10)||0)+')">🔄 '+T.reset+' ('+remReset+')</button>';
+    }
     if(k.status==='active') html+='<button class="ksm green" onclick="toast(T.giaHanMsg,\'info\')">⏰ '+T.giaHan+'</button>';
     html+='</div></div>';
   });
