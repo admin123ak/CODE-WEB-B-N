@@ -28,7 +28,11 @@ Options -Indexes
 # Security headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
-    Header set X-Frame-Options "SAMEORIGIN"
+    # KHÔNG dùng X-Frame-Options SAMEORIGIN: nó chặn Telegram Desktop (PC) nhúng
+    # Mini App qua iframe -> "refused to connect". Thay bằng CSP frame-ancestors
+    # chỉ cho phép self + Telegram nhúng (vẫn chặn site lạ).
+    Header always unset X-Frame-Options
+    Header set Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org tg://"
     Header set X-XSS-Protection "1; mode=block"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
