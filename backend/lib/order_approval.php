@@ -63,16 +63,9 @@ function approvePaidOrder(
         $order = $stmt->fetch();
     }
 
-    // Đơn key: JOIN packages
+    // Đơn key: JOIN packages — GIỮ NGUYÊN câu gốc (không thêm cột, tránh lỗi schema)
     if (!$order) {
-        // Lấy thêm cột API nếu packages đã có (DB chạy fix_db) — để duyệt gói nguồn API
-        $hasApiCols = false;
-        try {
-            $cq = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='key_source'");
-            $hasApiCols = ((int)$cq->fetchColumn()) > 0;
-        } catch (Throwable $e) { $hasApiCols = false; }
-        $apiSel = $hasApiCols ? ', p.key_source, p.api_game, p.api_duration, p.api_max_devices' : '';
-        $stmt = $db->prepare("SELECT o.*, p.days, p.hours, p.key_type, p.price $apiSel, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
+        $stmt = $db->prepare("SELECT o.*, p.days, p.hours, p.key_type, p.price, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
             FROM orders o
             LEFT JOIN packages p ON o.package_id = p.id
             JOIN games g    ON o.game_id    = g.id
@@ -147,7 +140,10 @@ function approvePaidOrder(
             $tothours = ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0);
             $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $tothours) . ' hours'));
 
-            $isApiOrder = (($order['key_source'] ?? 'pool') === 'api');
+            $isApiOrder = false;
+            foreach ($allKeys as $k) {
+                if (strpos((string)$k['key_code'], 'APIWAIT-') === 0) { $isApiOrder = true; break; }
+            }
             $activatedCount = 0;
 
             if ($isApiOrder) {
@@ -155,9 +151,14 @@ function approvePaidOrder(
                 if (!function_exists('hclouApiBuy') || !hclouApiConfigured()) {
                     throw new Exception('Gói API nhưng hệ thống chưa cấu hình panel');
                 }
-                $apiGame = trim((string)($order['api_game'] ?? ''));
-                $apiDur  = (int)($order['api_duration'] ?? 0);
-                $apiMax  = max(1, (int)($order['api_max_devices'] ?? 1));
+                // Lấy thông tin map API của gói (query riêng, an toàn schema)
+                $apiGame = ''; $apiDur = 0; $apiMax = 1;
+                try {
+                    $aq = $db->prepare("SELECT api_game, api_duration, api_max_devices FROM packages WHERE id=? LIMIT 1");
+                    $aq->execute([$order['package_id']]);
+                    $arow = $aq->fetch();
+                    if ($arow) { $apiGame = trim((string)$arow['api_game']); $apiDur = (int)$arow['api_duration']; $apiMax = max(1,(int)$arow['api_max_devices']); }
+                } catch (Throwable $e) { /* cột chưa có */ }
                 if ($apiGame === '' || $apiDur < 1) throw new Exception('Gói API chưa map game/duration');
 
                 $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
@@ -172,11 +173,10 @@ function approvePaidOrder(
                     }
                 }
                 if ($activatedCount === 0) throw new Exception('Panel không cấp được key (API)');
-                // Xoá key tạm còn lại chưa cấp được (nếu mua nhiều, 1 phần lỗi)
                 $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")->execute([$order['id']]);
-                $allKeys = $realKeys; // để hiển thị key thật cho khách
+                $allKeys = $realKeys;
             } else {
-                // ===== Gói pool: active key đã reserve =====
+                // ===== Gói pool: active key đã reserve (logic cũ) =====
                 $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
                 foreach ($allKeys as $k) {
                     $upKey->execute([$start, $expire, $k['id']]);
