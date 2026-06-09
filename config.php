@@ -408,6 +408,15 @@ function hclouApiProducts() {
     return hclouApiCall('products', 'GET');
 }
 
+/** Lấy trạng thái thật (thiết bị/hạn/khoá) của nhiều key từ panel. Trả [user_key => info]. */
+function hclouApiKeyinfo(array $keys) {
+    $keys = array_values(array_filter(array_map('trim', $keys), fn($s) => $s !== ''));
+    if (!$keys) return [];
+    $r = hclouApiCall('keyinfo', 'POST', ['keys' => implode(',', $keys)]);
+    if (!empty($r['status']) && isset($r['keys']) && is_array($r['keys'])) return $r['keys'];
+    return [];
+}
+
 /**
  * Mua 1 key từ panel.
  * @return array key thành công: ['__ok'=>true,'key'=>..,'balance'=>..] ; lỗi: ['__ok'=>false,'reason'=>..]

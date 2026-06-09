@@ -1133,25 +1133,57 @@ switch ($action) {
         if (!$user) jsonResponse(['error' => 'Chưa đăng nhập'], 401);
         $filter = $_GET['filter'] ?? 'all'; // all, active, expired, locked
 
-        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type, o.order_code
+        // Có cột key_source không? (an toàn nếu DB chưa fix_db)
+        $hasKS = false;
+        try {
+            $c = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='key_source'");
+            $hasKS = ((int)$c->fetchColumn()) > 0;
+        } catch (Throwable $e) {}
+        $ksSel = $hasKS ? ", p.key_source" : "";
+
+        $sql = "SELECT k.*, g.name as game_name, g.package_name, p.name as pkg_name, p.key_type, o.order_code $ksSel
                 FROM `keys` k JOIN games g ON k.game_id=g.id JOIN packages p ON k.package_id=p.id
                 LEFT JOIN orders o ON k.order_id=o.id
                 WHERE k.user_id=? AND k.status != 'pending'";
         $params = [$user['id']];
 
-        // Cập nhật trạng thái expired
-        $db->prepare("UPDATE `keys` SET status='expired' WHERE user_id=? AND status='active' AND expire_at < NOW()")
+        // Cập nhật trạng thái expired — CHỈ key pool (key API expire_at NULL, panel quản hạn)
+        $db->prepare("UPDATE `keys` SET status='expired' WHERE user_id=? AND status='active' AND expire_at IS NOT NULL AND expire_at < NOW()")
            ->execute([$user['id']]);
 
         if ($filter === 'active') $sql .= " AND k.status='active'";
         elseif ($filter === 'expired') $sql .= " AND k.status='expired'";
         elseif ($filter === 'locked') $sql .= " AND k.status='locked'";
         $sql .= " ORDER BY k.created_at DESC";
-        
+
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $keys = $stmt->fetchAll();
+
+        // Đồng bộ trạng thái thật từ panel cho key nguồn API (thiết bị/hạn/khoá)
+        $apiKeyCodes = [];
+        foreach ($keys as $k) {
+            if ($hasKS && ($k['key_source'] ?? 'pool') === 'api') $apiKeyCodes[] = $k['key_code'];
+        }
+        $panelInfo = [];
+        if ($apiKeyCodes && function_exists('hclouApiConfigured') && hclouApiConfigured()) {
+            $panelInfo = hclouApiKeyinfo($apiKeyCodes);
+        }
+
         foreach ($keys as &$k) {
+            $isApi = $hasKS && (($k['key_source'] ?? 'pool') === 'api');
+            $k['is_api'] = $isApi ? 1 : 0;
+            if ($isApi && isset($panelInfo[$k['key_code']]) && $panelInfo[$k['key_code']]) {
+                $pi = $panelInfo[$k['key_code']];
+                $k['device_count'] = (int)$pi['devices'];
+                $k['device_max']   = (int)$pi['max_devices'];
+                $k['activated']    = !empty($pi['activated']);
+                $k['expire_at']    = $pi['expired_date'];     // hạn thật từ panel (NULL = chưa kích hoạt)
+                // Map trạng thái panel -> status hiển thị
+                if (!empty($pi['locked']))      $k['status'] = 'locked';
+                elseif (!empty($pi['expired'])) $k['status'] = 'expired';
+                else                            $k['status'] = 'active';
+            }
             if ($k['status'] === 'expired' && !empty($k['expire_at'])) {
                 $deleteAt = date('Y-m-d H:i:s', strtotime($k['expire_at'] . ' +3 days'));
                 $k['delete_at'] = $deleteAt;

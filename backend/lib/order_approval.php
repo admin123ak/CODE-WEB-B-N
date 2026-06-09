@@ -161,13 +161,14 @@ function approvePaidOrder(
                 } catch (Throwable $e) { /* cột chưa có */ }
                 if ($apiGame === '' || $apiDur < 1) throw new Exception('Gói API chưa map game/duration');
 
-                $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
+                // Key API: KHÔNG set hạn lúc mua -> để panel tính khi khách login (khớp panel)
+                $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=NULL, expire_at=NULL WHERE id=? AND status='pending'");
                 $realKeys = [];
                 $lastReason = '';
                 foreach ($allKeys as $k) {
                     $r = hclouApiBuy($apiGame, $apiDur, $apiMax);
                     if (!empty($r['__ok']) && !empty($r['key'])) {
-                        $upReal->execute([$r['key'], $start, $expire, $k['id']]);
+                        $upReal->execute([$r['key'], $k['id']]);
                         if ($upReal->rowCount() === 1) { $activatedCount++; $realKeys[] = ['key_code' => $r['key']]; }
                     } else {
                         $lastReason = $r['reason'] ?? 'unknown';

@@ -1326,11 +1326,16 @@ function renderKeys(keys){
       +'<button class="ksm" style="flex-shrink:0" onclick="copyText('+jsAttr(k.key_code)+',T.copyKey)">📋 Copy</button>'
       +'</div></div>'
       +'<div class="kgrid">'
-      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">1/1</div></div>'
+      +'<div class="kbox"><div class="kbox-lbl">Thiết bị</div><div class="kbox-val">'+(k.is_api?((k.device_count!=null?k.device_count:0)+'/'+(k.device_max||k.max_devices||1)):'1/1')+'</div></div>'
       +'<div class="kbox"><div class="kbox-lbl">Thời hạn</div><div class="kbox-val">'+fmtDur(k.days,k.hours)+'</div></div>'
       +'</div>';
     if(k.status==='active'){
-      html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div></div>';
+      if(k.is_api && !k.expire_at){
+        // Key API chưa kích hoạt -> đếm khi đăng nhập app (khớp panel)
+        html+='<div class="knote">⏳ Chưa kích hoạt — nhập key vào app để bắt đầu tính thời hạn.</div>';
+      } else {
+        html+='<div class="cdwrap"><div class="cdbar-bg"><div class="cdbar" id="cbar-'+(parseInt(k.id,10)||0)+'" style="width:100%"></div></div></div>';
+      }
     }
     if(k.status==='expired'){
       html+='<div class="knote">⚠️ '+T.expiredDeleteNote+(k.delete_at?' · '+T.tuXoaLuc+': '+escapeHtml(fmtDateFull(k.delete_at)):'')+'</div>';
@@ -1342,12 +1347,16 @@ function renderKeys(keys){
   });
   document.getElementById('keyWrap').innerHTML=html;
   initMotion();
-  keys.filter(function(k){return k.status==='active';}).forEach(startCd);
+  keys.filter(function(k){return k.status==='active' && k.expire_at;}).forEach(startCd);
 }
 
 function startCd(k){
+  if(!k.expire_at) return; // key API chưa kích hoạt -> chưa đếm
   var exp=new Date(k.expire_at.replace(' ','T'));
-  var total=exp-new Date(k.start_at.replace(' ','T'));
+  // start_at có thể NULL (key API) -> suy total từ thời hạn gói (days/hours)
+  var total = k.start_at ? (exp-new Date(k.start_at.replace(' ','T')))
+                         : ((((parseInt(k.days,10)||0)*24)+(parseInt(k.hours,10)||0))*3600000);
+  if(!(total>0)) total = exp - new Date();
   function tick(){
     var now=new Date(),left=exp-now;
     var bar=document.getElementById('cbar-'+k.id);
