@@ -558,8 +558,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'del_pkg') {
-        $db->prepare("DELETE FROM packages WHERE id=?")->execute([$_POST['id']]);
-        header("Location: ?tab=packages"); exit;
+        $pid = (int)($_POST['id'] ?? 0);
+        try {
+            // Bảo vệ: gói còn key ĐANG HOẠT ĐỘNG (đã giao khách) thì không xoá
+            $ac = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE package_id=? AND status='active'");
+            $ac->execute([$pid]);
+            if ((int)$ac->fetchColumn() > 0) {
+                header("Location: ?tab=packages&err=" . urlencode('Gói còn key đang hoạt động (khách đang dùng) — hãy bấm Tắt để ẩn, không xoá.')); exit;
+            }
+            // Gỡ key chưa giao (available/pending/placeholder API) + free_keys rồi xoá gói
+            $db->prepare("DELETE FROM `keys` WHERE package_id=? AND status IN ('available','pending')")->execute([$pid]);
+            try { $db->prepare("DELETE FROM free_keys WHERE package_id=?")->execute([$pid]); } catch (Throwable $e) {}
+            $db->prepare("DELETE FROM packages WHERE id=?")->execute([$pid]);
+            header("Location: ?tab=packages&ok=1"); exit;
+        } catch (Throwable $e) {
+            header("Location: ?tab=packages&err=" . urlencode('Không xoá được gói (còn dữ liệu liên kết). Hãy bấm Tắt gói thay vì xoá.')); exit;
+        }
     }
     if ($act === 'approve_order') {
         $order_code = $_POST['order_code'] ?? '';
