@@ -142,7 +142,26 @@ function hclouCronRunUrl($job, $masked = false) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['admin_csrf'] ?? '', $_POST['csrf'] ?? '')) { header('Location: ?err=' . urlencode('CSRF token không hợp lệ')); exit; }
     $act = $_POST['act'] ?? '';
-    
+
+    // Test API panel với URL+token tạm (không cần lưu config trước)
+    if ($act === 'test_hclou_api') {
+        header('Content-Type: application/json; charset=utf-8');
+        $url = rtrim(trim($_POST['api_url'] ?? ''), '/');
+        $tok = trim($_POST['api_token'] ?? '');
+        if ($url === '' || $tok === '') { echo json_encode(['ok'=>false,'msg'=>'Thiếu URL hoặc token']); exit; }
+        $ch = curl_init($url . '/products');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => false, CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $tok, 'Accept: application/json'],
+        ]);
+        $raw = curl_exec($ch); $err = curl_error($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+        if ($raw === false) { echo json_encode(['ok'=>false,'msg'=>'cURL: '.$err,'http'=>$code]); exit; }
+        $j = json_decode($raw, true);
+        if (!is_array($j)) { echo json_encode(['ok'=>false,'msg'=>'Phản hồi không phải JSON','http'=>$code]); exit; }
+        if (empty($j['status'])) { echo json_encode(['ok'=>false,'msg'=>'Token/URL sai: '.($j['reason'] ?? json_encode($j)),'http'=>$code]); exit; }
+        echo json_encode(['ok'=>true,'balance'=>$j['balance'] ?? 0,'games'=>$j['games'] ?? []]); exit;
+    }
 
     if ($act === 'save_config') {
         try {
@@ -2770,30 +2789,42 @@ function _hclouFormatBytes($b) {
 
 <h3 style="margin-top:20px">🔗 License Panel API (nguồn key tự động)</h3>
 <div class="form-row">
-<div style="flex:1;min-width:320px"><label>API URL panel</label><input style="width:100%;font-family:monospace" name="cfg[HCLOU_API_URL]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_URL'))?>" placeholder="https://panel.domain.com/api/sell"><small style="color:#8b949e">URL gốc API bán key của panel (kết thúc bằng <code>/api/sell</code>).</small></div>
-<div style="flex:1;min-width:260px"><label>API Token</label><input style="width:100%;font-family:monospace" name="cfg[HCLOU_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_TOKEN'))?>" placeholder="Token tạo trong panel"></div>
+<div style="flex:1;min-width:320px"><label>API URL panel</label><input id="hcApiUrl" style="width:100%;font-family:monospace" name="cfg[HCLOU_API_URL]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_URL'))?>" placeholder="https://panel.domain.com/api/sell"><small style="color:#8b949e">URL gốc API bán key của panel (kết thúc bằng <code>/api/sell</code>).</small></div>
+<div style="flex:1;min-width:260px"><label>API Token</label><input id="hcApiTok" style="width:100%;font-family:monospace" name="cfg[HCLOU_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_TOKEN'))?>" placeholder="Token tạo trong panel"></div>
 </div>
-<div style="margin-top:10px">
-  <a class="btn btn-gray" href="?tab=sysconfig&test_api=1#apitest">🔍 Kiểm tra API (xem game/gói + số dư)</a>
+<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <button type="button" class="btn btn-gray" onclick="hcTestApi()">🔍 Kiểm tra API (xem game/gói + số dư)</button>
+  <small style="color:#9fb2cf">Test trực tiếp giá trị đang gõ — không cần Lưu trước.</small>
 </div>
-<?php if(isset($_GET['test_api'])): $_apiRes = function_exists('hclouApiProducts') ? hclouApiProducts() : ['__error'=>'helper missing']; ?>
-<div id="apitest" class="codebox" style="margin-top:10px;max-height:340px;overflow:auto">
-<?php if(isset($_apiRes['__error'])): ?>
-  ❌ Lỗi: <?=h($_apiRes['__error'])?> (HTTP <?=h((string)($_apiRes['__http'] ?? '?'))?>)
-<?php elseif(empty($_apiRes['status'])): ?>
-  ❌ Token/URL sai. Phản hồi: <?=h(json_encode($_apiRes, JSON_UNESCAPED_UNICODE))?>
-<?php else: ?>
-  ✅ <b style="color:#6ee7b7">Kết nối OK!</b> Số dư panel: <b style="color:#fbbf24">$<?=h(number_format((float)($_apiRes['balance'] ?? 0)))?></b>
-  <br><br><b>Game / gói khả dụng</b> (dùng <code>game</code> + <code>duration</code> này điền vào gói):
-  <?php foreach(($_apiRes['games'] ?? []) as $g): ?>
-  <br>🎮 <b><?=h($g['name'] ?? '')?></b> · <code style="color:#7db3ff"><?=h($g['game'] ?? '')?></code>
-    <?php foreach(($g['packages'] ?? []) as $pk): ?>
-    <br>&nbsp;&nbsp;&nbsp;• <code><?=h((string)($pk['duration'] ?? ''))?></code> giờ (<?=h($pk['label'] ?? '')?>) — giá panel: $<?=h((string)($pk['price'] ?? ''))?>
-    <?php endforeach; ?>
-  <?php endforeach; ?>
-<?php endif; ?>
-</div>
-<?php endif; ?>
+<div id="apitest" class="codebox" style="margin-top:10px;max-height:340px;overflow:auto;display:none"></div>
+<script>
+async function hcTestApi(){
+  var url=document.getElementById('hcApiUrl').value.trim();
+  var tok=document.getElementById('hcApiTok').value.trim();
+  var box=document.getElementById('apitest');
+  box.style.display='block';
+  if(!url||!tok){ box.innerHTML='❌ Nhập đủ URL + Token trước.'; return; }
+  box.innerHTML='⏳ Đang kiểm tra...';
+  try{
+    var fd=new FormData();
+    fd.append('csrf','<?=h($_SESSION['admin_csrf'])?>');
+    fd.append('act','test_hclou_api');
+    fd.append('api_url',url);
+    fd.append('api_token',tok);
+    var r=await fetch('?tab=sysconfig',{method:'POST',body:fd});
+    var d=await r.json();
+    if(!d.ok){ box.innerHTML='❌ '+(d.msg||'Lỗi')+(d.http?' (HTTP '+d.http+')':''); return; }
+    var html='✅ <b style="color:#6ee7b7">Kết nối OK!</b> Số dư panel: <b style="color:#fbbf24">$'+Number(d.balance||0).toLocaleString()+'</b><br><br><b>Game / gói khả dụng</b> (dùng <code>game</code> + <code>duration</code> điền vào gói):';
+    (d.games||[]).forEach(function(g){
+      html+='<br>🎮 <b>'+g.name+'</b> · <code style="color:#7db3ff">'+g.game+'</code>';
+      (g.packages||[]).forEach(function(pk){
+        html+='<br>&nbsp;&nbsp;&nbsp;• <code>'+pk.duration+'</code> giờ ('+(pk.label||'')+') — giá panel: $'+pk.price;
+      });
+    });
+    box.innerHTML=html;
+  }catch(e){ box.innerHTML='❌ Lỗi gọi: '+e; }
+}
+</script>
 
 <h3 style="margin-top:20px">💳 Nạp card qua doithe.vn (Ví user)</h3>
 <div class="form-row">
