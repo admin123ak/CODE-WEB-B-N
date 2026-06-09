@@ -311,9 +311,30 @@ switch ($action) {
                 $isMerchantErr = ($pStatus >= 100 && $pStatus <= 199);
                 if (in_array($pStatus, $hardFailStatuses, true) || $isMerchantErr) {
                     topupReject($db, $r['id'], 'doithe.vn status=' . $pStatus . ': ' . $api['message'], $api['raw']);
+                    // Dịch mã lỗi doithe.vn (kể cả key "lang.xxx" chưa resolve) sang tiếng Việt rõ ràng
+                    $doitheMsg = (string)($api['message'] ?? '');
+                    $friendly = '';
+                    $ml = strtolower($doitheMsg);
+                    if ($ml === '' )                                         $friendly = 'Thẻ sai hoặc đã sử dụng';
+                    elseif (strpos($ml,'invalid_card_code')!==false
+                         || strpos($ml,'invalid_code')!==false
+                         || strpos($ml,'sai mã')!==false)                    $friendly = 'Sai mã thẻ (PIN). Kiểm tra lại dãy số cào.';
+                    elseif (strpos($ml,'invalid_card_serial')!==false
+                         || strpos($ml,'invalid_serial')!==false
+                         || strpos($ml,'sai serial')!==false)                $friendly = 'Sai số serial thẻ.';
+                    elseif (strpos($ml,'used')!==false
+                         || strpos($ml,'da_su_dung')!==false
+                         || strpos($ml,'đã sử dụng')!==false)                $friendly = 'Thẻ đã được sử dụng.';
+                    elseif (strpos($ml,'telco')!==false
+                         || strpos($ml,'nha_mang')!==false
+                         || strpos($ml,'nhà mạng')!==false)                  $friendly = 'Sai nhà mạng. Chọn đúng nhà mạng của thẻ.';
+                    elseif (strpos($ml,'amount')!==false
+                         || strpos($ml,'menh_gia')!==false
+                         || strpos($ml,'mệnh giá')!==false)                  $friendly = 'Sai mệnh giá thẻ.';
+                    else                                                     $friendly = 'Thẻ không hợp lệ (' . $doitheMsg . ')';
                     $userMsg = $isMerchantErr
                         ? 'Hệ thống nạp thẻ tạm gặp sự cố cấu hình. Vui lòng báo admin.'
-                        : ('doithe.vn từ chối thẻ: ' . ($api['message'] ?: 'thẻ sai/đã sử dụng'));
+                        : ('❌ Nạp thẻ thất bại: ' . $friendly . ' — Lưu ý chọn ĐÚNG nhà mạng + ĐÚNG mệnh giá in trên thẻ.');
                     jsonResponse(['error' => $userMsg], 400);
                 }
                 if (!$api['ok'] && $pStatus !== 99) {
