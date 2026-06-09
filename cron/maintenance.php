@@ -27,7 +27,11 @@ function runMaintenance(PDO $db): array {
         if ($orders) {
             $ids = array_map(fn($r)=>(int)$r['id'], $orders);
             $in = implode(',', array_fill(0, count($ids), '?'));
-            // Trả key về pool available để người khác mua
+            // Xoá key tạm của gói API (key_code APIWAIT-...) — KHÔNG trả về pool kẻo bán nhầm
+            $stmt = $db->prepare("DELETE FROM `keys` WHERE order_id IN ($in) AND status='pending' AND key_code LIKE 'APIWAIT-%'");
+            $stmt->execute($ids);
+            $out['deleted_api_placeholders'] = $stmt->rowCount();
+            // Trả key pool về available để người khác mua
             $stmt = $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id IN ($in) AND status='pending'");
             $stmt->execute($ids);
             $out['returned_to_pool'] = $stmt->rowCount();

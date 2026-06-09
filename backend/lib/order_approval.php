@@ -65,7 +65,14 @@ function approvePaidOrder(
 
     // Đơn key: JOIN packages
     if (!$order) {
-        $stmt = $db->prepare("SELECT o.*, p.days, p.hours, p.key_type, p.price, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
+        // Lấy thêm cột API nếu packages đã có (DB chạy fix_db) — để duyệt gói nguồn API
+        $hasApiCols = false;
+        try {
+            $cq = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='key_source'");
+            $hasApiCols = ((int)$cq->fetchColumn()) > 0;
+        } catch (Throwable $e) { $hasApiCols = false; }
+        $apiSel = $hasApiCols ? ', p.key_source, p.api_game, p.api_duration, p.api_max_devices' : '';
+        $stmt = $db->prepare("SELECT o.*, p.days, p.hours, p.key_type, p.price $apiSel, g.name AS game_name, g.package_name, g.download_url, u.telegram_id
             FROM orders o
             LEFT JOIN packages p ON o.package_id = p.id
             JOIN games g    ON o.game_id    = g.id
@@ -130,7 +137,7 @@ function approvePaidOrder(
             return ['status' => 'approved', 'note' => 'OK'];
 
         } else {
-            // ===== DUYỆT ĐƠN KEY (logic cũ) =====
+            // ===== DUYỆT ĐƠN KEY =====
             $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE order_id = ? AND status = 'pending' FOR UPDATE");
             $keyStmt->execute([$order['id']]);
             $allKeys = $keyStmt->fetchAll();
@@ -139,14 +146,44 @@ function approvePaidOrder(
             $start  = date('Y-m-d H:i:s');
             $tothours = ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0);
             $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $tothours) . ' hours'));
-            $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
 
+            $isApiOrder = (($order['key_source'] ?? 'pool') === 'api');
             $activatedCount = 0;
-            foreach ($allKeys as $k) {
-                $upKey->execute([$start, $expire, $k['id']]);
-                if ($upKey->rowCount() === 1) $activatedCount++;
+
+            if ($isApiOrder) {
+                // ===== Gói API: gọi panel sinh key thật cho từng key tạm =====
+                if (!function_exists('hclouApiBuy') || !hclouApiConfigured()) {
+                    throw new Exception('Gói API nhưng hệ thống chưa cấu hình panel');
+                }
+                $apiGame = trim((string)($order['api_game'] ?? ''));
+                $apiDur  = (int)($order['api_duration'] ?? 0);
+                $apiMax  = max(1, (int)($order['api_max_devices'] ?? 1));
+                if ($apiGame === '' || $apiDur < 1) throw new Exception('Gói API chưa map game/duration');
+
+                $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
+                $realKeys = [];
+                foreach ($allKeys as $k) {
+                    $r = hclouApiBuy($apiGame, $apiDur, $apiMax);
+                    if (!empty($r['__ok']) && !empty($r['key'])) {
+                        $upReal->execute([$r['key'], $start, $expire, $k['id']]);
+                        if ($upReal->rowCount() === 1) { $activatedCount++; $realKeys[] = ['key_code' => $r['key']]; }
+                    } else {
+                        error_log('[ORDER_APPROVE_API] ' . $orderCode . ' fail: ' . json_encode($r));
+                    }
+                }
+                if ($activatedCount === 0) throw new Exception('Panel không cấp được key (API)');
+                // Xoá key tạm còn lại chưa cấp được (nếu mua nhiều, 1 phần lỗi)
+                $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")->execute([$order['id']]);
+                $allKeys = $realKeys; // để hiển thị key thật cho khách
+            } else {
+                // ===== Gói pool: active key đã reserve =====
+                $upKey  = $db->prepare("UPDATE `keys` SET status='active', start_at=?, expire_at=? WHERE id=? AND status='pending'");
+                foreach ($allKeys as $k) {
+                    $upKey->execute([$start, $expire, $k['id']]);
+                    if ($upKey->rowCount() === 1) $activatedCount++;
+                }
+                if ($activatedCount === 0) throw new Exception('Không có key nào được kích hoạt');
             }
-            if ($activatedCount === 0) throw new Exception('Không có key nào được kích hoạt');
 
             $upOrder = $db->prepare("UPDATE orders SET status='approved', approved_at=NOW(), approved_by=? WHERE id=? AND status='pending'");
             $upOrder->execute([$approvedBy, $order['id']]);

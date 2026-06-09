@@ -630,12 +630,20 @@ switch ($action) {
             jsonResponse(['error' => 'Bạn đang có quá nhiều đơn chờ thanh toán, vui lòng hoàn tất hoặc chờ đơn cũ hết hiệu lực'], 429);
         }
 
-        // Kiểm tra pool có đủ key
-        $availStmt = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE status='available' AND game_id=? AND package_id=?");
-        $availStmt->execute([$game_id, $package_id]);
-        $available = (int)$availStmt->fetchColumn();
-        if ($available < $quantity) {
-            jsonResponse(['error' => "Chỉ còn $available key cho gói này, không đủ $quantity."], 400);
+        // Gói nguồn API: key sinh từ panel lúc DUYỆT (sau thanh toán), không dùng pool
+        $isApi = (($package['key_source'] ?? 'pool') === 'api');
+        if ($isApi && !hclouApiConfigured()) {
+            jsonResponse(['error' => 'Gói này bán qua API nhưng hệ thống chưa cấu hình. Liên hệ admin.'], 400);
+        }
+
+        // Kiểm tra pool có đủ key (chỉ gói pool)
+        if (!$isApi) {
+            $availStmt = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE status='available' AND game_id=? AND package_id=?");
+            $availStmt->execute([$game_id, $package_id]);
+            $available = (int)$availStmt->fetchColumn();
+            if ($available < $quantity) {
+                jsonResponse(['error' => "Chỉ còn $available key cho gói này, không đủ $quantity."], 400);
+            }
         }
 
         $order_code = generateOrderCode();
@@ -646,17 +654,20 @@ switch ($action) {
         $unitPriceDiscounted = (int)round($unitPrice * (1 - $discountPct / 100));
         $db->beginTransaction();
         try {
-            // Lấy N keys từ pool
-            $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT ? FOR UPDATE");
-            $keyStmt->bindValue(1, $game_id);
-            $keyStmt->bindValue(2, $package_id);
-            $keyStmt->bindValue(3, $quantity, PDO::PARAM_INT);
-            $keyStmt->execute();
-            $poolKeys = $keyStmt->fetchAll();
+            $key_codes = [];
+            if (!$isApi) {
+                // Lấy N keys từ pool
+                $keyStmt = $db->prepare("SELECT id, key_code FROM `keys` WHERE status='available' AND game_id=? AND package_id=? ORDER BY id ASC LIMIT ? FOR UPDATE");
+                $keyStmt->bindValue(1, $game_id);
+                $keyStmt->bindValue(2, $package_id);
+                $keyStmt->bindValue(3, $quantity, PDO::PARAM_INT);
+                $keyStmt->execute();
+                $poolKeys = $keyStmt->fetchAll();
 
-            if (count($poolKeys) < $quantity) {
-                $db->rollBack();
-                jsonResponse(['error' => 'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
+                if (count($poolKeys) < $quantity) {
+                    $db->rollBack();
+                    jsonResponse(['error' => 'Hết key cho gói này. Vui lòng liên hệ admin để được hỗ trợ.'], 400);
+                }
             }
 
             // Tạo đơn hàng với tổng tiền = đơn giá × số lượng
@@ -664,12 +675,19 @@ switch ($action) {
                ->execute([$order_code, $user['id'], $game_id, $package_id, $total_amount, $payment_method]);
             $order_id = $db->lastInsertId();
 
-            // Gán N keys từ pool vào đơn hàng
-            $key_codes = [];
-            foreach ($poolKeys as $pk) {
-                $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
-                   ->execute([$user['id'], $order_id, $package['days'], $pk['id']]);
-                $key_codes[] = $pk['key_code'];
+            // Gán N keys từ pool vào đơn hàng (gói pool); gói API để trống, sinh khi duyệt
+            if (!$isApi) {
+                foreach ($poolKeys as $pk) {
+                    $db->prepare("UPDATE `keys` SET status='pending', user_id=?, order_id=?, days=? WHERE id=?")
+                       ->execute([$user['id'], $order_id, $package['days'], $pk['id']]);
+                    $key_codes[] = $pk['key_code'];
+                }
+            } else {
+                // Gói API: chèn N key tạm (pending) để giữ chỗ; key thật sinh khi duyệt
+                $insPlace = $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, user_id, order_id, days, hours, status) VALUES (?,?,?,?,?,?,?,'pending')");
+                for ($i = 1; $i <= $quantity; $i++) {
+                    $insPlace->execute(['APIWAIT-' . $order_id . '-' . $i, $game_id, $package_id, $user['id'], $order_id, $package['days'], $package['hours'] ?? 0]);
+                }
             }
 
             // Nếu Binance: convert VND→USDT với unique decimal trick rồi cập nhật orders
@@ -703,7 +721,7 @@ switch ($action) {
             $payDetail = "\n💵 Chờ nhận: <b>{$usdtStr} USDT</b> (rate {$rateStr})";
         }
         $qtyNote = $quantity > 1 ? "\n📦 Số lượng: <b>{$quantity} key</b>" : '';
-        $keyDisplay = implode("\n", array_map(function($k) { return "   • <code>{$k}</code>"; }, $key_codes));
+        $keyDisplay = $isApi ? "   • <i>(API sinh key khi duyệt)</i>" : implode("\n", array_map(function($k) { return "   • <code>{$k}</code>"; }, $key_codes));
         $pkgDur = hclouFmtDur($package['days'] ?? 0, $package['hours'] ?? 0);
         $msg = "🔔 <b>ĐƠN HÀNG MỚI #{$order_code}</b>\n\n👤 User: @{$username} (ID: {$user['telegram_id']})\n🎮 Game: {$package['game_name']}\n📦 Gói: {$package['name']} ({$pkgDur}){$qtyNote}\n🔑 Key:\n{$keyDisplay}\n💰 Tổng: {$amt}đ\n💳 Thanh toán: {$payLabel}{$payDetail}\n🕐 " . date('d/m/Y H:i:s');
         $markup = ['inline_keyboard' => [

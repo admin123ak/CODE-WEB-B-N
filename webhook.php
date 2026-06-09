@@ -251,6 +251,9 @@ function rejectOrder(PDO $db, string $order_code, string $admin_name, string $ca
         $upOrder->execute([$admin_name, $order['id']]);
         if ($upOrder->rowCount() !== 1) throw new Exception('Đơn đã được xử lý bởi process khác');
 
+        // Xoá key tạm gói API (không trả về pool kẻo bán nhầm)
+        $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending' AND key_code LIKE 'APIWAIT-%'")
+           ->execute([$order['id']]);
         $db->prepare("UPDATE `keys` SET status='available', user_id=NULL, order_id=NULL WHERE order_id=? AND status IN ('pending','available')")
            ->execute([$order['id']]);
         $db->commit();
