@@ -140,7 +140,7 @@ try {
          FROM topup_requests
          WHERE method='card' AND status='pending'
            AND provider_request_id IS NOT NULL AND provider_request_id != ''
-           AND created_at < (NOW() - INTERVAL 15 SECOND)
+           AND created_at < (NOW() - INTERVAL 10 SECOND)
          ORDER BY id ASC
          LIMIT 20"
     );
