@@ -463,6 +463,64 @@ switch ($action) {
             jsonResponse(['error' => 'Số dư không đủ: cần ' . number_format($total_price) . 'đ, có ' . number_format($curBal) . 'đ'], 400);
         }
 
+        // ===== NHÁNH API: gói lấy key tự động từ panel HCLOU =====
+        if (($package['key_source'] ?? 'pool') === 'api') {
+            if (!hclouApiConfigured()) jsonResponse(['error' => 'Hệ thống chưa cấu hình API key. Liên hệ admin.'], 400);
+            $apiGame = trim((string)($package['api_game'] ?? ''));
+            $apiDur  = (int)($package['api_duration'] ?? 0);
+            $apiMax  = max(1, (int)($package['api_max_devices'] ?? 1));
+            if ($apiGame === '' || $apiDur < 1) jsonResponse(['error' => 'Gói chưa map game/duration bên panel. Liên hệ admin.'], 400);
+
+            $order_code = generateOrderCode();
+            $db->prepare("INSERT INTO orders (order_code, user_id, game_id, package_id, amount, payment_method, status, approved_at, approved_by) VALUES (?,?,?,?,?,?,'approved', NOW(), 'balance')")
+               ->execute([$order_code, $user['id'], $game_id, $package_id, $total_price, 'balance']);
+            $order_id = (int)$db->lastInsertId();
+            try {
+                $debit = balanceDebit($db, (int)$user['id'], $total_price, 'purchase', 'order', $order_id, 'Mua key API gói #' . $package_id . ' x' . $quantity);
+            } catch (Throwable $e) {
+                $db->prepare("UPDATE orders SET status='cancelled', admin_note=? WHERE id=?")->execute(['Trừ ví fail: ' . $e->getMessage(), $order_id]);
+                jsonResponse(['error' => 'Trừ ví thất bại: ' . $e->getMessage()], 400);
+            }
+
+            $totalHours = ((int)($package['days'] ?? 0)) * 24 + (int)($package['hours'] ?? 0);
+            $expire = date('Y-m-d H:i:s', strtotime('+' . max(1, $totalHours) . ' hours'));
+            $insKey = $db->prepare("INSERT INTO `keys` (key_code, game_id, package_id, user_id, order_id, days, hours, status, start_at, expire_at) VALUES (?,?,?,?,?,?,?,'active',NOW(),?)");
+            $key_codes = [];
+            for ($i = 0; $i < $quantity; $i++) {
+                $r = hclouApiBuy($apiGame, $apiDur, $apiMax);
+                if (!empty($r['__ok'])) {
+                    $insKey->execute([$r['key'], $game_id, $package_id, $user['id'], $order_id, $package['days'], $package['hours'] ?? 0, $expire]);
+                    $key_codes[] = $r['key'];
+                } else {
+                    error_log('[HCLOU_API_BUY] fail: ' . json_encode($r));
+                }
+            }
+
+            $got = count($key_codes);
+            if ($got === 0) {
+                try { balanceCredit($db, (int)$user['id'], $total_price, 'refund', 'order', $order_id, 'Hoàn tiền: API không cấp được key'); } catch (Throwable $e) {}
+                $db->prepare("UPDATE orders SET status='cancelled', admin_note='API không cấp được key' WHERE id=?")->execute([$order_id]);
+                jsonResponse(['error' => 'Hệ thống cấp key tạm lỗi, đã hoàn tiền. Thử lại sau.'], 502);
+            }
+            if ($got < $quantity) {
+                $refund = ($quantity - $got) * ($total_price / $quantity);
+                try { balanceCredit($db, (int)$user['id'], $refund, 'refund', 'order', $order_id, 'Hoàn tiền key API thiếu'); } catch (Throwable $e) {}
+                $db->prepare("UPDATE orders SET amount=? WHERE id=?")->execute([$got * ($total_price / $quantity), $order_id]);
+            }
+
+            $balAfter = balanceGet($db, (int)$user['id']);
+            jsonResponse([
+                'success'       => true,
+                'order_code'    => $order_code,
+                'key_code'      => $key_codes[0],
+                'key_codes'     => $key_codes,
+                'quantity'      => $got,
+                'balance_after' => $balAfter,
+                'package'       => ['name' => $package['name'], 'days' => $package['days'], 'price' => $price, 'quantity' => $got],
+            ]);
+        }
+
+        // ===== NHÁNH POOL (mặc định, như cũ) =====
         // Kiểm tra pool có đủ key
         $availStmt = $db->prepare("SELECT COUNT(*) FROM `keys` WHERE status='available' AND game_id=? AND package_id=?");
         $availStmt->execute([$game_id, $package_id]);

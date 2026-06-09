@@ -489,8 +489,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hours = max(0, (int)($_POST['hours'] ?? 0));
         if ($days === 0 && $hours === 0) { header("Location: ?tab=packages&err=" . urlencode('Phải nhập ngày hoặc giờ > 0')); exit; }
         $name = $days > 0 ? ('Gói ' . $days . ' ngày' . ($hours ? ' ' . $hours . 'h' : '')) : ('Gói ' . $hours . ' giờ');
-        $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type) VALUES (?,?,?,?,?,?)")
-           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type']]);
+        $ksrc = ($_POST['key_source'] ?? 'pool') === 'api' ? 'api' : 'pool';
+        $db->prepare("INSERT INTO packages (game_id,name,days,hours,price,key_type,key_source,api_game,api_duration,api_max_devices) VALUES (?,?,?,?,?,?,?,?,?,?)")
+           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type'], $ksrc,
+                      $ksrc==='api' ? trim($_POST['api_game'] ?? '') : null,
+                      $ksrc==='api' ? (int)($_POST['api_duration'] ?? 0) : null,
+                      $ksrc==='api' ? max(1,(int)($_POST['api_max_devices'] ?? 1)) : 1]);
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'toggle_pkg') {
@@ -503,8 +507,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($days === 0 && $hours === 0) { header("Location: ?tab=packages&err=" . urlencode('Phải nhập ngày hoặc giờ > 0')); exit; }
         $auto = $days > 0 ? ('Gói ' . $days . ' ngày' . ($hours ? ' ' . $hours . 'h' : '')) : ('Gói ' . $hours . ' giờ');
         $name = trim($_POST['name'] ?? '') ?: $auto;
-        $db->prepare("UPDATE packages SET game_id=?, name=?, days=?, hours=?, price=?, key_type=?, is_active=? WHERE id=?")
-           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type'], $_POST['is_active']??1, $_POST['id']]);
+        $ksrc = ($_POST['key_source'] ?? 'pool') === 'api' ? 'api' : 'pool';
+        $db->prepare("UPDATE packages SET game_id=?, name=?, days=?, hours=?, price=?, key_type=?, is_active=?, key_source=?, api_game=?, api_duration=?, api_max_devices=? WHERE id=?")
+           ->execute([$_POST['game_id'], $name, $days, $hours, $_POST['price'], $_POST['key_type'], $_POST['is_active']??1, $ksrc,
+                      $ksrc==='api' ? trim($_POST['api_game'] ?? '') : null,
+                      $ksrc==='api' ? (int)($_POST['api_duration'] ?? 0) : null,
+                      $ksrc==='api' ? max(1,(int)($_POST['api_max_devices'] ?? 1)) : 1,
+                      $_POST['id']]);
         header("Location: ?tab=packages&ok=1"); exit;
     }
     if ($act === 'del_pkg') {
@@ -2094,7 +2103,7 @@ foreach($games as $g){ $gameOpts .= '<option value="'.$g['id'].'">'.h($g['name']
   <td><span class="badge <?=$p['key_type']==='VIP'?'orange':'gray'?>"><?=h($p['key_type'])?></span></td>
   <td><?php if($p['is_active']): ?><span class="badge green">● Bật</span><?php else: ?><span class="badge gray">○ Tắt</span><?php endif ?></td>
   <td style="text-align:right"><div class="row-act" style="justify-content:flex-end">
-    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mPkgEdit",<?=json_encode(["id"=>$p["id"],"game_id"=>$p["game_id"],"name"=>$p["name"],"days"=>$p["days"],"hours"=>$p["hours"]??0,"price"=>$p["price"],"key_type"=>$p["key_type"],"is_active"=>$p["is_active"],"_title"=>$p["game_name"]." · ".$p["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
+    <button class="btn btn-blue btn-icon" title="Sửa" onclick='amOpen("mPkgEdit",<?=json_encode(["id"=>$p["id"],"game_id"=>$p["game_id"],"name"=>$p["name"],"days"=>$p["days"],"hours"=>$p["hours"]??0,"price"=>$p["price"],"key_type"=>$p["key_type"],"is_active"=>$p["is_active"],"key_source"=>$p["key_source"]??"pool","api_game"=>$p["api_game"]??"","api_duration"=>$p["api_duration"]??"","api_max_devices"=>$p["api_max_devices"]??1,"_title"=>$p["game_name"]." · ".$p["name"]], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_UNESCAPED_UNICODE)?>)'>✏️</button>
     <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="toggle_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-gray btn-icon" type="submit" title="<?=$p['is_active']?'Tắt':'Bật'?>"><?=$p['is_active']?'⏸':'▶'?></button></form>
     <form method="POST" style="margin:0"><input type="hidden" name="csrf" value="<?=h($_SESSION['admin_csrf'])?>"><input type="hidden" name="act" value="del_pkg"><input type="hidden" name="id" value="<?=$p['id']?>"><button class="btn btn-red btn-icon" title="Xoá" onclick="return confirm('Xoá gói này?')">🗑</button></form>
   </div></td>
@@ -2114,7 +2123,12 @@ foreach($games as $g){ $gameOpts .= '<option value="'.$g['id'].'">'.h($g['name']
         <div class="amodal-field"><label>Số giờ</label><input name="hours" type="number" value="0" min="0"></div>
         <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required placeholder="75000"></div>
         <div class="amodal-field"><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
-        <div class="amodal-field full"><small style="color:#9fb2cf;font-size:11.5px">💡 Có thể kết hợp ngày + giờ (vd 0 ngày 6 giờ = gói 6h dùng thử). Tổng phải &gt; 0.</small></div>
+        <div class="amodal-field full"><label>Nguồn key</label><select name="key_source" onchange="pkgApiToggle(this,'add')"><option value="pool">📦 Pool (key nhập tay)</option><option value="api">🔗 API (panel tự sinh key)</option></select></div>
+        <div class="amodal-field" data-api="add" style="display:none"><label>Game bên panel (api_game)</label><input name="api_game" placeholder="VD: PUBG" style="text-transform:uppercase"></div>
+        <div class="amodal-field" data-api="add" style="display:none"><label>Duration (giờ)</label><input name="api_duration" type="number" placeholder="VD: 24"></div>
+        <div class="amodal-field" data-api="add" style="display:none"><label>Max thiết bị</label><input name="api_max_devices" type="number" value="1" min="1"></div>
+        <div class="amodal-field full" data-api="add" style="display:none"><small style="color:#9fb2cf;font-size:11.5px">🔗 Lấy <b>game</b> + <b>duration</b> từ panel (Config → bấm "Kiểm tra API"). Mỗi lần khách mua sẽ gọi panel sinh key mới.</small></div>
+        <div class="amodal-field full"><small style="color:#9fb2cf;font-size:11.5px">💡 Có thể kết hợp ngày + giờ. Tổng &gt; 0. <b>Ngày/giờ</b> = thời hạn key hiển thị cho khách.</small></div>
       </div></div>
       <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mPkgAdd')">Huỷ</button><button class="btn btn-blue" type="submit">➕ Thêm gói</button></div>
     </form>
@@ -2134,12 +2148,39 @@ foreach($games as $g){ $gameOpts .= '<option value="'.$g['id'].'">'.h($g['name']
         <div class="amodal-field"><label>Giá (đ)</label><input name="price" type="number" required></div>
         <div class="amodal-field"><label>Loại key</label><select name="key_type"><option>Normal</option><option>VIP</option></select></div>
         <div class="amodal-field"><label>Trạng thái</label><select name="is_active"><option value="1">Bật</option><option value="0">Tắt</option></select></div>
+        <div class="amodal-field full"><label>Nguồn key</label><select name="key_source" onchange="pkgApiToggle(this,'edit')"><option value="pool">📦 Pool (key nhập tay)</option><option value="api">🔗 API (panel tự sinh key)</option></select></div>
+        <div class="amodal-field" data-api="edit" style="display:none"><label>Game bên panel (api_game)</label><input name="api_game" placeholder="VD: PUBG" style="text-transform:uppercase"></div>
+        <div class="amodal-field" data-api="edit" style="display:none"><label>Duration (giờ)</label><input name="api_duration" type="number" placeholder="VD: 24"></div>
+        <div class="amodal-field" data-api="edit" style="display:none"><label>Max thiết bị</label><input name="api_max_devices" type="number" value="1" min="1"></div>
       </div></div>
       <div class="amodal-foot"><button type="button" class="btn btn-gray" onclick="amClose('mPkgEdit')">Huỷ</button><button class="btn btn-blue" type="submit">💾 Lưu thay đổi</button></div>
     </form>
   </div>
 </div>
 
+<script>
+// Hiện/ẩn field API theo nguồn key
+function pkgApiToggle(sel, scope){
+  var show = sel.value === 'api';
+  document.querySelectorAll('[data-api="'+scope+'"]').forEach(function(el){ el.style.display = show ? '' : 'none'; });
+}
+// Khi mở modal sửa: set nguồn key + field API rồi toggle
+document.addEventListener('DOMContentLoaded', function(){
+  var ov = document.getElementById('mPkgEdit');
+  if(!ov) return;
+  // Hook vào amOpen: sau khi điền data, đồng bộ hiển thị field API
+  var _open = window.amOpen;
+  if(typeof _open === 'function'){
+    window.amOpen = function(id, data){
+      _open(id, data);
+      if(id === 'mPkgEdit'){
+        var sel = ov.querySelector('[name=key_source]');
+        if(sel) pkgApiToggle(sel, 'edit');
+      }
+    };
+  }
+});
+</script>
 
 <?php elseif($tab==='accounts'): ?>
 <?php $gamesAll=$db->query("SELECT * FROM games ORDER BY sort_order")->fetchAll();
@@ -2726,6 +2767,33 @@ function _hclouFormatBytes($b) {
   • Mỗi đơn được cộng thêm số lẻ thập phân duy nhất (vd <span class="mono">2.001234 USDT</span> cho đơn #1234) để hệ thống phân biệt đơn khi nhiều khách chuyển cùng số tròn.<br>
   • Khi cả 2 ô trên đã điền + bật <b>Auto-crypto</b>, option Binance mới hiện ở Mini App của khách.
 </div>
+
+<h3 style="margin-top:20px">🔗 License Panel API (nguồn key tự động)</h3>
+<div class="form-row">
+<div style="flex:1;min-width:320px"><label>API URL panel</label><input style="width:100%;font-family:monospace" name="cfg[HCLOU_API_URL]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_URL'))?>" placeholder="https://panel.domain.com/api/sell"><small style="color:#8b949e">URL gốc API bán key của panel (kết thúc bằng <code>/api/sell</code>).</small></div>
+<div style="flex:1;min-width:260px"><label>API Token</label><input style="width:100%;font-family:monospace" name="cfg[HCLOU_API_TOKEN]" value="<?=htmlspecialchars((string)hclouConfigValue('HCLOU_API_TOKEN'))?>" placeholder="Token tạo trong panel"></div>
+</div>
+<div style="margin-top:10px">
+  <a class="btn btn-gray" href="?tab=sysconfig&test_api=1#apitest">🔍 Kiểm tra API (xem game/gói + số dư)</a>
+</div>
+<?php if(isset($_GET['test_api'])): $_apiRes = function_exists('hclouApiProducts') ? hclouApiProducts() : ['__error'=>'helper missing']; ?>
+<div id="apitest" class="codebox" style="margin-top:10px;max-height:340px;overflow:auto">
+<?php if(isset($_apiRes['__error'])): ?>
+  ❌ Lỗi: <?=h($_apiRes['__error'])?> (HTTP <?=h((string)($_apiRes['__http'] ?? '?'))?>)
+<?php elseif(empty($_apiRes['status'])): ?>
+  ❌ Token/URL sai. Phản hồi: <?=h(json_encode($_apiRes, JSON_UNESCAPED_UNICODE))?>
+<?php else: ?>
+  ✅ <b style="color:#6ee7b7">Kết nối OK!</b> Số dư panel: <b style="color:#fbbf24">$<?=h(number_format((float)($_apiRes['balance'] ?? 0)))?></b>
+  <br><br><b>Game / gói khả dụng</b> (dùng <code>game</code> + <code>duration</code> này điền vào gói):
+  <?php foreach(($_apiRes['games'] ?? []) as $g): ?>
+  <br>🎮 <b><?=h($g['name'] ?? '')?></b> · <code style="color:#7db3ff"><?=h($g['game'] ?? '')?></code>
+    <?php foreach(($g['packages'] ?? []) as $pk): ?>
+    <br>&nbsp;&nbsp;&nbsp;• <code><?=h((string)($pk['duration'] ?? ''))?></code> giờ (<?=h($pk['label'] ?? '')?>) — giá panel: $<?=h((string)($pk['price'] ?? ''))?>
+    <?php endforeach; ?>
+  <?php endforeach; ?>
+<?php endif; ?>
+</div>
+<?php endif; ?>
 
 <h3 style="margin-top:20px">💳 Nạp card qua doithe.vn (Ví user)</h3>
 <div class="form-row">

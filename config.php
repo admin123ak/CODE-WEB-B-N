@@ -95,6 +95,9 @@ if (!defined('FOOTER_TELEGRAM'))     define('FOOTER_TELEGRAM', 'https://t.me/');
 if (!defined('DOITHE_API_URL'))            define('DOITHE_API_URL', 'https://doithe.vn/chargingws/v2'); // hardcode default — admin không cần sửa
 if (!defined('DOITHE_PARTNER_ID'))         define('DOITHE_PARTNER_ID', '');
 if (!defined('DOITHE_PARTNER_KEY'))        define('DOITHE_PARTNER_KEY', '');
+// ===== License Panel HCLOU: nguồn key qua API (cho gói chọn key_source='api') =====
+if (!defined('HCLOU_API_URL'))             define('HCLOU_API_URL', '');   // vd https://panel.domain.com/api/sell
+if (!defined('HCLOU_API_TOKEN'))           define('HCLOU_API_TOKEN', ''); // token tạo trong panel
 // Callback secret: HMAC từ partner_key + BOT_TOKEN — dùng để xác thực URL callback
 // trong trường hợp doithe.vn không gửi signature đầy đủ.
 if (defined('DOITHE_PARTNER_KEY') && DOITHE_PARTNER_KEY !== '' && defined('BOT_TOKEN') && !defined('CARD_CALLBACK_SECRET')) {
@@ -359,6 +362,70 @@ function buildFreeShortlink($claimUrl, &$debug = null) {
 }
 
 // =============================================
+// HCLOU LICENSE PANEL API CLIENT
+// Gọi panel để lấy key cho gói có key_source='api'.
+// =============================================
+function hclouApiConfigured() {
+    return defined('HCLOU_API_URL') && HCLOU_API_URL !== ''
+        && defined('HCLOU_API_TOKEN') && HCLOU_API_TOKEN !== '';
+}
+
+/** Gọi 1 endpoint của panel. Trả mảng JSON hoặc ['__error'=>..]. */
+function hclouApiCall($path, $method = 'GET', $params = []) {
+    if (!hclouApiConfigured()) return ['__error' => 'HCLOU_API chưa cấu hình (URL + token)'];
+    $base = rtrim(HCLOU_API_URL, '/');
+    $url  = $base . '/' . ltrim($path, '/');
+    $ch = curl_init();
+    $headers = ['Authorization: Bearer ' . HCLOU_API_TOKEN, 'Accept: application/json'];
+    if (strtoupper($method) === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    } else {
+        if ($params) $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
+    }
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+        CURLOPT_HTTPHEADER     => $headers,
+    ]);
+    $raw  = curl_exec($ch);
+    $err  = curl_error($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($raw === false) return ['__error' => 'cURL: ' . $err, '__http' => $code];
+    $j = json_decode($raw, true);
+    if (!is_array($j)) return ['__error' => 'Phản hồi không phải JSON', '__http' => $code, '__raw' => substr((string)$raw, 0, 200)];
+    $j['__http'] = $code;
+    return $j;
+}
+
+/** Lấy danh sách game + gói + số dư từ panel. */
+function hclouApiProducts() {
+    return hclouApiCall('products', 'GET');
+}
+
+/**
+ * Mua 1 key từ panel.
+ * @return array key thành công: ['__ok'=>true,'key'=>..,'balance'=>..] ; lỗi: ['__ok'=>false,'reason'=>..]
+ */
+function hclouApiBuy($game, $duration, $maxDevices = 1) {
+    $r = hclouApiCall('buy', 'POST', [
+        'game'        => $game,
+        'duration'    => (int)$duration,
+        'max_devices' => max(1, (int)$maxDevices),
+    ]);
+    if (isset($r['__error'])) return ['__ok' => false, 'reason' => $r['__error']];
+    if (!empty($r['status']) && !empty($r['key'])) {
+        return ['__ok' => true, 'key' => $r['key'], 'balance' => $r['balance'] ?? null, 'price' => $r['price'] ?? null];
+    }
+    return ['__ok' => false, 'reason' => $r['reason'] ?? 'UNKNOWN', 'raw' => $r];
+}
+
+// =============================================
 // VIETQR URL BUILDER
 // =============================================
 function buildVietQrUrl($amount, $content) {
@@ -467,6 +534,8 @@ function hclouConfigEditableKeys() {
         'DOITHE_PARTNER_ID'           => 'string',
         'DOITHE_PARTNER_KEY'          => 'string',
         'DOITHE_API_URL'              => 'string',
+        'HCLOU_API_URL'               => 'string',
+        'HCLOU_API_TOKEN'             => 'string',
     ];
 }
 

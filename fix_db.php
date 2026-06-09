@@ -116,4 +116,17 @@ if (!$col->fetchColumn()) {
     echo "✅ ADD keys.hours\n";
 } else { echo "⏭️ keys.hours có\n"; }
 
+// ===== NGUỒN KEY: pool (mặc định, nhập tay) hoặc api (gọi panel HCLOU) =====
+$addPkgCol = function($col, $def) use ($db) {
+    $q = $db->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='packages' AND COLUMN_NAME='$col'");
+    if (!$q->fetchColumn()) {
+        $db->exec("ALTER TABLE `packages` ADD `$col` $def");
+        echo "✅ ADD packages.$col\n";
+    } else { echo "⏭️ packages.$col có\n"; }
+};
+$addPkgCol('key_source',      "ENUM('pool','api') DEFAULT 'pool'");
+$addPkgCol('api_game',        "VARCHAR(32) DEFAULT NULL");
+$addPkgCol('api_duration',    "INT(11) DEFAULT NULL");
+$addPkgCol('api_max_devices', "INT(11) DEFAULT 1");
+
 echo "\n✅ Xong! Xoá file fix_db.php sau khi dùng.\n";
