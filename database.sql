@@ -121,7 +121,7 @@ CREATE TABLE `orders` (
   `account_type_id` INT(11) DEFAULT NULL,
   `order_type` ENUM('key','account') DEFAULT 'key',
   `amount` DECIMAL(12,0) NOT NULL,
-  `payment_method` ENUM('mbbank','binance') NOT NULL DEFAULT 'mbbank',
+  `payment_method` ENUM('mbbank','binance','balance') NOT NULL DEFAULT 'mbbank',
   `crypto_amount` DECIMAL(18,6) DEFAULT NULL,
   `usdt_vnd_rate` DECIMAL(12,2) DEFAULT NULL,
   `status` ENUM('pending','approved','rejected','cancelled') DEFAULT 'pending',

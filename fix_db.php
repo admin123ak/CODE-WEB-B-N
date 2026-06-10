@@ -129,4 +129,13 @@ $addPkgCol('api_game',        "VARCHAR(32) DEFAULT NULL");
 $addPkgCol('api_duration',    "INT(11) DEFAULT NULL");
 $addPkgCol('api_max_devices', "INT(11) DEFAULT 1");
 
+// ===== Cho phép thanh toán bằng SỐ DƯ: thêm 'balance' vào ENUM payment_method =====
+// Lỗi cũ: insert payment_method='balance' nhưng ENUM chỉ có mbbank/binance ->
+// "Data truncated for column 'payment_method'" -> lỗi tạo đơn khi mua bằng ví.
+$pmType = $db->query("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='payment_method'")->fetchColumn();
+if ($pmType && stripos($pmType, "'balance'") === false) {
+    $db->exec("ALTER TABLE `orders` MODIFY `payment_method` ENUM('mbbank','binance','balance') NOT NULL DEFAULT 'mbbank'");
+    echo "✅ ADD 'balance' vào orders.payment_method\n";
+} else { echo "⏭️ orders.payment_method đã có 'balance'\n"; }
+
 echo "\n✅ Xong! Xoá file fix_db.php sau khi dùng.\n";
