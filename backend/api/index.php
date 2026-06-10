@@ -1165,9 +1165,10 @@ switch ($action) {
         foreach ($keys as $k) {
             if ($hasKS && ($k['key_source'] ?? 'pool') === 'api') $apiKeyCodes[] = $k['key_code'];
         }
+        // Gọi panel an toàn tuyệt đối: lỗi/thiếu hàm/timeout KHÔNG được làm vỡ my_keys
         $panelInfo = [];
-        if ($apiKeyCodes && function_exists('hclouApiConfigured') && hclouApiConfigured()) {
-            $panelInfo = hclouApiKeyinfo($apiKeyCodes);
+        if ($apiKeyCodes && function_exists('hclouApiConfigured') && function_exists('hclouApiKeyinfo') && hclouApiConfigured()) {
+            try { $panelInfo = hclouApiKeyinfo($apiKeyCodes); } catch (Throwable $e) { $panelInfo = []; }
         }
 
         foreach ($keys as &$k) {

@@ -371,7 +371,7 @@ function hclouApiConfigured() {
 }
 
 /** Gọi 1 endpoint của panel. Trả mảng JSON hoặc ['__error'=>..]. */
-function hclouApiCall($path, $method = 'GET', $params = []) {
+function hclouApiCall($path, $method = 'GET', $params = [], $timeout = 20) {
     if (!hclouApiConfigured()) return ['__error' => 'HCLOU_API chưa cấu hình (URL + token)'];
     $base = rtrim(HCLOU_API_URL, '/');
     $url  = $base . '/' . ltrim($path, '/');
@@ -386,7 +386,8 @@ function hclouApiCall($path, $method = 'GET', $params = []) {
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
@@ -412,7 +413,7 @@ function hclouApiProducts() {
 function hclouApiKeyinfo(array $keys) {
     $keys = array_values(array_filter(array_map('trim', $keys), fn($s) => $s !== ''));
     if (!$keys) return [];
-    $r = hclouApiCall('keyinfo', 'POST', ['keys' => implode(',', $keys)]);
+    $r = hclouApiCall('keyinfo', 'POST', ['keys' => implode(',', $keys)], 8); // timeout ngắn, không để khách chờ
     if (!empty($r['status']) && isset($r['keys']) && is_array($r['keys'])) return $r['keys'];
     return [];
 }
