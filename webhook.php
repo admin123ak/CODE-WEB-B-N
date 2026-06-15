@@ -216,8 +216,44 @@ function approveOrder(PDO $db, string $order_code, string $admin_name, string $c
         $now    = date('Y-m-d H:i:s');
         $totHr  = max(1, ((int)($order['days'] ?? 0)) * 24 + (int)($order['hours'] ?? 0));
         $expire = date('Y-m-d H:i:s', strtotime('+' . $totHr . ' hours'));
-        $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
-           ->execute([$now, $expire, $order['id']]);
+
+        // Lấy key của đơn để biết là gói POOL hay API (key tạm APIWAIT-)
+        $kq = $db->prepare("SELECT id, key_code FROM `keys` WHERE order_id=? AND status='pending'");
+        $kq->execute([$order['id']]);
+        $allKeys = $kq->fetchAll();
+        $isApi = false;
+        foreach ($allKeys as $kk) {
+            if (strpos((string)$kk['key_code'], 'APIWAIT-') === 0) { $isApi = true; break; }
+        }
+
+        if ($isApi) {
+            // ===== Gói API: gọi panel sinh key THẬT cho từng key tạm =====
+            if (!function_exists('hclouApiBuy') || !hclouApiConfigured())
+                throw new Exception('Gói API nhưng hệ thống chưa cấu hình panel');
+            // map game/duration của gói
+            $aq = $db->prepare("SELECT api_game, api_duration, api_max_devices FROM packages WHERE id=? LIMIT 1");
+            $aq->execute([$order['package_id']]);
+            $a = $aq->fetch();
+            $apiGame = trim((string)($a['api_game'] ?? ''));
+            $apiDur  = (int)($a['api_duration'] ?? 0);
+            $apiMax  = max(1, (int)($a['api_max_devices'] ?? 1));
+            if ($apiGame === '' || $apiDur < 1) throw new Exception('Gói API chưa map game/duration');
+
+            // Key API: expire NULL -> panel tính khi khách login (khớp panel)
+            $upReal = $db->prepare("UPDATE `keys` SET key_code=?, status='active', start_at=NULL, expire_at=NULL WHERE id=? AND status='pending'");
+            $got = 0; $lastReason = '';
+            foreach ($allKeys as $kk) {
+                $r = hclouApiBuy($apiGame, $apiDur, $apiMax);
+                if (!empty($r['__ok']) && !empty($r['key'])) { $upReal->execute([$r['key'], $kk['id']]); $got++; }
+                else { $lastReason = $r['reason'] ?? 'unknown'; error_log('[APPROVE_API] ' . $order_code . ' ' . json_encode($r)); }
+            }
+            if ($got === 0) throw new Exception('Panel không cấp được key: ' . $lastReason);
+            $db->prepare("DELETE FROM `keys` WHERE order_id=? AND status='pending'")->execute([$order['id']]);
+        } else {
+            // ===== Gói pool: active key đã reserve =====
+            $db->prepare("UPDATE `keys` SET status='active', start_at=COALESCE(start_at,?), expire_at=? WHERE order_id=? AND status IN ('pending','available')")
+               ->execute([$now, $expire, $order['id']]);
+        }
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();
