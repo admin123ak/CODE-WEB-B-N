@@ -133,7 +133,7 @@ switch ($action) {
         $stmt = $db->prepare("SELECT * FROM packages WHERE game_id=? AND is_active=1 ORDER BY days ASC");
         $stmt->execute([$game_id]);
         $packages = $stmt->fetchAll();
-        $freeStmt = $db->prepare("SELECT fk.*, p.key_type FROM free_keys fk JOIN packages p ON fk.package_id=p.id LEFT JOIN free_key_claims c ON c.free_key_id=fk.id WHERE fk.game_id=? AND fk.is_active=1 AND fk.expire_at > NOW() AND c.id IS NULL ORDER BY fk.created_at DESC LIMIT 1");
+        $freeStmt = $db->prepare("SELECT fk.*, p.key_type FROM free_keys fk JOIN packages p ON fk.package_id=p.id WHERE fk.game_id=? AND fk.is_active=1 AND NOT EXISTS(SELECT 1 FROM free_key_claims _fkc WHERE _fkc.free_key_id=fk.id AND _fkc.is_claimed=1) ORDER BY fk.created_at DESC LIMIT 1");
         $freeStmt->execute([$game_id]);
         $free = $freeStmt->fetch();
         if ($free) {
@@ -1050,7 +1050,7 @@ switch ($action) {
         $free_key_id = (int)($_POST['package_id'] ?? $_GET['package_id'] ?? 0);
 
         // Tìm free_key available (còn key trong pool — is_claimed=0 hoặc chưa có claim)
-        $where = "fk.is_active=1 AND fk.expire_at > NOW()";
+        $where = "fk.is_active=1 AND NOT EXISTS(SELECT 1 FROM free_key_claims _fkc WHERE _fkc.free_key_id=fk.id AND _fkc.is_claimed=1)";
         $params = [];
         if ($game_id > 0) { $where .= " AND fk.game_id=?"; $params[] = $game_id; }
         if ($free_key_id > 0) { $where .= " AND fk.id=?"; $params[] = $free_key_id; }
@@ -1327,13 +1327,13 @@ switch ($action) {
             jsonResponse(['success' => true, 'claimed' => true, 'key_code' => $row['key_code'] ?? '', 'claimed_at' => $row['claimed_at'] ?? '']);
         }
         // Kiểm tra có free_key available (admin đã thêm)
-        $freeAvail = $db->prepare("SELECT COUNT(*) FROM free_keys WHERE is_active=1 AND expire_at > NOW()");
+        $freeAvail = $db->prepare("SELECT COUNT(*) FROM free_keys fk WHERE fk.is_active=1 AND NOT EXISTS(SELECT 1 FROM free_key_claims _fkc WHERE _fkc.free_key_id=fk.id AND _fkc.is_claimed=1)");
         $freeAvail->execute();
         $freeCount = (int)$freeAvail->fetchColumn();
         // Lấy info key gần nhất (badge + dropdown trong widget)
         $nextDays = 0; $nextGame = '';
         if ($freeCount > 0) {
-            $nx = $db->prepare("SELECT fk.days, g.name AS game_name FROM free_keys fk JOIN games g ON fk.game_id=g.id WHERE fk.is_active=1 AND fk.expire_at > NOW() ORDER BY fk.created_at DESC LIMIT 1");
+            $nx = $db->prepare("SELECT fk.days, g.name AS game_name FROM free_keys fk JOIN games g ON fk.game_id=g.id WHERE fk.is_active=1 AND NOT EXISTS(SELECT 1 FROM free_key_claims _fkc WHERE _fkc.free_key_id=fk.id AND _fkc.is_claimed=1) ORDER BY fk.created_at DESC LIMIT 1");
             $nx->execute();
             $row = $nx->fetch();
             if ($row) { $nextDays = (int)$row['days']; $nextGame = (string)$row['game_name']; }
@@ -1354,7 +1354,7 @@ switch ($action) {
             FROM free_keys fk
             JOIN games g ON fk.game_id=g.id
             JOIN packages p ON fk.package_id=p.id
-            WHERE fk.is_active=1 AND fk.expire_at > NOW()
+            WHERE fk.is_active=1
               AND NOT EXISTS(SELECT 1 FROM free_key_claims fkc WHERE fkc.free_key_id=fk.id AND fkc.is_claimed=1)
             ORDER BY fk.created_at DESC LIMIT 1");
         $fk->execute();
