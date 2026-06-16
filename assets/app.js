@@ -269,15 +269,31 @@ function setUserRole(){
 }
 
 async function startApp(tg){
-  tg.ready(); tg.expand();
+  // Ẩn loading SỚM + bảo hiểm: dù auth lỗi/treo vẫn vào app (không đứng màn loading)
+  var _hid=false;
+  function hideLoading(){
+    if(_hid) return; _hid=true;
+    var ls=document.getElementById('loadingScreen');
+    if(ls){ ls.classList.add('hide'); setTimeout(function(){ ls.style.display='none'; },300); }
+    var ap=document.getElementById('app'); if(ap) ap.style.opacity='1';
+  }
+  // Hard timeout 8s: nếu auth treo (mạng/CORS) -> vẫn ẩn loading
+  setTimeout(hideLoading, 8000);
+
+  try{ tg.ready(); tg.expand(); }catch(e){}
   tgInitData=tg.initData||'';
-  var u=tg.initDataUnsafe.user;
-  var res=await api('auth','POST',{
-    telegram_id:u.id,username:u.username||'',
-    full_name:((u.first_name||'')+' '+(u.last_name||'')).trim(),
-    avatar_url:u.photo_url||''
-  });
-  if(res.success){
+  var u=(tg.initDataUnsafe&&tg.initDataUnsafe.user)||{};
+  var res;
+  try{
+    res=await api('auth','POST',{
+      telegram_id:u.id,username:u.username||'',
+      full_name:((u.first_name||'')+' '+(u.last_name||'')).trim(),
+      avatar_url:u.photo_url||''
+    });
+  }catch(e){ res={error:'AUTH_FAIL'}; }
+
+  try{
+  if(res&&res.success){
     currentUser=res.user; appToken=res.app_token||'';
     var n=currentUser.full_name||'User';
     document.getElementById('pName').textContent=n;
@@ -295,7 +311,7 @@ async function startApp(tg){
     loadBalance();
     processPendingClaim();
   } else {
-    // Fallback: Telegram đã có user nhưng /auth lỗi thì vẫn thử tải key bằng telegram_id.
+    // Fallback: Telegram có user nhưng /auth lỗi -> vẫn vào app bằng telegram_id.
     currentUser={telegram_id:u.id,telegram_username:u.username||'',full_name:((u.first_name||'')+' '+(u.last_name||'')).trim(),avatar_url:u.photo_url||''};
     var _ti=document.getElementById('telegramIdText'); if(_ti)_ti.textContent=currentUser.telegram_id;
     document.getElementById('pName').textContent=currentUser.full_name||'User';
@@ -303,14 +319,11 @@ async function startApp(tg){
     loadKeys('all');
     loadPendingPayments();
     processPendingClaim();
-    toast(res.error||T.taiKeyLoi,'error');
+    toast((res&&res.error)||T.taiKeyLoi,'error');
   }
-  setTimeout(function(){
-    var ls=document.getElementById('loadingScreen');
-    ls.classList.add('hide');
-    document.getElementById('app').style.opacity='1';
-    setTimeout(function(){ ls.style.display='none'; },300);
-  },600);
+  }catch(e){ /* lỗi render -> vẫn ẩn loading */ }
+
+  setTimeout(hideLoading, 600);
 }
 
 
